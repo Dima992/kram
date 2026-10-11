@@ -6,7 +6,7 @@ export const SupplierImports: CollectionConfig = {
   slug: 'supplier-imports',
   labels: {
     singular: 'Запис на модерацію',
-    plural: 'Імпорт / Експорт і Модерація',
+    plural: 'Модерация входящих',
   },
   access: {
     create: adminOnly,
@@ -18,6 +18,13 @@ export const SupplierImports: CollectionConfig = {
     group: 'Імпорт / Експорт і Модерація',
     useAsTitle: 'sourceRecordKey',
     defaultColumns: ['sourceType', 'supplierRef', 'mappingStatus', 'status', 'createdAt'],
+    components: {
+      views: {
+        list: {
+          Component: '@/components/admin/SupplierImportDashboard#SupplierImportDashboard',
+        },
+      },
+    },
     description:
       'Вхідні товари зберігаються окремо. Після перевірки встановіть статус «Одобрен» — тоді товар буде створено або оновлено в каталозі.',
   },

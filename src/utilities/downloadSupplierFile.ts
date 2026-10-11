@@ -83,16 +83,18 @@ function getFileExtension(url: URL, contentType: string | null): string {
 
 export async function downloadSupplierFile(
   source: ImportSource,
+  options: { url?: string } = {},
 ): Promise<{ buffer: Buffer; fileName: string }> {
-  if (!source.supplierFeedURL) {
+  const sourceURL = options.url?.trim() || source.supplierFeedURL
+  if (!sourceURL) {
     throw new Error('У профілі постачальника не вказане посилання на прайс.')
   }
 
-  let url = new URL(source.supplierFeedURL)
+  let url = new URL(sourceURL)
   const headers = new Headers()
-  if (source.supplierBearerToken) {
+  if (!options.url && source.supplierBearerToken) {
     headers.set('Authorization', `Bearer ${source.supplierBearerToken}`)
-  } else if (source.supplierUsername || source.supplierPassword) {
+  } else if (!options.url && (source.supplierUsername || source.supplierPassword)) {
     const credentials = Buffer.from(
       `${source.supplierUsername || ''}:${source.supplierPassword || ''}`,
     ).toString('base64')

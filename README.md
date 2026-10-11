@@ -284,8 +284,12 @@ endpoint and internal scheduled imports.
 ### Moderation inbox and AI mapping
 
 The **Import / Export and Moderation** Payload group stores source rows in `supplier-imports`.
-Upload a supported file or ingest a configured URL feed through `POST /api/admin/supplier-import`;
-the route requires an admin session. Files are parsed into resumable jobs, and the protected
+The `supplier-imports` list opens the Import Suppliers workspace with file/URL ingestion,
+Telegram adapter submission, and a pending moderation inbox. Select a supplier profile to apply its
+column mapping and hidden supplier relationship. Upload XML, CSV, XLSX, or JSON (up to 4 MB), or
+provide an HTTPS feed URL; manual URLs use the selected profile's mapping but do not reuse its saved
+credentials. Imports are parsed into resumable jobs through the admin-only
+`POST /api/admin/supplier-import` route, and the protected
 `GET /api/cron/supplier-mapping` endpoint maps a bounded batch per invocation. It can also be
 started manually from an authenticated admin session with `POST /api/admin/supplier-import/process`.
 The default Vercel schedule runs this worker daily at 07:00 UTC; increase the frequency on plans
@@ -295,11 +299,13 @@ remain centralized in AI settings. Mapped products remain drafts in the inbox un
 their status to approved; approval creates or updates the linked product in Ukrainian and Russian.
 
 Telegram ingestion is an adapter boundary rather than a built-in channel-history scraper. A
-Telegram integration should submit parsed messages (`messageId`, `date`, and `text`) to the same
-admin ingestion route as JSON, along with the configured supplier and channel. `since` filters
-messages by date, and explicitly reported removed IDs in `removedMessageIDs` set already-approved
-linked products' inventory to zero. Telegram Bot API integrations must provide those removed IDs;
-the Bot API does not expose arbitrary historical channel posts or a list of deleted messages.
+Telegram integration should submit parsed messages (`messageId`, `date`, `text`, and a positive
+`price`) to the same admin ingestion route as JSON, along with the configured supplier and channel. The admin workspace
+accepts that parsed message array as JSON; entering a channel name alone cannot download posts.
+`since` filters messages by date, and explicitly reported removed IDs in `removedMessageIDs` set
+already-approved linked products' inventory to zero. Telegram Bot API integrations must provide
+those removed IDs; the Bot API does not expose arbitrary historical channel posts or a list of
+deleted messages.
 
 ## Website
 

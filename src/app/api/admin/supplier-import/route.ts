@@ -115,11 +115,21 @@ export async function POST(req: Request) {
     const formData = await req.formData()
     const sourceID = formData.get('sourceID')
     const file = formData.get('file')
+    const url = formData.get('url')
     if (typeof sourceID !== 'string' || !sourceID) {
       return NextResponse.json({ error: 'Виберіть профіль постачальника.' }, { status: 400 })
     }
     if (file !== null && !(file instanceof File)) {
       return NextResponse.json({ error: 'Поле file має бути файлом.' }, { status: 400 })
+    }
+    if (url !== null && typeof url !== 'string') {
+      return NextResponse.json({ error: 'Поле url має бути текстовим посиланням.' }, { status: 400 })
+    }
+    if (typeof url === 'string' && url.length > 2048) {
+      return NextResponse.json({ error: 'Посилання на прайс не може бути довшим за 2 048 символів.' }, { status: 400 })
+    }
+    if (file instanceof File && typeof url === 'string' && url.trim()) {
+      return NextResponse.json({ error: 'Завантажте файл або вкажіть посилання, але не обидва варіанти.' }, { status: 400 })
     }
     if (file instanceof File && (file.size === 0 || file.size > 4 * 1024 * 1024)) {
       return NextResponse.json({ error: 'Розмір файлу має бути від 1 байта до 4 МБ.' }, { status: 400 })
@@ -135,7 +145,7 @@ export async function POST(req: Request) {
     const fileData =
       file instanceof File
         ? { fileName: file.name, buffer: Buffer.from(await file.arrayBuffer()) }
-        : await downloadSupplierFile(source)
+        : await downloadSupplierFile(source, { url: typeof url === 'string' ? url : undefined })
     const rows: SupplierRow[] = await parseSupplierFile(
       fileData.fileName,
       fileData.buffer,
