@@ -78,6 +78,8 @@ export interface Config {
     media: Media;
     feeds: Feed;
     'import-sources': ImportSource;
+    'supplier-imports': SupplierImport;
+    'supplier-import-jobs': SupplierImportJob;
     'api-keys': ApiKey;
     'ai-agents': AIAgent;
     forms: Form;
@@ -115,6 +117,8 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     feeds: FeedsSelect<false> | FeedsSelect<true>;
     'import-sources': ImportSourcesSelect<false> | ImportSourcesSelect<true>;
+    'supplier-imports': SupplierImportsSelect<false> | SupplierImportsSelect<true>;
+    'supplier-import-jobs': SupplierImportJobsSelect<false> | SupplierImportJobsSelect<true>;
     'api-keys': ApiKeysSelect<false> | ApiKeysSelect<true>;
     'ai-agents': AIAgentsSelect<false> | AIAgentsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
@@ -362,6 +366,7 @@ export interface Product {
   gtin?: string | null;
   mpn?: string | null;
   supplierSourceKey?: string | null;
+  supplierRef?: (string | null) | ImportSource;
   supplierSKU?: string | null;
   supplierProductKey?: string | null;
   supplierName?: string | null;
@@ -1210,6 +1215,41 @@ export interface ImportSource {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the definition "supplier-imports".
+ */
+export interface SupplierImport {
+  id: string;
+  sourceType: 'file' | 'url' | 'telegram';
+  supplierRef: string | ImportSource;
+  sourceRecordKey: string;
+  rawPayload: unknown;
+  mappedData?: unknown;
+  mappingStatus: 'queued' | 'processing' | 'completed' | 'failed';
+  mappingError?: string | null;
+  product?: (string | null) | Product;
+  status: 'pending' | 'approved' | 'rejected';
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the definition "supplier-import-jobs".
+ */
+export interface SupplierImportJob {
+  id: string;
+  supplierRef: string | ImportSource;
+  sourceType: 'file' | 'url' | 'telegram';
+  rows: unknown;
+  nextIndex: number;
+  status: 'queued' | 'processing' | 'completed';
+  totalRows: number;
+  failedRows: number;
+  telegramChannel?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "api-keys".
  */
 export interface ApiKey {
@@ -1681,6 +1721,39 @@ export interface ImportSourcesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the definition "supplier-imports_select".
+ */
+export interface SupplierImportsSelect<T extends boolean = true> {
+  sourceType?: T;
+  supplierRef?: T;
+  sourceRecordKey?: T;
+  rawPayload?: T;
+  mappedData?: T;
+  mappingStatus?: T;
+  mappingError?: T;
+  product?: T;
+  status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the definition "supplier-import-jobs_select".
+ */
+export interface SupplierImportJobsSelect<T extends boolean = true> {
+  supplierRef?: T;
+  sourceType?: T;
+  rows?: T;
+  nextIndex?: T;
+  status?: T;
+  totalRows?: T;
+  failedRows?: T;
+  telegramChannel?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "api-keys_select".
  */
 export interface ApiKeysSelect<T extends boolean = true> {
@@ -1951,6 +2024,7 @@ export interface ProductsSelect<T extends boolean = true> {
   gtin?: T;
   mpn?: T;
   supplierSourceKey?: T;
+  supplierRef?: T;
   supplierSKU?: T;
   supplierProductKey?: T;
   supplierName?: T;

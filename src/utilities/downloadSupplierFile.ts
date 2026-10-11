@@ -3,7 +3,7 @@ import { isIP } from 'node:net'
 import type { ImportSource } from '@/payload-types'
 
 const MAX_SUPPLIER_FILE_SIZE = 10 * 1024 * 1024
-const SUPPORTED_FILE_TYPES = new Set(['.xlsx', '.csv', '.tsv', '.txt', '.xml'])
+const SUPPORTED_FILE_TYPES = new Set(['.xlsx', '.csv', '.tsv', '.txt', '.xml', '.json'])
 
 function isPrivateAddress(address: string): boolean {
   const version = isIP(address)
@@ -58,7 +58,7 @@ async function assertPublicURL(url: URL): Promise<void> {
 }
 
 function getFileExtension(url: URL, contentType: string | null): string {
-  const pathnameExtension = url.pathname.match(/\.(xlsx|csv|tsv|txt|xml)$/i)?.[0]?.toLowerCase()
+  const pathnameExtension = url.pathname.match(/\.(xlsx|csv|tsv|txt|xml|json)$/i)?.[0]?.toLowerCase()
   if (pathnameExtension) return pathnameExtension
 
   switch (contentType?.split(';')[0].trim().toLowerCase()) {
@@ -73,8 +73,11 @@ function getFileExtension(url: URL, contentType: string | null): string {
     case 'application/atom+xml':
     case 'application/rss+xml':
       return '.xml'
+    case 'application/json':
+    case 'text/json':
+      return '.json'
     default:
-      throw new Error('Посилання має вести на XLSX, CSV, TSV або XML-файл.')
+      throw new Error('Посилання має вести на XLSX, CSV, TSV, XML або JSON-файл.')
   }
 }
 
@@ -121,7 +124,7 @@ export async function downloadSupplierFile(
   const contentType = response.headers.get('content-type')
   const extension = getFileExtension(url, contentType)
   if (!SUPPORTED_FILE_TYPES.has(extension)) {
-    throw new Error('Підтримуються тільки XLSX, CSV, TSV, TXT або XML-файли.')
+    throw new Error('Підтримуються тільки XLSX, CSV, TSV, TXT, XML або JSON-файли.')
   }
 
   const contentLength = Number(response.headers.get('content-length') || 0)
@@ -149,7 +152,7 @@ export async function downloadSupplierFile(
 
   const requestedName = decodeURIComponent(url.pathname.split('/').pop() || 'supplier-price')
     .replace(/[^a-zA-Z0-9._-]/g, '_')
-    .replace(/\.(xlsx|csv|tsv|txt|xml)$/i, '')
+    .replace(/\.(xlsx|csv|tsv|txt|xml|json)$/i, '')
   return {
     buffer: Buffer.concat(chunks),
     fileName: `${requestedName || 'supplier-price'}${extension}`,

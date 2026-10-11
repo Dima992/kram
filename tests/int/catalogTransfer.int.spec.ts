@@ -16,6 +16,26 @@ describe('supplier file parsing', () => {
     expect(supplierColumn(rows[0], 'description')).toBe('Опис, у лапках')
   })
 
+  it('parses JSON arrays and products envelopes into normalized supplier rows', async () => {
+    const rows = await parseSupplierFile(
+      'supplier.json',
+      Buffer.from(
+        JSON.stringify({
+          products: [
+            { SKU: 'J-1', Title: 'Жакет', price: 1250, nested: { color: 'blue' } },
+          ],
+        }),
+      ),
+      'auto',
+      'utf-8',
+    )
+
+    expect(rows).toHaveLength(1)
+    expect(supplierColumn(rows[0], 'sku')).toBe('J-1')
+    expect(supplierColumn(rows[0], 'title')).toBe('Жакет')
+    expect(supplierColumn(rows[0], 'nested')).toBe('{"color":"blue"}')
+  })
+
   it('reads the first worksheet from an Excel workbook', async () => {
     const workbook = new ExcelJS.Workbook()
     const worksheet = workbook.addWorksheet('Products')

@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/supplier-import",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/supplier-mapping",
+      "schedule": "0 7 * * *"
     }
   ]
 }

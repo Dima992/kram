@@ -24,6 +24,8 @@ import { Categories } from '@/collections/Categories'
 import { CategoryAgents } from '@/collections/CategoryAgents'
 import { Feeds } from '@/collections/Feeds'
 import { ImportSources } from '@/collections/ImportSources'
+import { SupplierImports } from '@/collections/SupplierImports'
+import { SupplierImportJobs } from '@/collections/SupplierImportJobs'
 import { Media } from '@/collections/Media'
 import { Pages } from '@/collections/Pages'
 import { Users } from '@/collections/Users'
@@ -98,7 +100,19 @@ export default buildConfig({
     fallbackLanguage: 'uk',
   },
 
-  collections: [Users, Pages, Categories, Media, Feeds, ImportSources, ApiKeys, CategoryAgents, AIAgents],
+  collections: [
+    Users,
+    Pages,
+    Categories,
+    Media,
+    Feeds,
+    ImportSources,
+    SupplierImports,
+    SupplierImportJobs,
+    ApiKeys,
+    CategoryAgents,
+    AIAgents,
+  ],
   db: mongooseAdapter({
     url: process.env.DATABASE_URI || '',
   }),

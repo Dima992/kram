@@ -271,8 +271,8 @@ We have configured [Scheduled Publish](https://payloadcms.com/docs/versions/draf
 ## Supplier catalog imports
 
 Supplier profiles can be created in **Catalog → Import Sources**. Set the supplier's HTTPS
-CSV/XLSX URL, column mapping, and credentials if required, then enable automatic imports. Manual
-URL imports can also be started from the admin dashboard. Uploaded files are limited to 4 MB;
+CSV/XLSX/XML/JSON URL, column mapping, and credentials if required, then enable automatic imports.
+Manual URL imports can also be started from the admin dashboard. Uploaded files are limited to 4 MB;
 linked supplier files are limited to 10 MB and 5,000 product rows.
 
 Vercel Cron runs at 06:00 UTC once per day in this project so deployments work on the Hobby plan.
@@ -280,6 +280,26 @@ Hobby cannot deploy a four-hour cron expression; the four-hour profile option is
 preference only until the deployment schedule is changed on Pro. Add `CRON_SECRET` to the Vercel
 project environment variables and use a long random value. The same variable protects the cron
 endpoint and internal scheduled imports.
+
+### Moderation inbox and AI mapping
+
+The **Import / Export and Moderation** Payload group stores source rows in `supplier-imports`.
+Upload a supported file or ingest a configured URL feed through `POST /api/admin/supplier-import`;
+the route requires an admin session. Files are parsed into resumable jobs, and the protected
+`GET /api/cron/supplier-mapping` endpoint maps a bounded batch per invocation. It can also be
+started manually from an authenticated admin session with `POST /api/admin/supplier-import/process`.
+The default Vercel schedule runs this worker daily at 07:00 UTC; increase the frequency on plans
+that support more frequent cron runs if the moderation queue needs faster throughput.
+The mapper calls the shared `callAiGateway` service, so provider credentials and provider selection
+remain centralized in AI settings. Mapped products remain drafts in the inbox until an admin changes
+their status to approved; approval creates or updates the linked product in Ukrainian and Russian.
+
+Telegram ingestion is an adapter boundary rather than a built-in channel-history scraper. A
+Telegram integration should submit parsed messages (`messageId`, `date`, and `text`) to the same
+admin ingestion route as JSON, along with the configured supplier and channel. `since` filters
+messages by date, and explicitly reported removed IDs in `removedMessageIDs` set already-approved
+linked products' inventory to zero. Telegram Bot API integrations must provide those removed IDs;
+the Bot API does not expose arbitrary historical channel posts or a list of deleted messages.
 
 ## Website
 

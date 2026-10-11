@@ -341,6 +341,15 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       },
     },
     {
+      name: 'supplierRef',
+      type: 'relationship',
+      relationTo: 'import-sources',
+      admin: {
+        hidden: true,
+        readOnly: true,
+      },
+    },
+    {
       name: 'supplierSKU',
       type: 'text',
       label: 'Артикул постачальника',

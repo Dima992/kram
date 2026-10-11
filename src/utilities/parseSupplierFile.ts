@@ -241,6 +241,45 @@ export async function parseSupplierFile(
 ): Promise<SupplierRow[]> {
   let rows: unknown[][]
 
+  if (/\.json$/i.test(fileName)) {
+    const parsed: unknown = JSON.parse(new TextDecoder(encoding || 'utf-8').decode(buffer))
+    const records = Array.isArray(parsed)
+      ? parsed
+      : parsed &&
+          typeof parsed === 'object' &&
+          'products' in parsed &&
+          Array.isArray(parsed.products)
+        ? parsed.products
+        : parsed && typeof parsed === 'object' && 'items' in parsed && Array.isArray(parsed.items)
+          ? parsed.items
+          : null
+
+    if (!records?.length || records.length > MAX_IMPORT_ROWS) {
+      throw new Error(
+        `JSON має містити масив товарів (до ${MAX_IMPORT_ROWS} записів) або об'єкт products/items.`,
+      )
+    }
+
+    return records.map((record, index) => {
+      if (!record || typeof record !== 'object' || Array.isArray(record)) {
+        throw new Error(`Запис ${index + 1} у JSON має бути об'єктом.`)
+      }
+      return {
+        rowNumber: index + 1,
+        values: Object.fromEntries(
+          Object.entries(record).map(([key, value]) => [
+            key.trim().toLocaleLowerCase(),
+            typeof value === 'string'
+              ? value
+              : value === null || value === undefined
+                ? ''
+                : JSON.stringify(value),
+          ]),
+        ),
+      }
+    })
+  }
+
   if (/\.xml$/i.test(fileName)) {
     return parseMerchantFeed(buffer)
   }
@@ -275,7 +314,7 @@ export async function parseSupplierFile(
 
     rows = parseDelimited(text, separator)
   } else {
-    throw new Error('Підтримуються файли .xlsx, .csv, .tsv, .txt або XML-фід Google Merchant.')
+    throw new Error('Підтримуються файли .xlsx, .csv, .tsv, .txt, .json або XML-фід Google Merchant.')
   }
 
   if (rows.length < 2) throw new Error('У файлі мають бути заголовки та хоча б один рядок товару.')
