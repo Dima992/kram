@@ -6,17 +6,6 @@ import type { AIAgent } from '@/payload-types'
 import type { CategoryAgent } from '../collections/CategoryAgents'
 import type { SettingsGlobal } from '../globals/Settings'
 
-const DEFAULT_SEARCH_AGENT: Omit<AIAgent, 'id' | 'createdAt' | 'updatedAt'> & { id: string } = {
-  id: 'default-search-agent',
-  name: 'Поисковый агент',
-  isActive: true,
-  agentType: 'search',
-  categories: [],
-  systemPrompt: 'You are the store search and product recommendation assistant.',
-  provider: 'gemini',
-  model: 'gemini-2.5-flash',
-}
-
 async function getCategoryIdsFromUrl(currentUrl: string): Promise<string[]> {
   const pathname = new URL(currentUrl, 'http://localhost').pathname
   const slugs = pathname.split('/').filter(Boolean).reverse()
@@ -44,7 +33,7 @@ async function getCategoryIdsFromUrl(currentUrl: string): Promise<string[]> {
 export async function getAgentForContext(
   currentUrl: string,
   categoryId?: string | number | null,
-): Promise<AIAgent | (typeof DEFAULT_SEARCH_AGENT)> {
+): Promise<AIAgent | null> {
   const payload = await getPayload({ config: configPromise })
   const categoryIds = categoryId
     ? [String(categoryId), ...(await getCategoryIdsFromUrl(currentUrl))]
@@ -59,6 +48,7 @@ export async function getAgentForContext(
       where: {
         and: [
           { isActive: { equals: true } },
+          { agentType: { in: ['catalog', 'consultant'] } },
           { categories: { contains: id } },
         ],
       },
@@ -80,7 +70,7 @@ export async function getAgentForContext(
     },
   })
 
-  return searchAgents.docs[0] ?? DEFAULT_SEARCH_AGENT
+  return searchAgents.docs[0] ?? null
 }
 
 interface AgentInstruction {

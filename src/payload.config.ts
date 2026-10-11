@@ -19,7 +19,7 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 
 import { ApiKeys } from '@/collections/ApiKeys'
-import { AIAgents } from '@/collections/AIAgents'
+import { AIAgents, builtInAIAgents } from '@/collections/AIAgents'
 import { Categories } from '@/collections/Categories'
 import { CategoryAgents } from '@/collections/CategoryAgents'
 import { Feeds } from '@/collections/Feeds'
@@ -39,6 +39,34 @@ const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 export default buildConfig({
+  onInit: async (payload) => {
+    for (const agent of builtInAIAgents) {
+      const existingAgent = await payload.find({
+        collection: 'ai-agents',
+        depth: 0,
+        limit: 1,
+        overrideAccess: true,
+        where: {
+          systemKey: {
+            equals: agent.systemKey,
+          },
+        },
+      })
+
+      if (existingAgent.docs.length === 0) {
+        await payload.create({
+          collection: 'ai-agents',
+          data: {
+            ...agent,
+            isActive: true,
+            provider: 'gemini',
+            model: 'gemini-2.5-flash',
+          },
+          overrideAccess: true,
+        })
+      }
+    }
+  },
   admin: {
     components: {
       beforeLogin: ['@/components/BeforeLogin#BeforeLogin'],

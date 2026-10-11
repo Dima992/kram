@@ -672,10 +672,18 @@ export interface Category {
 export interface AIAgent {
   id: string;
   name: string;
+  systemKey?: string | null;
   isActive?: boolean | null;
   agentType?: ('catalog' | 'search' | 'consultant' | 'owner') | null;
   categories?: (string | Category)[] | null;
   systemPrompt?: string | null;
+  knowledgeBase?: string | null;
+  defaultQuestions?:
+    | {
+        question: string;
+        id?: string | null;
+      }[]
+    | null;
   provider?: ('gemini' | 'openai') | null;
   model?: string | null;
   updatedAt?: string | null;
@@ -1581,10 +1589,18 @@ export interface CategoriesSelect<T extends boolean = true> {
  */
 export interface AIAgentsSelect<T extends boolean = true> {
   name?: T;
+  systemKey?: T;
   isActive?: T;
   agentType?: T;
   categories?: T;
   systemPrompt?: T;
+  knowledgeBase?: T;
+  defaultQuestions?:
+    | T
+    | {
+        question?: T;
+        id?: T;
+      };
   provider?: T;
   model?: T;
   updatedAt?: T;
