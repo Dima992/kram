@@ -2,10 +2,10 @@ import { withPayload } from '@payloadcms/next/withPayload'
 import type { NextConfig } from 'next'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { redirects } from './redirects'
 
 const __filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(__filename)
-import { redirects } from './redirects'
 
 const SITE_URL = 'http://localhost:3000'
 
@@ -39,7 +39,7 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ['lucide-react'],
   },
-  transpilePackages: ['@payloadcms/next', '@payloadcms/ui', 'payload', 'next', '@payloadcms/admin-bar', '@payloadcms/live-preview-react'],
+  transpilePackages: ['@payloadcms/next', '@payloadcms/ui', 'next', '@payloadcms/admin-bar', '@payloadcms/live-preview-react'],
   redirects,
   webpack: (config, { isServer }) => {
     if (!isServer) {

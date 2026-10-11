@@ -20,7 +20,6 @@ import {
 import { autoGenerateAlt } from './hooks/autoGenerateAlt'
 import { DefaultDocumentIDType, slugField, Where } from 'payload'
 import { revalidateTag } from 'next/cache'
-import CatalogAgentButton from '@/components/ai/CatalogAgentButton'
 
 // --- Кеширующий сервис НБУ ---
 const cachedRates: { [key: string]: number } = { USD: 41.5, EUR: 45.0, UAH: 1.0 }
@@ -91,6 +90,15 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     meta: true,
   },
   fields: [
+    {
+      name: 'productDescriptionGenerator',
+      type: 'ui',
+      admin: {
+        components: {
+          Field: '@/components/ai/ProductDescriptionGenerator#ProductDescriptionGenerator',
+        },
+      },
+    },
     { name: 'title', type: 'text', required: true, localized: true },
     {
       type: 'tabs',
