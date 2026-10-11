@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/supplier-import",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

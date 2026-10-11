@@ -1,0 +1,145 @@
+@import '@payloadcms/ui/scss';
+
+.product-transfer {
+  display: grid;
+  gap: base(0.75);
+  margin-bottom: base(1.5);
+  padding: base(1);
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-m);
+  background: var(--theme-elevation-50);
+
+  h2 {
+    margin: 0 0 base(0.25);
+    font-size: base(1);
+  }
+
+  p {
+    margin: 0;
+    color: var(--theme-elevation-700);
+  }
+
+  a {
+    width: fit-content;
+  }
+
+  &__actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: base(0.75);
+  }
+
+  label {
+    display: grid;
+    gap: base(0.25);
+    font-weight: 600;
+  }
+
+  input,
+  select {
+    width: 100%;
+    min-height: base(2.25);
+    padding: base(0.4);
+    border: 1px solid var(--theme-elevation-300);
+    border-radius: var(--style-radius-s);
+    background: var(--theme-input-bg);
+    color: var(--theme-text);
+  }
+
+  &__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: base(0.5);
+  }
+
+  &__buttons button,
+  &__profile-action button {
+    min-height: base(2.25);
+    padding: 0 base(0.75);
+    border: 1px solid var(--theme-elevation-300);
+    border-radius: var(--style-radius-s);
+    background: var(--theme-elevation-100);
+    color: var(--theme-text);
+    cursor: pointer;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+  }
+
+  &__hint {
+    font-size: base(0.75);
+  }
+
+  &__schedule {
+    display: grid;
+    gap: base(0.5);
+    padding-top: base(0.5);
+  }
+
+  &__toggle {
+    display: flex !important;
+    align-items: center;
+    gap: base(0.5) !important;
+
+    input {
+      width: base(1);
+      min-height: base(1);
+    }
+  }
+
+  &__warning {
+    padding: base(0.5);
+    border-left: 3px solid var(--theme-warning-500);
+    background: var(--theme-elevation-100);
+  }
+
+  &__error {
+    color: var(--theme-error-500) !important;
+  }
+
+  &__report {
+    ul {
+      margin: base(0.5) 0 0;
+    }
+  }
+
+  &__profile-action {
+    display: grid;
+    gap: base(0.5);
+    margin-bottom: base(1);
+
+    button {
+      width: fit-content;
+    }
+
+    p,
+    ul {
+      margin: 0;
+    }
+  }
+}
+
+.dashboard .before-dashboard {
+  margin-bottom: base(1.5);
+
+  &__banner {
+    & h4 {
+      margin: 0;
+    }
+  }
+
+  &__instructions {
+    list-style: decimal;
+    margin-bottom: base(0.5);
+
+    & li {
+      width: 100%;
+    }
+  }
+
+  & a:hover {
+    opacity: 0.85;
+  }
+}
