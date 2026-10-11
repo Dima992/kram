@@ -79,6 +79,7 @@ export interface Config {
     feeds: Feed;
     'import-sources': ImportSource;
     'api-keys': ApiKey;
+    'ai-agents': AIAgent;
     forms: Form;
     'form-submissions': FormSubmission;
     addresses: Address;
@@ -115,6 +116,7 @@ export interface Config {
     feeds: FeedsSelect<false> | FeedsSelect<true>;
     'import-sources': ImportSourcesSelect<false> | ImportSourcesSelect<true>;
     'api-keys': ApiKeysSelect<false> | ApiKeysSelect<true>;
+    'ai-agents': AIAgentsSelect<false> | AIAgentsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
     addresses: AddressesSelect<false> | AddressesSelect<true>;
@@ -138,11 +140,13 @@ export interface Config {
     header: Header;
     footer: Footer;
     'site-settings': SiteSetting;
+    'ai-settings': AISetting;
   };
   globalsSelect: {
     header: HeaderSelect<false> | HeaderSelect<true>;
     footer: FooterSelect<false> | FooterSelect<true>;
     'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
+    'ai-settings': AISettingsSelect<false> | AISettingsSelect<true>;
   };
   locale: 'uk' | 'ru';
   widgets: {
@@ -660,6 +664,22 @@ export interface Category {
   slug: string;
   updatedAt: string;
   createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ai-agents".
+ */
+export interface AIAgent {
+  id: string;
+  name: string;
+  isActive?: boolean | null;
+  agentType?: ('catalog' | 'search' | 'consultant' | 'owner') | null;
+  categories?: (string | Category)[] | null;
+  systemPrompt?: string | null;
+  provider?: ('gemini' | 'openai') | null;
+  model?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1557,6 +1577,21 @@ export interface CategoriesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ai-agents_select".
+ */
+export interface AIAgentsSelect<T extends boolean = true> {
+  name?: T;
+  isActive?: T;
+  agentType?: T;
+  categories?: T;
+  systemPrompt?: T;
+  provider?: T;
+  model?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
@@ -2154,6 +2189,18 @@ export interface SiteSetting {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ai-settings".
+ */
+export interface AISetting {
+  id: string;
+  aiEnabled?: boolean | null;
+  geminiApiKey?: string | null;
+  openaiApiKey?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "header_select".
  */
 export interface HeaderSelect<T extends boolean = true> {
@@ -2222,6 +2269,18 @@ export interface SiteSettingsSelect<T extends boolean = true> {
   siteName?: T;
   companyName?: T;
   previewSecret?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "ai-settings_select".
+ */
+export interface AISettingsSelect<T extends boolean = true> {
+  aiEnabled?: T;
+  geminiApiKey?: T;
+  openaiApiKey?: T;
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

@@ -1,7 +1,87 @@
-import configPromise from '@payload-config';
-import { getPayload } from 'payload';
-import { CategoryAgent } from '../collections/CategoryAgents';
-import { SettingsGlobal } from '../globals/Settings';
+'use server'
+
+import configPromise from '@payload-config'
+import { getPayload } from 'payload'
+import type { AIAgent } from '@/payload-types'
+import type { CategoryAgent } from '../collections/CategoryAgents'
+import type { SettingsGlobal } from '../globals/Settings'
+
+const DEFAULT_SEARCH_AGENT: Omit<AIAgent, 'id' | 'createdAt' | 'updatedAt'> & { id: string } = {
+  id: 'default-search-agent',
+  name: 'Поисковый агент',
+  isActive: true,
+  agentType: 'search',
+  categories: [],
+  systemPrompt: 'You are the store search and product recommendation assistant.',
+  provider: 'gemini',
+  model: 'gemini-2.5-flash',
+}
+
+async function getCategoryIdsFromUrl(currentUrl: string): Promise<string[]> {
+  const pathname = new URL(currentUrl, 'http://localhost').pathname
+  const slugs = pathname.split('/').filter(Boolean).reverse()
+  if (slugs.length === 0) return []
+
+  const payload = await getPayload({ config: configPromise })
+  const { docs } = await payload.find({
+    collection: 'categories',
+    depth: 0,
+    limit: slugs.length,
+    overrideAccess: true,
+    where: {
+      slug: {
+        in: slugs,
+      },
+    },
+  })
+
+  return slugs.flatMap((slug) => {
+    const category = docs.find((doc) => doc.slug === slug)
+    return category ? [String(category.id)] : []
+  })
+}
+
+export async function getAgentForContext(
+  currentUrl: string,
+  categoryId?: string | number | null,
+): Promise<AIAgent | (typeof DEFAULT_SEARCH_AGENT)> {
+  const payload = await getPayload({ config: configPromise })
+  const categoryIds = categoryId
+    ? [String(categoryId), ...(await getCategoryIdsFromUrl(currentUrl))]
+    : await getCategoryIdsFromUrl(currentUrl)
+
+  for (const id of [...new Set(categoryIds)]) {
+    const matchingAgent = await payload.find({
+      collection: 'ai-agents',
+      depth: 0,
+      limit: 1,
+      overrideAccess: true,
+      where: {
+        and: [
+          { isActive: { equals: true } },
+          { categories: { contains: id } },
+        ],
+      },
+    })
+
+    if (matchingAgent.docs[0]) return matchingAgent.docs[0]
+  }
+
+  const searchAgents = await payload.find({
+    collection: 'ai-agents',
+    depth: 0,
+    limit: 1,
+    overrideAccess: true,
+    where: {
+      and: [
+        { isActive: { equals: true } },
+        { agentType: { equals: 'search' } },
+      ],
+    },
+  })
+
+  return searchAgents.docs[0] ?? DEFAULT_SEARCH_AGENT
+}
 
 interface AgentInstruction {
   prompt: string

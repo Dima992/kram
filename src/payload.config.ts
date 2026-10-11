@@ -19,6 +19,7 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 
 import { ApiKeys } from '@/collections/ApiKeys'
+import { AIAgents } from '@/collections/AIAgents'
 import { Categories } from '@/collections/Categories'
 import { CategoryAgents } from '@/collections/CategoryAgents'
 import { Feeds } from '@/collections/Feeds'
@@ -29,6 +30,7 @@ import { Users } from '@/collections/Users'
 import OwnerAgentChatWidget from '@/components/admin/OwnerAgentChatWidget'
 import { Footer } from '@/globals/Footer'
 import { Header } from '@/globals/Header'
+import { AISettings } from '@/globals/AISettings'
 import { Settings } from '@/globals/Settings'
 import { SiteSettings } from '@/globals/SiteSettings'
 import { plugins } from './plugins'
@@ -68,7 +70,7 @@ export default buildConfig({
     fallbackLanguage: 'uk',
   },
 
-  collections: [Users, Pages, Categories, Media, Feeds, ImportSources, ApiKeys, CategoryAgents],
+  collections: [Users, Pages, Categories, Media, Feeds, ImportSources, ApiKeys, CategoryAgents, AIAgents],
   db: mongooseAdapter({
     url: process.env.DATABASE_URI || '',
   }),
@@ -108,7 +110,7 @@ export default buildConfig({
     },
   }),
   endpoints: [],
-  globals: [Header, Footer, SiteSettings, Settings],
+  globals: [Header, Footer, SiteSettings, Settings, AISettings],
   plugins: [
     ...plugins,
     s3Storage({
