@@ -12,16 +12,28 @@ import { redirect } from 'next/navigation'
 
 export default async function CreateAccount() {
   const headers = await getHeaders()
+  const locale = headers.get('x-locale') === 'ru' ? 'ru' : 'uk'
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers })
 
+  const text = {
+    uk: {
+      alreadyLoggedIn: 'Ви вже увійшли в систему.',
+      heading: 'Створення акаунта',
+    },
+    ru: {
+      alreadyLoggedIn: 'Вы уже вошли в систему.',
+      heading: 'Создание аккаунта',
+    },
+  }[locale]
+
   if (user) {
-    redirect(`/account?warning=${encodeURIComponent('You are already logged in.')}`)
+    redirect(`/account?warning=${encodeURIComponent(text.alreadyLoggedIn)}`)
   }
 
   return (
     <div className="container py-16">
-      <h1 className="text-xl mb-4">Create Account</h1>
+      <h1 className="text-xl mb-4">{text.heading}</h1>
       <RenderParams />
       <CreateAccountForm />
     </div>
@@ -29,10 +41,10 @@ export default async function CreateAccount() {
 }
 
 export const metadata: Metadata = {
-  description: 'Create an account or log in to your existing account.',
+  description: 'Створіть обліковий запис або увійдіть у вже існуючий.',
   openGraph: mergeOpenGraph({
-    title: 'Account',
+    title: 'Акаунт',
     url: '/account',
   }),
-  title: 'Account',
+  title: 'Акаунт',
 }

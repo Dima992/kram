@@ -11,13 +11,31 @@ import { redirect } from 'next/navigation'
 
 export default async function Orders() {
   const headers = await getHeaders()
+  const locale = headers.get('x-locale') === 'ru' ? 'ru' : 'uk'
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers })
+
+  const text = {
+    uk: {
+      loginRequired: 'Будь ласка, увійдіть, щоб мати доступ до ваших замовлень.',
+      heading: 'Замовлення',
+      empty: 'У вас немає замовлень.',
+      metaDescription: 'Ваші замовлення.',
+      metaTitle: 'Замовлення',
+    },
+    ru: {
+      loginRequired: 'Пожалуйста, войдите, чтобы получить доступ к вашим заказам.',
+      heading: 'Заказы',
+      empty: 'У вас нет заказов.',
+      metaDescription: 'Ваши заказы.',
+      metaTitle: 'Заказы',
+    },
+  }[locale]
 
   let orders: Order[] | null = null
 
   if (!user) {
-    redirect(`/login?warning=${encodeURIComponent('Please login to access your orders.')}`)
+    redirect(`/login?warning=${encodeURIComponent(text.loginRequired)}`)
   }
 
   try {
@@ -40,9 +58,9 @@ export default async function Orders() {
   return (
     <>
       <div className="border p-8 rounded-lg bg-primary-foreground w-full">
-        <h1 className="text-3xl font-medium mb-8">Orders</h1>
+        <h1 className="text-3xl font-medium mb-8">{text.heading}</h1>
         {(!orders || !Array.isArray(orders) || orders?.length === 0) && (
-          <p className="">You have no orders.</p>
+          <p className="">{text.empty}</p>
         )}
 
         {orders && orders.length > 0 && (
@@ -60,10 +78,10 @@ export default async function Orders() {
 }
 
 export const metadata: Metadata = {
-  description: 'Your orders.',
+  description: 'Ваші замовлення.',
   openGraph: mergeOpenGraph({
-    title: 'Orders',
+    title: 'Замовлення',
     url: '/orders',
   }),
-  title: 'Orders',
+  title: 'Замовлення',
 }

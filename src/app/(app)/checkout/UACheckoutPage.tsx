@@ -22,6 +22,11 @@ const dictionary = {
     contacts: '1. Контактні дані',
     name: 'Ім’я',
     phone: 'Номер телефону',
+    phoneRequired: 'Вкажіть номер телефону!',
+    phoneAndProductRequired: 'Вкажіть телефон і виберіть товар.',
+    customerDefault: 'Клієнт',
+    orderError: 'Не вдалося створити замовлення.',
+    orderSubmitError: 'Сталася помилка. Спробуйте ще раз.',
     delivery: '2. Спосіб доставки',
     np: 'Нова Пошта',
     ukr: 'Укрпошта',
@@ -52,10 +57,15 @@ const dictionary = {
     secure: 'Защищенное соединение',
     modeFull: 'Полное оформление',
     modeQuick: 'Быстрый заказ в 1 клик',
-    quickDesc: 'Укажите телефон, и менеджер уточник все детали доставки.',
+    quickDesc: 'Укажите телефон, и менеджер уточнит все детали доставки.',
     contacts: '1. Контактные данные',
     name: 'Имя',
     phone: 'Номер телефона',
+    phoneRequired: 'Укажите номер телефона!',
+    phoneAndProductRequired: 'Укажите телефон и выберите товар.',
+    customerDefault: 'Клиент',
+    orderError: 'Не удалось создать заказ.',
+    orderSubmitError: 'Произошла ошибка. Попробуйте еще раз.',
     delivery: '2. Способ доставки',
     np: 'Новая Почта',
     ukr: 'Укрпочта',
@@ -126,7 +136,7 @@ export function UACheckoutPage({ products }: { products: CheckoutProduct[] }) {
     event.preventDefault()
 
     if (!phone || !selectedProduct) {
-      alert('Вкажіть телефон і виберіть товар.')
+      alert(t.phoneAndProductRequired)
       return
     }
 
@@ -134,10 +144,10 @@ export function UACheckoutPage({ products }: { products: CheckoutProduct[] }) {
     try {
       const response = await fetch('/api/orders/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-locale': lang },
         body: JSON.stringify({
           orderType: mode,
-          customerName: name || 'Клієнт',
+          customerName: name || t.customerDefault,
           phone,
           deliveryCarrier: carrier,
           deliveryDetails: { city, warehouse, postcode, address },
@@ -148,14 +158,14 @@ export function UACheckoutPage({ products }: { products: CheckoutProduct[] }) {
       const result = await response.json()
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Не вдалося створити замовлення.')
+        throw new Error(result.error || t.orderError)
       }
 
       setCreatedOrderId(String(result.orderId))
       setLiqpayPayment(result.liqpayPayment || null)
     } catch (error) {
       console.error('Не вдалося оформити замовлення:', error)
-      alert(error instanceof Error ? error.message : 'Сталася помилка. Спробуйте ще раз.')
+      alert(error instanceof Error ? error.message : t.orderSubmitError)
     } finally {
       setIsLoading(false)
     }

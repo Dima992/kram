@@ -11,7 +11,7 @@ import { useTheme } from '@/providers/Theme'
 import { Elements } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 
 import { cssVariables } from '@/cssVariables'
@@ -34,8 +34,73 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
     [stripePublishableKey],
   )
   const { user } = useAuth()
+  const pathname = usePathname()
+  const locale = pathname.startsWith('/ru') ? 'ru' : 'uk'
+  const localePrefix = locale === 'ru' ? '/ru' : ''
   const router = useRouter()
   const { cart } = useCart()
+  const text = {
+    uk: {
+      processing: 'Обробка оплати...',
+      empty: 'Ваш кошик порожній.',
+      continueShopping: 'Продовжити покупки?',
+      contact: 'Контакт',
+      login: 'Увійти',
+      or: 'або',
+      createAccount: 'створити обліковий запис',
+      notYou: 'Це не ви?',
+      logout: 'Вийти',
+      guestIntro: 'Введіть свою електронну пошту для оплати як гість.',
+      emailLabel: 'Адреса електронної пошти',
+      continueGuest: 'Продовжити як гість',
+      address: 'Адреса',
+      remove: 'Видалити',
+      shippingAddress: 'Адреса доставки',
+      shippingDescription: 'Будь ласка, виберіть адресу доставки.',
+      payment: 'Оплата',
+      goToPayment: 'Перейти до оплати',
+      tryAgain: 'Спробувати ще раз',
+      cancelPayment: 'Скасувати оплату',
+      cart: 'Ваш кошик',
+      total: 'Разом',
+      errorPayment: 'Під час запуску платежу сталася помилка.',
+      stockError: 'Один або кілька товарів у вашому кошику відсутні на складі.',
+      billingAddress: 'Платіжна адреса',
+      shippingSameAsBilling: 'Доставка збігається з платіжною адресою.',
+      notYouText: 'Це не ви?',
+      logInLink: '/login',
+    },
+    ru: {
+      processing: 'Обработка оплаты...',
+      empty: 'Ваша корзина пуста.',
+      continueShopping: 'Продолжить покупки?',
+      contact: 'Контакт',
+      login: 'Войти',
+      or: 'или',
+      createAccount: 'создать аккаунт',
+      notYou: 'Это не вы?',
+      logout: 'Выйти',
+      guestIntro: 'Введите свой адрес электронной почты для оплаты как гость.',
+      emailLabel: 'Адрес электронной почты',
+      continueGuest: 'Продолжить как гость',
+      address: 'Адрес',
+      remove: 'Удалить',
+      shippingAddress: 'Адрес доставки',
+      shippingDescription: 'Пожалуйста, выберите адрес доставки.',
+      payment: 'Оплата',
+      goToPayment: 'Перейти к оплате',
+      tryAgain: 'Попробовать снова',
+      cancelPayment: 'Отменить оплату',
+      cart: 'Ваша корзина',
+      total: 'Итого',
+      errorPayment: 'Во время запуска оплаты произошла ошибка.',
+      stockError: 'Один или несколько товаров в вашей корзине отсутствуют на складе.',
+      billingAddress: 'Платёжный адрес',
+      shippingSameAsBilling: 'Доставка совпадает с платёжным адресом.',
+      notYouText: 'Это не вы?',
+      logInLink: '/login',
+    },
+  }[locale]
   const [error, setError] = useState<null | string>(null)
   const { theme } = useTheme()
   /**
@@ -95,17 +160,17 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
         }
       } catch (error) {
         const errorData = error instanceof Error ? JSON.parse(error.message) : {}
-        let errorMessage = 'An error occurred while initiating payment.'
+        let errorMessage = text.errorPayment
 
         if (errorData?.cause?.code === 'OutOfStock') {
-          errorMessage = 'One or more items in your cart are out of stock.'
+          errorMessage = text.stockError
         }
 
         setError(errorMessage)
         toast.error(errorMessage)
       }
     },
-    [billingAddress, billingAddressSameAsShipping, shippingAddress],
+    [billingAddress, billingAddressSameAsShipping, shippingAddress, text.errorPayment, text.stockError],
   )
 
   if (!stripe) return null
@@ -114,7 +179,7 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
     return (
       <div className="py-12 w-full items-center justify-center">
         <div className="prose dark:prose-invert text-center max-w-none self-center mb-8">
-          <p>Processing your payment...</p>
+          <p>{text.processing}</p>
         </div>
         <LoadingSpinner />
       </div>
@@ -124,8 +189,8 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
   if (cartIsEmpty) {
     return (
       <div className="prose dark:prose-invert py-12 w-full items-center">
-        <p>Your cart is empty.</p>
-        <Link href="/search">Continue shopping?</Link>
+        <p>{text.empty}</p>
+        <Link href={`${localePrefix}/search`}>{text.continueShopping}</Link>
       </div>
     )
   }
@@ -133,16 +198,16 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
   return (
     <div className="flex flex-col items-stretch justify-stretch my-8 md:flex-row grow gap-10 md:gap-6 lg:gap-8">
       <div className="basis-full lg:basis-2/3 flex flex-col gap-8 justify-stretch">
-        <h2 className="font-medium text-3xl">Contact</h2>
+        <h2 className="font-medium text-3xl">{text.contact}</h2>
         {!user && (
           <div className=" bg-accent dark:bg-black rounded-lg p-4 w-full flex items-center">
             <div className="prose dark:prose-invert">
               <Button asChild className="no-underline text-inherit" variant="outline">
-                <Link href="/login">Log in</Link>
+                <Link href={`${localePrefix}/login`}>{text.login}</Link>
               </Button>
               <p className="mt-0">
-                <span className="mx-2">or</span>
-                <Link href="/create-account">create an account</Link>
+                <span className="mx-2">{text.or}</span>
+                <Link href={`${localePrefix}/create-account`}>{text.createAccount}</Link>
               </p>
             </div>
           </div>
@@ -152,9 +217,9 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
             <div>
               <p>{user.email}</p>{' '}
               <p>
-                Not you?{' '}
-                <Link className="underline" href="/logout">
-                  Log out
+                {text.notYou}{' '}
+                <Link className="underline" href={`${localePrefix}/logout`}>
+                  {text.logout}
                 </Link>
               </p>
             </div>
@@ -162,10 +227,10 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
         ) : (
           <div className="bg-accent dark:bg-black rounded-lg p-4 ">
             <div>
-              <p className="mb-4">Enter your email to checkout as a guest.</p>
+              <p className="mb-4">{text.guestIntro}</p>
 
               <FormItem className="mb-6">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">{text.emailLabel}</Label>
                 <Input
                   disabled={!emailEditable}
                   id="email"
@@ -184,13 +249,13 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
                 }}
                 variant="default"
               >
-                Continue as guest
+                {text.continueGuest}
               </Button>
             </div>
           </div>
         )}
 
-        <h2 className="font-medium text-3xl">Address</h2>
+        <h2 className="font-medium text-3xl">{text.address}</h2>
 
         {billingAddress ? (
           <div>
@@ -204,14 +269,14 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
                     setBillingAddress(undefined)
                   }}
                 >
-                  Remove
+                  {text.remove}
                 </Button>
               }
               address={billingAddress}
             />
           </div>
         ) : user ? (
-          <CheckoutAddresses heading="Billing address" setAddress={setBillingAddress} />
+          <CheckoutAddresses heading={text.billingAddress} setAddress={setBillingAddress} />
         ) : (
           <CreateAddressModal
             disabled={!email || Boolean(emailEditable)}
@@ -231,7 +296,7 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
               setBillingAddressSameAsShipping(state as boolean)
             }}
           />
-          <Label htmlFor="shippingTheSameAsBilling">Shipping is the same as billing</Label>
+          <Label htmlFor="shippingTheSameAsBilling">{text.shippingSameAsBilling}</Label>
         </div>
 
         {!billingAddressSameAsShipping && (
@@ -248,7 +313,7 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
                         setShippingAddress(undefined)
                       }}
                     >
-                      Remove
+                      {text.remove}
                     </Button>
                   }
                   address={shippingAddress}
@@ -256,8 +321,8 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
               </div>
             ) : user ? (
               <CheckoutAddresses
-                heading="Shipping address"
-                description="Please select a shipping address."
+                heading={text.shippingAddress}
+                description={text.shippingDescription}
                 setAddress={setShippingAddress}
               />
             ) : (
@@ -281,7 +346,7 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
               void initiatePaymentIntent('stripe')
             }}
           >
-            Go to payment
+            {text.goToPayment}
           </Button>
         )}
 
@@ -296,7 +361,7 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
               }}
               variant="default"
             >
-              Try again
+              {text.tryAgain}
             </Button>
           </div>
         )}
@@ -305,7 +370,7 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
           {/* @ts-ignore */}
           {paymentData && paymentData?.['clientSecret'] && (
             <div className="pb-16">
-              <h2 className="font-medium text-3xl">Payment</h2>
+              <h2 className="font-medium text-3xl">{text.payment}</h2>
               {error && <p>{`Error: ${error}`}</p>}
               <Elements
                 options={{
@@ -345,7 +410,7 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
                     className="self-start"
                     onClick={() => setPaymentData(null)}
                   >
-                    Cancel payment
+                    {text.cancelPayment}
                   </Button>
                 </div>
               </Elements>
@@ -356,7 +421,7 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
 
       {!cartIsEmpty && (
         <div className="basis-full lg:basis-1/3 lg:pl-8 p-8 border-none bg-primary/5 flex flex-col gap-8 rounded-lg">
-          <h2 className="text-3xl font-medium">Your cart</h2>
+          <h2 className="text-3xl font-medium">{text.cart}</h2>
           {cart?.items?.map((item: NonNullable<Cart['items']>[number], index) => {
             if (typeof item.product === 'object' && item.product) {
               const {
@@ -437,7 +502,7 @@ export const CheckoutPage: React.FC<{ stripePublishableKey?: string }> = ({
           })}
           <hr />
           <div className="flex justify-between items-center gap-2">
-            <span className="uppercase">Total</span>{' '}
+            <span className="uppercase">{text.total}</span>{' '}
             <Price className="text-3xl font-medium" amount={cart.subtotal || 0} />
           </div>
         </div>

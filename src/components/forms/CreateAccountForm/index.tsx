@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useAuth } from '@/providers/Auth'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { getSafeRedirect } from 'payload/shared'
 import React, { useCallback, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -21,11 +21,57 @@ type FormData = {
 
 export const CreateAccountForm: React.FC = () => {
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const locale = pathname.startsWith('/ru') ? 'ru' : 'uk'
+  const localePrefix = locale === 'ru' ? '/ru' : ''
   const allParams = searchParams.toString() ? `?${searchParams.toString()}` : ''
   const { login } = useAuth()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<null | string>(null)
+
+  const text = {
+    uk: {
+      intro:
+        'Тут нові клієнти можуть зареєструватися та створити новий обліковий запис. Щоб керувати всіма користувачами, ',
+      adminLink: 'увійдіть в адмін-панель',
+      emailLabel: 'Адреса електронної пошти',
+      emailRequired: 'Потрібна електронна пошта.',
+      passwordLabel: 'Новий пароль',
+      passwordRequired: 'Потрібен пароль.',
+      confirmLabel: 'Підтвердьте пароль',
+      confirmRequired: 'Будь ласка, підтвердіть пароль.',
+      passwordMismatch: 'Паролі не співпадають',
+      submit: 'Створити акаунт',
+      processing: 'Обробка...',
+      alreadyHaveAccount: 'Вже маєте акаунт?',
+      loginLink: 'Увійти',
+      accountCreated: 'Обліковий запис успішно створено',
+      errorCreate: 'Під час створення облікового запису сталася помилка.',
+      invalidCredentials: 'Сталася помилка з наданими обліковими даними. Спробуйте ще раз.',
+      responseDefault: 'Під час створення облікового запису сталася помилка.',
+    },
+    ru: {
+      intro:
+        'Здесь новые клиенты могут зарегистрироваться и создать новый аккаунт. Чтобы управлять всеми пользователями, ',
+      adminLink: 'войдите в админ-панель',
+      emailLabel: 'Адрес электронной почты',
+      emailRequired: 'Требуется электронная почта.',
+      passwordLabel: 'Новый пароль',
+      passwordRequired: 'Требуется пароль.',
+      confirmLabel: 'Подтвердите пароль',
+      confirmRequired: 'Пожалуйста, подтвердите пароль.',
+      passwordMismatch: 'Пароли не совпадают',
+      submit: 'Создать аккаунт',
+      processing: 'Обработка...',
+      alreadyHaveAccount: 'Уже есть аккаунт?',
+      loginLink: 'Войти',
+      accountCreated: 'Аккаунт успешно создан',
+      errorCreate: 'Во время создания аккаунта произошла ошибка.',
+      invalidCredentials: 'Произошла ошибка с предоставленными учетными данными. Попробуйте еще раз.',
+      responseDefault: 'Во время создания аккаунта произошла ошибка.',
+    },
+  }[locale]
 
   const {
     formState: { errors },
@@ -48,13 +94,13 @@ export const CreateAccountForm: React.FC = () => {
       })
 
       if (!response.ok) {
-        const message = response.statusText || 'There was an error creating the account.'
+        const message = response.statusText || text.responseDefault
         setError(message)
         return
       }
 
       const redirect = getSafeRedirect({
-        fallbackTo: `/account?success=${encodeURIComponent('Account created successfully')}`,
+        fallbackTo: `${localePrefix}/account?success=${encodeURIComponent(text.accountCreated)}`,
         redirectTo: searchParams.get('redirect') ?? '',
       })
 
@@ -68,18 +114,18 @@ export const CreateAccountForm: React.FC = () => {
         router.push(redirect)
       } catch (_) {
         clearTimeout(timer)
-        setError('There was an error with the credentials provided. Please try again.')
+        setError(text.invalidCredentials)
       }
     },
-    [login, router, searchParams],
+    [login, router, searchParams, text],
   )
 
   return (
     <form className="max-w-lg py-4" onSubmit={handleSubmit(onSubmit)}>
       <div className="prose dark:prose-invert mb-6">
         <p>
-          {`This is where new customers can signup and create a new account. To manage all users, `}
-          <Link href="/admin/collections/users">login to the admin dashboard</Link>.
+          {text.intro}
+          <Link href="/admin/collections/users">{text.adminLink}</Link>.
         </p>
       </div>
 
@@ -88,11 +134,11 @@ export const CreateAccountForm: React.FC = () => {
       <div className="flex flex-col gap-8 mb-8">
         <FormItem>
           <Label htmlFor="email" className="mb-2">
-            Email Address
+            {text.emailLabel}
           </Label>
           <Input
             id="email"
-            {...register('email', { required: 'Email is required.' })}
+            {...register('email', { required: text.emailRequired })}
             type="email"
           />
           {errors.email && <FormError message={errors.email.message} />}
@@ -100,11 +146,11 @@ export const CreateAccountForm: React.FC = () => {
 
         <FormItem>
           <Label htmlFor="password" className="mb-2">
-            New password
+            {text.passwordLabel}
           </Label>
           <Input
             id="password"
-            {...register('password', { required: 'Password is required.' })}
+            {...register('password', { required: text.passwordRequired })}
             type="password"
           />
           {errors.password && <FormError message={errors.password.message} />}
@@ -112,13 +158,13 @@ export const CreateAccountForm: React.FC = () => {
 
         <FormItem>
           <Label htmlFor="passwordConfirm" className="mb-2">
-            Confirm Password
+            {text.confirmLabel}
           </Label>
           <Input
             id="passwordConfirm"
             {...register('passwordConfirm', {
-              required: 'Please confirm your password.',
-              validate: (value) => value === password.current || 'The passwords do not match',
+              required: text.confirmRequired,
+              validate: (value) => value === password.current || text.passwordMismatch,
             })}
             type="password"
           />
@@ -126,13 +172,13 @@ export const CreateAccountForm: React.FC = () => {
         </FormItem>
       </div>
       <Button disabled={loading} type="submit" variant="default">
-        {loading ? 'Processing' : 'Create Account'}
+        {loading ? text.processing : text.submit}
       </Button>
 
       <div className="prose dark:prose-invert mt-8">
         <p>
-          {'Already have an account? '}
-          <Link href={`/login${allParams}`}>Login</Link>
+          {text.alreadyHaveAccount}{' '}
+          <Link href={`${localePrefix}/login${allParams}`}>{text.loginLink}</Link>
         </p>
       </div>
     </form>

@@ -20,10 +20,10 @@ export default async function FindOrderPage() {
 }
 
 export const metadata: Metadata = {
-  description: 'Find your order using your email and order ID.',
+  description: 'Знайдіть своє замовлення за електронною поштою та ID замовлення.',
   openGraph: mergeOpenGraph({
-    title: 'Find order',
+    title: 'Знайти замовлення',
     url: '/find-order',
   }),
-  title: 'Find order',
+  title: 'Знайти замовлення',
 }

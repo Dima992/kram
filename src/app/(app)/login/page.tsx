@@ -12,11 +12,29 @@ import { redirect } from 'next/navigation'
 
 export default async function Login() {
   const headers = await getHeaders()
+  const locale = headers.get('x-locale') === 'ru' ? 'ru' : 'uk'
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers })
 
+  const text = {
+    uk: {
+      alreadyLoggedIn: 'Ви вже увійшли в систему.',
+      heading: 'Вхід',
+      description:
+        'Тут ваші клієнти входять у свій обліковий запис, переглядають історію замовлень і багато іншого. Щоб керувати всіма користувачами, ',
+      adminLink: 'увійдіть в адмін-панель',
+    },
+    ru: {
+      alreadyLoggedIn: 'Вы уже вошли в систему.',
+      heading: 'Вход',
+      description:
+        'Здесь ваши клиенты входят в личный кабинет, просматривают историю заказов и многое другое. Чтобы управлять всеми пользователями, ',
+      adminLink: 'войдите в админ-панель',
+    },
+  }[locale]
+
   if (user) {
-    redirect(`/account?warning=${encodeURIComponent('You are already logged in.')}`)
+    redirect(`/account?warning=${encodeURIComponent(text.alreadyLoggedIn)}`)
   }
 
   return (
@@ -24,10 +42,10 @@ export default async function Login() {
       <div className="max-w-xl mx-auto my-12">
         <RenderParams />
 
-        <h1 className="mb-4 text-[1.8rem]">Log in</h1>
+        <h1 className="mb-4 text-[1.8rem]">{text.heading}</h1>
         <p className="mb-8">
-          {`This is where your customers will login to manage their account, review their order history, and more. To manage all users, `}
-          <Link href="/admin/collections/users">login to the admin dashboard</Link>.
+          {text.description}
+          <Link href="/admin/collections/users">{text.adminLink}</Link>.
         </p>
         <LoginForm />
       </div>
@@ -36,10 +54,10 @@ export default async function Login() {
 }
 
 export const metadata: Metadata = {
-  description: 'Login or create an account to get started.',
+  description: 'Увійдіть або створіть обліковий запис, щоб почати.',
   openGraph: {
-    title: 'Login',
+    title: 'Вхід',
     url: '/login',
   },
-  title: 'Login',
+  title: 'Вхід',
 }

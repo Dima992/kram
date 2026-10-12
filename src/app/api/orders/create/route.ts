@@ -8,6 +8,30 @@ type RequestedItem = {
   quantity: number
 }
 
+const orderMessages = {
+  uk: {
+    invalidOrder: 'Некоректні товари або спосіб оплати.',
+    unavailableProducts: 'Один або декілька товарів недоступні для покупки.',
+    invalidAmount: 'Сума замовлення недійсна.',
+    failedCreate: 'Не вдалося створити замовлення.',
+    genericError: 'Сталася помилка при створенні замовлення.',
+  },
+  ru: {
+    invalidOrder: 'Некорректные товары или способ оплаты.',
+    unavailableProducts: 'Один или несколько товаров недоступны для покупки.',
+    invalidAmount: 'Сумма заказа недействительна.',
+    failedCreate: 'Не удалось создать заказ.',
+    genericError: 'Произошла ошибка при создании заказа.',
+  },
+} as const
+
+function getOrderLocale(request: Request) {
+  const headerLocale = request.headers.get('x-locale')
+  if (headerLocale === 'ru') return 'ru'
+  const acceptLanguage = request.headers.get('accept-language')?.toLowerCase() ?? ''
+  return acceptLanguage.includes('ru') ? 'ru' : 'uk'
+}
+
 function isRequestedItem(item: unknown): item is RequestedItem {
   return (
     typeof item === 'object' &&
@@ -23,6 +47,9 @@ function isRequestedItem(item: unknown): item is RequestedItem {
 }
 
 export async function POST(req: Request) {
+  const locale = getOrderLocale(req)
+  const messages = orderMessages[locale]
+
   try {
     const body = await req.json()
     if (
@@ -34,10 +61,7 @@ export async function POST(req: Request) {
       typeof body.phone !== 'string' ||
       !body.phone.trim()
     ) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid order items or payment method' },
-        { status: 400 },
-      )
+      return NextResponse.json({ success: false, error: messages.invalidOrder }, { status: 400 })
     }
 
     const payload = await getPayload({ config: configPromise })
@@ -70,10 +94,7 @@ export async function POST(req: Request) {
     })
 
     if (orderItems.some((item) => item === null)) {
-      return NextResponse.json(
-        { success: false, error: 'One or more products are unavailable for purchase' },
-        { status: 400 },
-      )
+      return NextResponse.json({ success: false, error: messages.unavailableProducts }, { status: 400 })
     }
 
     const validatedOrderItems = orderItems.filter((item) => item !== null)
@@ -82,10 +103,7 @@ export async function POST(req: Request) {
       return total + (product?.priceInUAH || 0) * item.quantity
     }, 0)
     if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'Order amount is invalid' },
-        { status: 400 },
-      )
+      return NextResponse.json({ success: false, error: messages.invalidAmount }, { status: 400 })
     }
 
     // Создаем новый заказ в базе данных со статусом 'new'
@@ -202,7 +220,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, orderId: newOrder.id, liqpayPayment })
   } catch (error) {
-    console.error('Ошибка создания заказа:', error)
-    return NextResponse.json({ success: false, error: 'Failed to create order' }, { status: 500 })
+    console.error(locale === 'ru' ? 'Ошибка создания заказа:' : 'Помилка створення замовлення:', error)
+    return NextResponse.json({ success: false, error: messages.failedCreate }, { status: 500 })
   }
 }

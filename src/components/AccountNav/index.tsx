@@ -11,6 +11,22 @@ type Props = {
 
 export const AccountNav: React.FC<Props> = ({ className }) => {
   const pathname = usePathname()
+  const locale = pathname.startsWith('/ru') ? 'ru' : 'uk'
+  const localePrefix = locale === 'ru' ? '/ru' : ''
+  const text = {
+    uk: {
+      accountSettings: 'Налаштування акаунта',
+      addresses: 'Адреси',
+      orders: 'Замовлення',
+      logout: 'Вийти',
+    },
+    ru: {
+      accountSettings: 'Настройки аккаунта',
+      addresses: 'Адреса',
+      orders: 'Заказы',
+      logout: 'Выйти',
+    },
+  }[locale]
 
   return (
     <div className={clsx(className)}>
@@ -18,12 +34,12 @@ export const AccountNav: React.FC<Props> = ({ className }) => {
         <li>
           <Button asChild variant="link">
             <Link
-              href="/account"
+              href={`${localePrefix}/account`}
               className={clsx('text-primary/50 hover:text-primary hover:no-underline', {
-                'text-primary': pathname === '/account',
+                'text-primary': pathname === `${localePrefix}/account`,
               })}
             >
-              Account settings
+              {text.accountSettings}
             </Link>
           </Button>
         </li>
@@ -31,12 +47,12 @@ export const AccountNav: React.FC<Props> = ({ className }) => {
         <li>
           <Button asChild variant="link">
             <Link
-              href="/account/addresses"
+              href={`${localePrefix}/account/addresses`}
               className={clsx('text-primary/50 hover:text-primary hover:no-underline', {
-                'text-primary': pathname === '/account/addresses',
+                'text-primary': pathname === `${localePrefix}/account/addresses`,
               })}
             >
-              Addresses
+              {text.addresses}
             </Link>
           </Button>
         </li>
@@ -46,10 +62,10 @@ export const AccountNav: React.FC<Props> = ({ className }) => {
             asChild
             variant="link"
             className={clsx('text-primary/50 hover:text-primary hover:no-underline', {
-              'text-primary': pathname === '/orders' || pathname.includes('/orders'),
+              'text-primary': pathname === `${localePrefix}/orders` || pathname.includes('/orders'),
             })}
           >
-            <Link href="/orders">Orders</Link>
+            <Link href={`${localePrefix}/orders`}>{text.orders}</Link>
           </Button>
         </li>
       </ul>
@@ -60,10 +76,10 @@ export const AccountNav: React.FC<Props> = ({ className }) => {
         asChild
         variant="link"
         className={clsx('text-primary/50 hover:text-primary hover:no-underline', {
-          'text-primary': pathname === '/logout',
+          'text-primary': pathname === `${localePrefix}/logout`,
         })}
       >
-        <Link href="/logout">Log out</Link>
+        <Link href={`${localePrefix}/logout`}>{text.logout}</Link>
       </Button>
     </div>
   )

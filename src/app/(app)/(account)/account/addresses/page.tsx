@@ -11,15 +11,29 @@ import { CreateAddressModal } from '@/components/addresses/CreateAddressModal'
 
 export default async function AddressesPage() {
   const headers = await getHeaders()
+  const locale = headers.get('x-locale') === 'ru' ? 'ru' : 'uk'
   const payload = await getPayload({ config: configPromise })
   const { user } = await payload.auth({ headers })
+
+  const text = {
+    uk: {
+      loginRequired: 'Будь ласка, увійдіть, щоб отримати доступ до налаштувань акаунта.',
+      heading: 'Адреси',
+      metaDescription: 'Керуйте своїми адресами.',
+      metaTitle: 'Адреси',
+    },
+    ru: {
+      loginRequired: 'Пожалуйста, войдите, чтобы получить доступ к настройкам аккаунта.',
+      heading: 'Адреса',
+      metaDescription: 'Управляйте своими адресами.',
+      metaTitle: 'Адреса',
+    },
+  }[locale]
 
   let orders: Order[] | null = null
 
   if (!user) {
-    redirect(
-      `/login?warning=${encodeURIComponent('Please login to access your account settings.')}`,
-    )
+    redirect(`/login?warning=${encodeURIComponent(text.loginRequired)}`)
   }
 
   try {
@@ -47,7 +61,7 @@ export default async function AddressesPage() {
   return (
     <>
       <div className="border p-8 rounded-lg bg-primary-foreground">
-        <h1 className="text-3xl font-medium mb-8">Addresses</h1>
+        <h1 className="text-3xl font-medium mb-8">{text.heading}</h1>
 
         <div className="mb-8">
           <AddressListing />
@@ -60,10 +74,10 @@ export default async function AddressesPage() {
 }
 
 export const metadata: Metadata = {
-  description: 'Manage your addresses.',
+  description: 'Керуйте своїми адресами.',
   openGraph: mergeOpenGraph({
-    title: 'Addresses',
+    title: 'Адреси',
     url: '/account/addresses',
   }),
-  title: 'Addresses',
+  title: 'Адреси',
 }
