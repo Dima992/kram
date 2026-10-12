@@ -76,6 +76,7 @@ export const FindOrderForm: React.FC<Props> = ({ initialEmail }) => {
       const result = await sendOrderAccessEmail({
         email: data.email,
         orderID: data.orderID,
+        locale,
       })
 
       if (result.success) {

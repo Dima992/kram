@@ -7,10 +7,25 @@ import Link from 'next/link'
 
 type Props = {
   order: Order
+  locale?: 'uk' | 'ru'
 }
 
-export const OrderItem: React.FC<Props> = ({ order }) => {
-  const itemsLabel = order.items?.length === 1 ? 'Item' : 'Items'
+export const OrderItem: React.FC<Props> = ({ order, locale = 'uk' }) => {
+  const localePrefix = locale === 'ru' ? '/ru' : ''
+  const text = {
+    uk: {
+      item: 'товар',
+      items: 'товарів',
+      viewOrder: 'Переглянути замовлення',
+    },
+    ru: {
+      item: 'товар',
+      items: 'товаров',
+      viewOrder: 'Посмотреть заказ',
+    },
+  }[locale]
+
+  const itemsLabel = order.items?.length === 1 ? text.item : text.items
 
   return (
     <div className="bg-card border rounded-lg px-4 py-2 md:px-6 md:py-4 flex flex-col sm:flex-row gap-12 sm:items-center sm:justify-between">
@@ -20,7 +35,11 @@ export const OrderItem: React.FC<Props> = ({ order }) => {
         <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-6">
           <p className="text-xl">
             <time dateTime={order.createdAt}>
-              {formatDateTime({ date: order.createdAt, format: 'MMMM dd, yyyy' })}
+              {formatDateTime({
+                date: order.createdAt,
+                format: 'MMMM dd, yyyy',
+                locale,
+              })}
             </time>
           </p>
 
@@ -41,7 +60,7 @@ export const OrderItem: React.FC<Props> = ({ order }) => {
       </div>
 
       <Button variant="outline" asChild className="self-start sm:self-auto">
-        <Link href={`/orders/${order.id}`}>View Order</Link>
+        <Link href={`${localePrefix}/orders/${order.id}`}>{text.viewOrder}</Link>
       </Button>
     </div>
   )

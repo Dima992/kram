@@ -67,7 +67,7 @@ export default async function Orders() {
           <ul className="flex flex-col gap-6">
             {orders?.map((order, index) => (
               <li key={order.id}>
-                <OrderItem order={order} />
+                <OrderItem order={order} locale={locale} />
               </li>
             ))}
           </ul>

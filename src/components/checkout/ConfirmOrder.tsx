@@ -2,17 +2,29 @@
 
 import { LoadingSpinner } from '@/components/LoadingSpinner'
 import { useCart, usePayments } from '@payloadcms/plugin-ecommerce/client/react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 
 export const ConfirmOrder: React.FC = () => {
   const { confirmOrder } = usePayments()
   const { cart } = useCart()
 
+  const pathname = usePathname()
+  const locale = pathname.startsWith('/ru') ? 'ru' : 'uk'
+  const localePrefix = locale === 'ru' ? '/ru' : ''
   const searchParams = useSearchParams()
   const router = useRouter()
   // Ensure we only confirm the order once, even if the component re-renders
   const isConfirming = useRef(false)
+
+  const text = {
+    uk: {
+      title: 'Підтвердження замовлення',
+    },
+    ru: {
+      title: 'Подтверждение заказа',
+    },
+  }[locale]
 
   useEffect(() => {
     if (!cart || !cart.items || cart.items?.length === 0) {
@@ -43,19 +55,19 @@ export const ConfirmOrder: React.FC = () => {
             }
 
             const queryString = queryParams.toString()
-            router.push(`/orders/${result.orderID}${queryString ? `?${queryString}` : ''}`)
+            router.push(`${localePrefix}/orders/${result.orderID}${queryString ? `?${queryString}` : ''}`)
           }
         })
       }
     } else {
       // If no payment intent ID is found, redirect to the home
-      router.push('/')
+      router.push(localePrefix || '/')
     }
-  }, [cart, confirmOrder, router, searchParams])
+  }, [cart, confirmOrder, localePrefix, router, searchParams])
 
   return (
     <div className="text-center w-full flex flex-col items-center justify-start gap-4">
-      <h1 className="text-2xl">Confirming Order</h1>
+      <h1 className="text-2xl">{text.title}</h1>
 
       <LoadingSpinner className="w-12 h-6" />
     </div>

@@ -8,11 +8,6 @@ import React from 'react'
 
 export const revalidate = 3600
 
-export const metadata = {
-  description: 'Search for products in the store.',
-  title: 'Shop',
-}
-
 type SearchParams = { [key: string]: string | string[] | undefined }
 
 type Props = {
@@ -87,6 +82,27 @@ const getShopProducts = unstable_cache(
   { revalidate: 3600, tags: ['products'] },
 )
 
+export async function generateMetadata() {
+  const requestHeaders = await headers()
+  const locale = requestHeaders.get('x-locale') === 'ru' ? 'ru' : 'uk'
+
+  const text = {
+    uk: {
+      description: 'Шукайте товари в магазині.',
+      title: 'Магазин',
+    },
+    ru: {
+      description: 'Ищите товары в магазине.',
+      title: 'Магазин',
+    },
+  }[locale]
+
+  return {
+    description: text.description,
+    title: text.title,
+  }
+}
+
 export default async function ShopPage({ searchParams }: Props) {
   const { q: searchValue, sort, category } = await searchParams
   const requestHeaders = await headers()
@@ -94,22 +110,41 @@ export default async function ShopPage({ searchParams }: Props) {
 
   const products = await getShopProducts(searchValue, sort, category)
 
-  const resultsText = products.docs.length > 1 ? 'results' : 'result'
+  const text = {
+    uk: {
+      none: 'Товарів за вашим запитом не знайдено.',
+      filter: 'Немає товарів. Спробуйте інші фільтри.',
+      showing: 'Показано',
+      result: 'результат',
+      results: 'результатів',
+      for: 'для',
+      shop: 'Магазин',
+    },
+    ru: {
+      none: 'Товаров по вашему запросу не найдено.',
+      filter: 'Нет товаров. Попробуйте другие фильтры.',
+      showing: 'Показано',
+      result: 'результат',
+      results: 'результатов',
+      for: 'для',
+      shop: 'Магазин',
+    },
+  }[locale]
+
+  const resultsText = products.docs.length === 1 ? text.result : text.results
 
   return (
     <div>
       {searchValue ? (
         <p className="mb-4">
           {products.docs?.length === 0
-            ? 'There are no products that match '
-            : `Showing ${products.docs.length} ${resultsText} for `}
+            ? `${text.none} `
+            : `${text.showing} ${products.docs.length} ${resultsText} ${text.for} `}
           <span className="font-bold">&quot;{searchValue}&quot;</span>
         </p>
       ) : null}
 
-      {!searchValue && products.docs?.length === 0 && (
-        <p className="mb-4">No products found. Please try different filters.</p>
-      )}
+      {!searchValue && products.docs?.length === 0 && <p className="mb-4">{text.filter}</p>}
 
       {products?.docs.length > 0 ? (
         <Grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
