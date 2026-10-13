@@ -1,12 +1,24 @@
-import configPromise from '@payload-config'
-import type { Product } from '@/payload-types'
+import type { Product, Variant } from '@/payload-types'
 import { getPublicSiteURL } from '@/utilities/getPublicSiteURL'
 import { generateProductFeed } from '@/utilities/productFeed'
+import configPromise from '@payload-config'
 import { NextResponse } from 'next/server'
 import { getPayload, Where } from 'payload'
 
 function relationIDs(relations: (string | { id: string })[] | null | undefined): string[] {
   return (relations || []).map((relation) => (typeof relation === 'string' ? relation : relation.id))
+}
+
+function hasStock(product: Product): boolean {
+  const variants = (product.variants?.docs ?? []).filter(
+    (variant): variant is Variant => typeof variant === 'object' && variant !== null,
+  )
+
+  if (variants.length > 0) {
+    return variants.some((variant) => typeof variant.inventory === 'number' && variant.inventory > 0)
+  }
+
+  return (product.inventory ?? 0) > 0
 }
 
 export async function GET(
@@ -34,16 +46,9 @@ export async function GET(
 
     const conditions: Where[] = [{ _status: { equals: 'published' } }]
 
-    if (feed.onlyInStock) {
-      conditions.push({ inventory: { greater_than: 0 } })
-    }
-
     if (categoryIDs.length > 0 && includedProductIDs.length > 0) {
       conditions.push({
-        or: [
-          { categories: { in: categoryIDs } },
-          { id: { in: includedProductIDs } },
-        ],
+        or: [{ categories: { in: categoryIDs } }, { id: { in: includedProductIDs } }],
       })
     } else if (categoryIDs.length > 0) {
       conditions.push({ categories: { in: categoryIDs } })
@@ -83,6 +88,7 @@ export async function GET(
         limit: 500,
         page,
         where: { and: conditions },
+        joins: { variants: { limit: 100 } },
         overrideAccess: true,
       })
 
@@ -91,7 +97,9 @@ export async function GET(
       page += 1
     }
 
-    const xml = generateProductFeed(feed, products, baseURL)
+    const feedProducts = feed.onlyInStock ? products.filter(hasStock) : products
+
+    const xml = generateProductFeed(feed, feedProducts, baseURL)
 
     return new NextResponse(xml, {
       headers: {

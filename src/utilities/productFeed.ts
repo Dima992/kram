@@ -1,4 +1,4 @@
-import type { Feed, Product } from '@/payload-types'
+import type { Feed, Product, Variant } from '@/payload-types'
 
 const xmlEscape = (value: string) =>
   value
@@ -56,12 +56,22 @@ function getImageURL(product: Product, baseURL: string): string | undefined {
   return undefined
 }
 
+function isProductInStock(product: Product): boolean {
+  const variants = (product.variants?.docs ?? []).filter(
+    (variant): variant is Variant => typeof variant === 'object' && variant !== null,
+  )
+
+  if (variants.length > 0) {
+    return variants.some((variant) => typeof variant.inventory === 'number' && variant.inventory > 0)
+  }
+
+  return (product.inventory ?? 0) > 0
+}
+
 function renderProduct(product: Product, feed: Feed, baseURL: string): string | undefined {
   const title = product.title?.trim()
   const slug = product.slug?.trim()
-  const price =
-    product.priceInUAH ??
-    (product.baseCurrency === 'UAH' || !product.baseCurrency ? product.basePrice : undefined)
+  const price = product.priceInUAH
   const imageURL = getImageURL(product, baseURL)
 
   if (
@@ -80,7 +90,7 @@ function renderProduct(product: Product, feed: Feed, baseURL: string): string | 
   const description = richTextToPlainText(product.description) || title
   const brand = product.brand?.trim() || feed.defaultBrand?.trim()
   const hasIdentifiers = Boolean(product.gtin?.trim() || product.mpn?.trim())
-  const availability = (product.inventory ?? 0) > 0 ? 'in_stock' : 'out_of_stock'
+  const availability = isProductInStock(product) ? 'in_stock' : 'out_of_stock'
   const category = product.categories?.find((item) => typeof item === 'object')
   const categoryTitle = category && typeof category === 'object' ? category.title : undefined
 

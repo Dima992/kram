@@ -1,7 +1,7 @@
+import { sendServerConversion } from '@/utilities/serverAnalytics'
 import configPromise from '@payload-config'
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
-import { sendServerConversion } from '@/utilities/serverAnalytics'
 
 export async function POST(req: Request) {
   let body: unknown
@@ -39,11 +39,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: 'Product is not available' }, { status: 404 })
   }
 
-  const price = product.priceInUAH ?? product.basePrice ?? product.priceInUSD ?? 0
-  const currency =
-    product.priceInUAH !== null && product.priceInUAH !== undefined
-      ? 'UAH'
-      : product.baseCurrency || 'USD'
+  const price = product.priceInUAH
+  if (typeof price !== 'number' || !Number.isFinite(price) || price <= 0) {
+    return NextResponse.json({ success: false, error: 'Price is not available' }, { status: 422 })
+  }
 
   await sendServerConversion(
     payload,
@@ -51,7 +50,7 @@ export async function POST(req: Request) {
       eventId: crypto.randomUUID(),
       name: 'AddToCart',
       value: price,
-      currency,
+      currency: 'UAH',
       items: [{ id: String(product.id), quantity: 1, price, title: product.title }],
     },
     req.headers,
