@@ -1,66 +1,65 @@
 'use client'
 import type { Product, Variant } from '@/payload-types'
 
-import { RichText } from '@/components/RichText'
 import { AddToCart } from '@/components/Cart/AddToCart'
 import { Price } from '@/components/Price'
-import React, { Suspense } from 'react'
+import { RichText } from '@/components/RichText'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 
-import { VariantSelector } from './VariantSelector'
-import { useCurrency } from '@payloadcms/plugin-ecommerce/client/react'
 import { StockIndicator } from '@/components/product/StockIndicator'
+import { VariantSelector } from './VariantSelector'
 
-export function ProductDescription({ product }: { product: Product }) {
-  const { currency } = useCurrency()
-  let amount = 0,
-    lowestAmount = 0,
-    highestAmount = 0
-  const priceField = `priceIn${currency.code}` as keyof Product
-  const hasVariants = product.enableVariants && Boolean(product.variants?.docs?.length)
+const getVariantPrice = (variant: Variant, product: Product): number | null => {
+  if (typeof variant.priceInUAH === 'number' && variant.priceInUAH > 0) return variant.priceInUAH
+  if (typeof product.priceInUAH === 'number' && product.priceInUAH > 0) return product.priceInUAH
+  return null
+}
+
+function ProductPrice({ product }: { product: Product }) {
+  const searchParams = useSearchParams()
+  const variants = (product.variants?.docs ?? []).filter(
+    (variant): variant is Variant => typeof variant === 'object' && variant !== null,
+  )
+  const hasVariants = Boolean(product.enableVariants && variants.length > 0)
+  const selectedVariantID = searchParams.get('variant')
+
+  if (hasVariants && selectedVariantID) {
+    const selectedVariant = variants.find((variant) => String(variant.id) === selectedVariantID)
+    const amount = selectedVariant ? getVariantPrice(selectedVariant, product) : null
+    return amount !== null ? <Price amount={amount} /> : null
+  }
 
   if (hasVariants) {
-    const priceField = `priceIn${currency.code}` as keyof Variant
-    const variantsOrderedByPrice = product.variants?.docs
-      ?.filter((variant) => variant && typeof variant === 'object')
-      .sort((a, b) => {
-        if (
-          typeof a === 'object' &&
-          typeof b === 'object' &&
-          priceField in a &&
-          priceField in b &&
-          typeof a[priceField] === 'number' &&
-          typeof b[priceField] === 'number'
-        ) {
-          return a[priceField] - b[priceField]
-        }
-
-        return 0
-      }) as Variant[]
-
-    const lowestVariant = variantsOrderedByPrice[0][priceField]
-    const highestVariant = variantsOrderedByPrice[variantsOrderedByPrice.length - 1][priceField]
-    if (
-      variantsOrderedByPrice &&
-      typeof lowestVariant === 'number' &&
-      typeof highestVariant === 'number'
-    ) {
-      lowestAmount = lowestVariant
-      highestAmount = highestVariant
-    }
-  } else if (product[priceField] && typeof product[priceField] === 'number') {
-    amount = product[priceField]
+    const prices = variants
+      .map((variant) => getVariantPrice(variant, product))
+      .filter((price): price is number => price !== null)
+    if (prices.length === 0) return null
+    const lowest = Math.min(...prices)
+    const hasDifferentPrices = new Set(prices).size > 1
+    return (
+      <>
+        {hasDifferentPrices && <span className="mr-2 normal-case">від</span>}
+        <Price amount={lowest} />
+      </>
+    )
   }
+
+  const amount = typeof product.priceInUAH === 'number' && product.priceInUAH > 0 ? product.priceInUAH : null
+  return amount !== null ? <Price amount={amount} /> : null
+}
+
+export function ProductDescription({ product }: { product: Product }) {
+  const hasVariants = Boolean(product.enableVariants && product.variants?.docs?.length)
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
         <h1 className="text-2xl font-medium">{product.title}</h1>
         <div className="uppercase font-mono">
-          {hasVariants ? (
-            <Price highestAmount={highestAmount} lowestAmount={lowestAmount} />
-          ) : (
-            <Price amount={amount} />
-          )}
+          <Suspense fallback={null}>
+            <ProductPrice product={product} />
+          </Suspense>
         </div>
       </div>
       {product.description ? (

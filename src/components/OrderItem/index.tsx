@@ -26,6 +26,7 @@ export const OrderItem: React.FC<Props> = ({ order, locale = 'uk' }) => {
   }[locale]
 
   const itemsLabel = order.items?.length === 1 ? text.item : text.items
+  const totalAmount = typeof order.totalAmount === 'number' && order.totalAmount > 0 ? order.totalAmount : null
 
   return (
     <div className="bg-card border rounded-lg px-4 py-2 md:px-6 md:py-4 flex flex-col sm:flex-row gap-12 sm:items-center sm:justify-between">
@@ -50,10 +51,10 @@ export const OrderItem: React.FC<Props> = ({ order, locale = 'uk' }) => {
           <span>
             {order.items?.length} {itemsLabel}
           </span>
-          {order.amount && (
+          {totalAmount !== null && (
             <>
               <span>•</span>
-              <Price as="span" amount={order.amount} currencyCode={order.currency ?? undefined} />
+              <Price as="span" amount={totalAmount} />
             </>
           )}
         </p>

@@ -1,14 +1,27 @@
 'use client'
 import { Product, Variant } from '@/payload-types'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { useMemo } from 'react'
 
 type Props = {
   product: Product
 }
 
+const text = {
+  uk: {
+    inStock: 'В наявності',
+    outOfStock: 'Немає в наявності',
+  },
+  ru: {
+    inStock: 'В наличии',
+    outOfStock: 'Нет в наличии',
+  },
+}
+
 export const StockIndicator: React.FC<Props> = ({ product }) => {
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const locale = pathname.startsWith('/ru') ? 'ru' : 'uk'
 
   const variants = product.variants?.docs || []
 
@@ -30,13 +43,11 @@ export const StockIndicator: React.FC<Props> = ({ product }) => {
     return undefined
   }, [product.enableVariants, searchParams, variants])
 
-  const stockQuantity = useMemo(() => {
+  const isInStock = useMemo(() => {
     if (product.enableVariants) {
-      if (selectedVariant) {
-        return selectedVariant.inventory || 0
-      }
+      return Boolean(selectedVariant && (selectedVariant.inventory ?? 0) > 0)
     }
-    return product.inventory || 0
+    return (product.inventory ?? 0) > 0
   }, [product.enableVariants, selectedVariant, product.inventory])
 
   if (product.enableVariants && !selectedVariant) {
@@ -45,8 +56,7 @@ export const StockIndicator: React.FC<Props> = ({ product }) => {
 
   return (
     <div className="uppercase font-mono text-sm font-medium text-gray-500">
-      {stockQuantity < 10 && stockQuantity > 0 && <p>Only {stockQuantity} left in stock</p>}
-      {(stockQuantity === 0 || !stockQuantity) && <p>Out of stock</p>}
+      <p>{isInStock ? text[locale].inStock : text[locale].outOfStock}</p>
     </div>
   )
 }

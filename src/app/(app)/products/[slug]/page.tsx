@@ -209,9 +209,10 @@ const findProductBySlug = async (slug: string, draft: boolean) => {
       ],
     },
     populate: {
-      variants: {
+        variants: {
         title: true,
         priceInUSD: true,
+        priceInUAH: true,
         inventory: true,
         options: true,
       },

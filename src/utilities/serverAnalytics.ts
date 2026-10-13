@@ -1,5 +1,5 @@
-import { createHash } from 'crypto'
 import type { SiteSetting } from '@/payload-types'
+import { createHash } from 'crypto'
 import type { Payload } from 'payload'
 
 type ConversionItem = {
@@ -158,6 +158,7 @@ async function sendTikTok(
     return
   }
 
+  const tiktokEventName = event.name === 'Purchase' ? 'CompletePayment' : 'AddToCart'
   const { ip, userAgent, pageURL } = getRequestContext(headers)
   const userData = getUserData(event)
   const response = await fetch('https://business-api.tiktok.com/open_api/v1.3/event/track/', {
@@ -168,7 +169,7 @@ async function sendTikTok(
     },
     body: JSON.stringify({
       pixel_code: settings.tikTokPixelId,
-      event: event.name,
+      event: tiktokEventName,
       event_id: event.eventId,
       timestamp: new Date().toISOString(),
       context: {
