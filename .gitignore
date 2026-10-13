@@ -41,3 +41,19 @@ next-env.d.ts
 
 public/media
 
+# Временные файлы: логи сборки и служебные списки
+build_errors*.txt
+final_build_errors*.txt
+module_not_found_errors*.txt
+remaining_module_errors*.txt
+problematic_src_imports.txt
+process_cwd_usage.txt
+filtered_ts_tsx_files.txt
+filter_files.py
+src_components_files.txt
+src_ts_files.txt
+ts_files.txt
+ts_files_raw.txt
+tsx_files.txt
+tsx_files_raw.txt
+test.env
