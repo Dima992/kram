@@ -1,5 +1,6 @@
 import { getNBURates } from '@/lib/nbu'
 import type { CollectionOverride } from '@payloadcms/plugin-ecommerce/types'
+import type { CollectionBeforeChangeHook } from 'payload'
 
 type Currency = 'UAH' | 'USD' | 'EUR'
 
@@ -15,19 +16,22 @@ function hidePluginPriceFields(fields: any[]): any[] {
   })
 }
 
-const fillVariantPrices = async ({ data, originalDoc }: { data: any; originalDoc: any }) => {
+const fillVariantPrices: CollectionBeforeChangeHook = async ({ data, originalDoc }) => {
   if (!data) return data
 
-  const basePrice: number | null | undefined = data.basePrice ?? originalDoc?.basePrice
-  const baseCurrency = (data.baseCurrency ?? originalDoc?.baseCurrency ?? 'UAH') as Currency
+  const current = data as Record<string, any>
+  const original = (originalDoc || {}) as Record<string, any>
+
+  const basePrice: number | null | undefined = current.basePrice ?? original.basePrice
+  const baseCurrency = (current.baseCurrency ?? original.baseCurrency ?? 'UAH') as Currency
 
   if (typeof basePrice !== 'number' || basePrice <= 0) {
-    data.priceInUAH = null
-    data.priceInUSD = null
-    data.priceInEUR = null
-    data.priceInUAHEnabled = false
-    data.priceInUSDEnabled = false
-    data.priceInEUREnabled = false
+    current.priceInUAH = null
+    current.priceInUSD = null
+    current.priceInEUR = null
+    current.priceInUAHEnabled = false
+    current.priceInUSDEnabled = false
+    current.priceInEUREnabled = false
     return data
   }
 
@@ -40,12 +44,12 @@ const fillVariantPrices = async ({ data, originalDoc }: { data: any; originalDoc
 
   const priceInUAH = Math.ceil(basePrice * baseRate)
 
-  data.priceInUAH = priceInUAH
-  data.priceInUSD = Math.round((priceInUAH / rates.USD) * 100) / 100
-  data.priceInEUR = Math.round((priceInUAH / rates.EUR) * 100) / 100
-  data.priceInUAHEnabled = true
-  data.priceInUSDEnabled = true
-  data.priceInEUREnabled = true
+  current.priceInUAH = priceInUAH
+  current.priceInUSD = Math.round((priceInUAH / rates.USD) * 100) / 100
+  current.priceInEUR = Math.round((priceInUAH / rates.EUR) * 100) / 100
+  current.priceInUAHEnabled = true
+  current.priceInUSDEnabled = true
+  current.priceInEUREnabled = true
 
   return data
 }

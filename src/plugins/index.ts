@@ -216,11 +216,11 @@ export const plugins: Plugin[] = [
         })(),
       ],
     },
-    products: {
+              products: {
       productsCollectionOverride: ProductsCollection,
-    },
-    variants: {
-      variantsCollectionOverride: VariantsCollection,
+      variants: {
+        variantsCollectionOverride: VariantsCollection,
+      },
     },
   }),
 ]

@@ -2,7 +2,7 @@
 
 import { Media } from '@/components/Media'
 import { Button } from '@/components/ui/button'
-import type { Media as MediaType, Variant } from '@/payload-types'
+import type { Cart, Media as MediaType, Variant } from '@/payload-types'
 import { useCart } from '@payloadcms/plugin-ecommerce/client/react'
 import { ArrowLeft, Building2, CreditCard, ShieldCheck, ShoppingBag, Zap } from 'lucide-react'
 import Link from 'next/link'
@@ -12,6 +12,7 @@ type Lang = 'ua' | 'ru'
 type Mode = 'full' | 'quick'
 type Carrier = 'nova_poshta' | 'ukrposhta'
 type PayMethod = 'liqpay' | 'iban' | 'cod'
+type CartItems = NonNullable<Cart['items']>
 
 type CheckoutLine = {
   key: string
@@ -118,15 +119,14 @@ const dictionary = {
   },
 }
 
-function buildLines(
-  items: { product?: unknown; variant?: unknown; quantity?: number | null; id?: string | null }[],
-): CheckoutLine[] {
+function buildLines(items: CartItems): CheckoutLine[] {
   return items.flatMap((item, index) => {
     const product = item.product
     if (typeof product !== 'object' || !product) return []
 
     const quantity = item.quantity || 0
-    const variant: Variant | null = typeof item.variant === 'object' && item.variant ? (item.variant as Variant) : null
+    const variant: Variant | null =
+      typeof item.variant === 'object' && item.variant ? item.variant : null
 
     const options = (variant?.options || [])
       .map((option) => (typeof option === 'object' ? option.label : ''))
@@ -148,7 +148,9 @@ function buildLines(
           : null
     if (price === null) available = false
 
-    let image = typeof product.gallery?.[0]?.image === 'object' ? product.gallery[0].image : undefined
+    let image: MediaType | undefined =
+      typeof product.gallery?.[0]?.image === 'object' ? product.gallery[0].image : undefined
+
     if (variant) {
       const variantOptionIDs = (variant.options || []).map((option) =>
         typeof option === 'object' ? option.id : option,
@@ -171,7 +173,7 @@ function buildLines(
         variantId: variant ? String(variant.id) : null,
         title: product.title,
         options,
-        image: image as MediaType | undefined,
+        image,
         quantity,
         price,
         available,
@@ -204,7 +206,7 @@ export function UACheckoutPage() {
   } | null>(null)
 
   const t = dictionary[lang]
-  const lines = buildLines((cart?.items || []) as Parameters<typeof buildLines>[0])
+  const lines = buildLines((cart?.items || []) as CartItems)
   const hasUnavailable = lines.some((line) => !line.available)
   const totalAmount = lines.reduce(
     (sum, line) => sum + (line.available && line.price ? line.price * line.quantity : 0),
