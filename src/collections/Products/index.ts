@@ -17,14 +17,13 @@ import {
   InlineToolbarFeature,
   lexicalEditor,
 } from '@payloadcms/richtext-lexical'
-import { autoGenerateAlt } from './hooks/autoGenerateAlt'
-import { DefaultDocumentIDType, slugField, Where } from 'payload'
 import { revalidateTag } from 'next/cache'
+import { DefaultDocumentIDType, slugField, Where } from 'payload'
+import { autoGenerateAlt } from './hooks/autoGenerateAlt'
 
-// --- Кеширующий сервис НБУ ---
 const cachedRates: { [key: string]: number } = { USD: 41.5, EUR: 45.0, UAH: 1.0 }
 let lastFetchTime = 0
-const CACHE_TTL = 60 * 60 * 1000 // 1 час
+const CACHE_TTL = 60 * 60 * 1000
 
 async function getNBURates() {
   const now = Date.now()
@@ -90,15 +89,6 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     meta: true,
   },
   fields: [
-    {
-      name: 'productDescriptionGenerator',
-      type: 'ui',
-      admin: {
-        components: {
-          Field: '@/components/ai/ProductDescriptionGenerator#ProductDescriptionGenerator',
-        },
-      },
-    },
     { name: 'title', type: 'text', required: true, localized: true },
     {
       type: 'tabs',
@@ -262,7 +252,6 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       hasMany: true,
       relationTo: 'categories',
     },
-    // --- БЛОК ВАЛЮТ И ЦЕНЫ ---
     {
       name: 'baseCurrency',
       type: 'select',
@@ -385,7 +374,6 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     },
     slugField(),
   ],
-  // --- ХУКИ ---
   hooks: {
     ...defaultCollection?.hooks,
     afterChange: [
