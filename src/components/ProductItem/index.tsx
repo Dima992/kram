@@ -8,9 +8,6 @@ type Props = {
   style?: 'compact' | 'default'
   variant?: Variant
   quantity?: number
-  /**
-   * Force all formatting to a particular currency.
-   */
   currencyCode?: string
 }
 
@@ -52,7 +49,10 @@ export const ProductItem: React.FC<Props> = ({
     }
   }
 
-  const itemPrice = product.priceInUAH
+  const itemPrice =
+    typeof variant?.priceInUAH === 'number' && variant.priceInUAH > 0
+      ? variant.priceInUAH
+      : product.priceInUAH
   const itemURL = `/products/${product.slug}${variant ? `?variant=${variant.id}` : ''}`
 
   return (

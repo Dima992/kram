@@ -5,16 +5,30 @@ import type { Product, Variant } from '@/payload-types'
 
 import { useCart } from '@payloadcms/plugin-ecommerce/client/react'
 import clsx from 'clsx'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import React, { useCallback, useMemo } from 'react'
 import { toast } from 'sonner'
+
 type Props = {
   product: Product
+}
+
+const text = {
+  uk: {
+    added: 'Товар додано до кошика.',
+    add: 'Додати в кошик',
+  },
+  ru: {
+    added: 'Товар добавлен в корзину.',
+    add: 'Добавить в корзину',
+  },
 }
 
 export function AddToCart({ product }: Props) {
   const { addItem, cart, isLoading } = useCart()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const locale = pathname.startsWith('/ru') ? 'ru' : 'uk'
 
   const variants = product.variants?.docs || []
 
@@ -45,12 +59,15 @@ export function AddToCart({ product }: Props) {
         product: product.id,
         variant: selectedVariant?.id ?? undefined,
       }).then(() => {
-        toast.success('Item added to cart.')
+        toast.success(text[locale].added)
 
         void fetch('/api/analytics/events', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productId: String(product.id) }),
+          body: JSON.stringify({
+            productId: String(product.id),
+            variantId: selectedVariant ? String(selectedVariant.id) : null,
+          }),
         })
           .then((response) => {
             if (!response.ok) {
@@ -62,7 +79,7 @@ export function AddToCart({ product }: Props) {
           })
       })
     },
-    [addItem, product, selectedVariant],
+    [addItem, product, selectedVariant, locale],
   )
 
   const disabled = useMemo<boolean>(() => {
@@ -110,7 +127,7 @@ export function AddToCart({ product }: Props) {
 
   return (
     <Button
-      aria-label="Add to cart"
+      aria-label={text[locale].add}
       variant={'outline'}
       className={clsx({
         'hover:opacity-90': true,
@@ -119,7 +136,7 @@ export function AddToCart({ product }: Props) {
       onClick={addToCart}
       type="submit"
     >
-      Add To Cart
+      {text[locale].add}
     </Button>
   )
 }

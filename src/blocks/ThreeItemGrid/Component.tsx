@@ -2,23 +2,12 @@ import type { Media, Product, ThreeItemGridBlock as ThreeItemGridBlockProps } fr
 
 import { GridTileImage } from '@/components/Grid/tile'
 import Link from 'next/link'
-import React from 'react'
 import type { DefaultDocumentIDType } from 'payload'
+import React from 'react'
 
 type Props = { item: Product; priority?: boolean; size: 'full' | 'half' }
 
 export const ThreeItemGridItem: React.FC<Props> = ({ item, priority = false, size }) => {
-  let price = item.priceInUAH ?? item.basePrice ?? item.priceInUSD
-
-  if (item.enableVariants && item.variants?.docs?.length) {
-    const variant = item.variants.docs[0]
-    const variantPrice = variant && typeof variant === 'object' ? variant.priceInUSD : undefined
-
-    if (typeof variantPrice === 'number') {
-      price = variantPrice
-    }
-  }
-
   return (
     <div
       className={size === 'full' ? 'md:col-span-4 md:row-span-2' : 'md:col-span-2 md:row-span-1'}
@@ -26,7 +15,7 @@ export const ThreeItemGridItem: React.FC<Props> = ({ item, priority = false, siz
       <Link className="relative block aspect-square h-full w-full" href={`/products/${item.slug}`}>
         <GridTileImage
           label={{
-            amount: price!,
+            amount: item.priceInUAH as number,
             position: size === 'full' ? 'center' : 'bottom',
             title: item.title,
           }}
@@ -51,13 +40,19 @@ export const ThreeItemGridBlock: React.FC<
 > = async ({ products }) => {
   if (!products || !products[0] || !products[1] || !products[2]) return null
 
-  const [firstProduct, secondProduct, thirdProduct] = products
+  const [firstProduct, secondProduct, thirdProduct] = products as Product[]
+  const threeProducts = [firstProduct, secondProduct, thirdProduct]
+
+  const allPriced = threeProducts.every(
+    (item) => typeof item.priceInUAH === 'number' && item.priceInUAH > 0,
+  )
+  if (!allPriced) return null
 
   return (
     <section className="container grid gap-4 pb-4 md:grid-cols-6 md:grid-rows-2">
-      <ThreeItemGridItem item={firstProduct as Product} priority size="full" />
-      <ThreeItemGridItem item={secondProduct as Product} size="half" />
-      <ThreeItemGridItem item={thirdProduct as Product} size="half" />
+      <ThreeItemGridItem item={firstProduct} priority size="full" />
+      <ThreeItemGridItem item={secondProduct} size="half" />
+      <ThreeItemGridItem item={thirdProduct} size="half" />
     </section>
   )
 }
