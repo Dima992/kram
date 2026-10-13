@@ -1,12 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/supplier-import",
+      "path": "/api/cron/dispatcher",
       "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/supplier-mapping",
-      "schedule": "0 7 * * *"
     }
   ]
 }

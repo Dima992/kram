@@ -1,10 +1,10 @@
-import type { Product, Variant } from '@/payload-types'
+import type { Product } from '@/payload-types'
 
-import Link from 'next/link'
-import React from 'react'
-import clsx from 'clsx'
 import { Media } from '@/components/Media'
 import { Price } from '@/components/Price'
+import clsx from 'clsx'
+import Link from 'next/link'
+import React from 'react'
 
 type Props = {
   locale?: 'uk' | 'ru'
@@ -13,20 +13,10 @@ type Props = {
 }
 
 export const ProductGridItem: React.FC<Props> = ({ locale, priority = false, product }) => {
-  const { gallery, priceInUAH, basePrice, priceInUSD, title } = product
+  const { gallery, priceInUAH, title } = product
 
-  let price = priceInUAH ?? basePrice ?? priceInUSD
-
-  const variants = product.variants?.docs
-
-  if (variants && variants.length > 0) {
-    const variant = variants[0]
-    const variantPrice = variant && typeof variant === 'object' ? variant.priceInUSD : undefined
-
-    if (typeof variantPrice === 'number') {
-      price = variantPrice
-    }
-  }
+  // Цена только в гривнах. Без запасных вариантов в USD или базовой цене.
+  const price = priceInUAH
 
   const image =
     gallery?.[0]?.image && typeof gallery[0]?.image !== 'string' ? gallery[0]?.image : false

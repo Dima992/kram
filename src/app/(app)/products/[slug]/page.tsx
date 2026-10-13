@@ -4,16 +4,16 @@ import { RenderBlocks } from '@/blocks/RenderBlocks'
 import { GridTileImage } from '@/components/Grid/tile'
 import { Gallery } from '@/components/product/Gallery'
 import { ProductDescription } from '@/components/product/ProductDescription'
-import configPromise from '@payload-config'
-import { getPayload } from 'payload'
-import { draftMode } from 'next/headers'
-import Link from 'next/link'
-import { notFound } from 'next/navigation'
-import React, { Suspense } from 'react'
 import { Button } from '@/components/ui/button'
+import configPromise from '@payload-config'
 import { ChevronLeftIcon } from 'lucide-react'
 import { Metadata } from 'next'
 import { unstable_cache } from 'next/cache'
+import { draftMode } from 'next/headers'
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+import { getPayload } from 'payload'
+import React, { Suspense } from 'react'
 
 export const revalidate = 3600
 
@@ -84,18 +84,8 @@ export default async function ProductPage({ params }: Args) {
       })
     : product.inventory! > 0
 
-  let price = product.priceInUAH ?? product.basePrice ?? product.priceInUSD
-
-  if (product.enableVariants && product?.variants?.docs?.length) {
-    price = product?.variants?.docs?.reduce((acc, variant) => {
-      const variantPrice = typeof variant === 'object' ? variant?.priceInUSD : undefined
-
-      if (typeof variantPrice === 'number' && (typeof acc !== 'number' || variantPrice > acc)) {
-        return variantPrice
-      }
-      return acc
-    }, price)
-  }
+  // Цена только в гривнах. Цены в долларах и запасные варианты не используются.
+  const price = product.priceInUAH
 
   const productJsonLd = {
     name: product.title,
@@ -106,8 +96,8 @@ export default async function ProductPage({ params }: Args) {
     offers: {
       '@type': 'AggregateOffer',
       availability: hasStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-      price: price,
-      priceCurrency: 'usd',
+      price: price ?? undefined,
+      priceCurrency: 'UAH',
     },
   }
 
@@ -174,7 +164,7 @@ function RelatedProducts({ products }: { products: Product[] }) {
             <Link className="relative h-full w-full" href={`/products/${product.slug}`}>
               <GridTileImage
                 label={{
-                  amount: product.priceInUSD!,
+                  amount: product.priceInUAH!,
                   title: product.title,
                 }}
                 media={product.meta?.image as Media}
