@@ -112,6 +112,29 @@ export const SiteSettings: GlobalConfig = {
           ],
         },
         {
+          label: 'Курси валют',
+          fields: [
+            {
+              name: 'usdRate',
+              type: 'number',
+              label: 'Курс USD (НБУ), грн',
+              admin: { readOnly: true, description: 'Оновлюється автоматично раз на день.' },
+            },
+            {
+              name: 'eurRate',
+              type: 'number',
+              label: 'Курс EUR (НБУ), грн',
+              admin: { readOnly: true, description: 'Оновлюється автоматично раз на день.' },
+            },
+            {
+              name: 'ratesUpdatedAt',
+              type: 'text',
+              label: 'Курс оновлено',
+              admin: { readOnly: true },
+            },
+          ],
+        },
+        {
           label: 'Інше',
           fields: [
             {

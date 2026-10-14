@@ -1,6 +1,8 @@
 import { CallToAction } from '@/blocks/CallToAction/config'
 import { Content } from '@/blocks/Content/config'
 import { MediaBlock } from '@/blocks/MediaBlock/config'
+import { getStoredRates } from '@/utilities/exchangeRates'
+import { generatePreviewPath } from '@/utilities/generatePreviewPath'
 import { CollectionOverride } from '@payloadcms/plugin-ecommerce/types'
 import {
   MetaDescriptionField,
@@ -20,33 +22,6 @@ import { revalidateTag } from 'next/cache'
 import { DefaultDocumentIDType, slugField, Where } from 'payload'
 import { autoGenerateAlt } from './hooks/autoGenerateAlt'
 
-const cachedRates: { [key: string]: number } = { USD: 41.5, EUR: 45.0, UAH: 1.0 }
-let lastFetchTime = 0
-const CACHE_TTL = 60 * 60 * 1000
-
-async function getNBURates() {
-  const now = Date.now()
-  if (now - lastFetchTime < CACHE_TTL && lastFetchTime !== 0) {
-    return cachedRates
-  }
-  try {
-    const res = await fetch('https://bank.gov.ua/NBUStatService/v1/statdirectory/exchange?json', {
-      next: { revalidate: 3600 },
-    })
-    if (!res.ok) throw new Error('NBU API error')
-    const data = await res.json()
-    const usd = data.find((item: any) => item.cc === 'USD')?.rate
-    const eur = data.find((item: any) => item.cc === 'EUR')?.rate
-    if (usd) cachedRates.USD = usd
-    if (eur) cachedRates.EUR = eur
-    cachedRates.UAH = 1.0
-    lastFetchTime = now
-  } catch (err) {
-    console.error('Помилка оновлення курсу НБУ, використовується кеш:', err)
-  }
-  return cachedRates
-}
-
 export const ProductsCollection: CollectionOverride = ({ defaultCollection }) => ({
   ...defaultCollection,
   admin: {
@@ -54,6 +29,20 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     components: {
     },
     defaultColumns: ['title', 'basePrice', 'baseCurrency', 'priceInUAH', '_status'],
+     livePreview: {
+      url: ({ data, req }) =>
+        generatePreviewPath({
+          slug: data?.slug,
+          collection: 'products',
+          req,
+        }),
+    },
+    preview: (data, { req }) =>
+      generatePreviewPath({
+        slug: data?.slug as string,
+        collection: 'products',
+        req,
+      }),
     useAsTitle: 'title',
   },
   defaultPopulate: {
@@ -165,6 +154,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
           fields: [
             ...defaultCollection.fields.filter(
               (field) =>
+                !('name' in field && field.name === 'priceInUAH') &&
                 !(
                   'fields' in field &&
                   field.fields.some(
@@ -364,7 +354,9 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     afterChange: [
       ...(defaultCollection?.hooks?.afterChange || []),
       ({ doc, req: { context } }) => {
-        if (!context.disableRevalidate) revalidateTag('products', { expire: 0 })
+        if (!context.disableRevalidate && doc._status === 'published') {
+          revalidateTag('products', { expire: 0 })
+        }
         return doc
       },
     ],
@@ -378,7 +370,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     beforeChange: [
       ...(defaultCollection?.hooks?.beforeChange || []),
       autoGenerateAlt,
-      async ({ data }) => {
+      async ({ data, req }) => {
         if (!data?.basePrice) {
           data.priceInUAH = 0
           return data
@@ -390,8 +382,8 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
           return data
         }
 
-        const rates = await getNBURates()
-        const rate = rates[currency] || 1
+        const rates = await getStoredRates(req.payload)
+        const rate = currency === 'USD' ? rates.USD : rates.EUR
         data.priceInUAH = Math.ceil(data.basePrice * rate)
 
         return data

@@ -1,14 +1,16 @@
-import { getNBURates } from '@/lib/nbu'
+import { fetchNBURates, saveRates, type Rates } from '@/utilities/exchangeRates'
 import type { Payload } from 'payload'
 
 type Currency = 'UAH' | 'USD' | 'EUR'
 
-export async function updateAllPrices(payload: Payload) {
-  const rates = await getNBURates()
-  if (!rates.USD || !rates.EUR) throw new Error('Не знайдено курс USD або EUR')
+const rateOf = (rates: Rates, currency: Currency): number | undefined => {
+  if (currency === 'UAH') return 1
+  return rates[currency]
+}
 
-  const rateOf = (currency: Currency): number | undefined =>
-    currency === 'UAH' ? 1 : rates[currency]
+export async function updateAllPrices(payload: Payload) {
+  const rates = await fetchNBURates()
+  await saveRates(payload, rates)
 
   const { docs: products } = await payload.find({
     collection: 'products',
@@ -21,7 +23,7 @@ export async function updateAllPrices(payload: Payload) {
   let productsUpdated = 0
   for (const product of products) {
     const currency = (product.baseCurrency || 'UAH') as Currency
-    const rate = rateOf(currency) ?? 1
+    const rate = rateOf(rates, currency) ?? 1
     const priceInUAH = Math.ceil((product.basePrice || 0) * rate)
 
     if (product.priceInUAH !== priceInUAH) {
@@ -51,7 +53,7 @@ export async function updateAllPrices(payload: Payload) {
     if (typeof item.basePrice !== 'number' || item.basePrice <= 0) continue
 
     const currency = (item.baseCurrency || 'UAH') as Currency
-    const rate = rateOf(currency)
+    const rate = rateOf(rates, currency)
     if (!rate) continue
 
     const priceInUAH = Math.ceil(item.basePrice * rate)
@@ -71,6 +73,7 @@ export async function updateAllPrices(payload: Payload) {
   }
 
   return {
+    rates,
     products: { checked: products.length, updated: productsUpdated },
     variants: { checked: variants.length, updated: variantsUpdated },
   }
