@@ -104,9 +104,9 @@ export const plugins: Plugin[] = [
     currencies: {
       defaultCurrency: 'UAH',
       supportedCurrencies: [
-        { code: 'UAH', decimals: 2, label: 'Гривня', symbol: '₴' },
-        { code: 'USD', decimals: 2, label: 'US Dollar', symbol: '$' },
-        { code: 'EUR', decimals: 2, label: 'Euro', symbol: '€' },
+        { code: 'UAH', decimals: 0, label: 'Гривня', symbol: '₴' },
+        { code: 'USD', decimals: 0, label: 'US Dollar', symbol: '$' },
+        { code: 'EUR', decimals: 0, label: 'Euro', symbol: '€' },
       ],
     },
     access: {
