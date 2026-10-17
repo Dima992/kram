@@ -347,7 +347,9 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
         readOnly: true,
       },
     },
-    slugField(),
+        slugField({
+      slugify: ({ valueToSlugify }) => transliterate(String(valueToSlugify ?? '')),
+    }),
   ],
   hooks: {
     ...defaultCollection?.hooks,
