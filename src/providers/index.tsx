@@ -20,7 +20,7 @@ export const Providers: React.FC<{
             enableVariants={true}
             currenciesConfig={{
               defaultCurrency: 'UAH',
-              supportedCurrencies: [{ code: 'UAH', decimals: 2, label: 'Гривня', symbol: '₴' }],
+              supportedCurrencies: [{ code: 'UAH', decimals: 0, label: 'Гривня', symbol: '₴' }],
             }}
             api={{
               cartsFetchQuery: {
