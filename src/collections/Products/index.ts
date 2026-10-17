@@ -348,8 +348,32 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
         readOnly: true,
       },
     },
-        slugField({
-      slugify: ({ valueToSlugify }) => transliterate(String(valueToSlugify ?? '')),
+      slugField({
+      slugify: async ({ valueToSlugify, data, req }) => {
+        const base = transliterate(String(valueToSlugify ?? ''))
+        if (!base) return ''
+
+        let candidate = base
+        for (let n = 2; ; n++) {
+          const found = await req.payload.find({
+            collection: 'products',
+            where: {
+              and: [
+                { slug: { equals: candidate } },
+                ...(data?.id ? [{ id: { not_equals: data.id } }] : []),
+              ],
+            },
+            limit: 1,
+            depth: 0,
+            draft: true,
+            pagination: false,
+            req,
+          })
+
+          if (found.docs.length === 0) return candidate
+          candidate = `${base}-${n}`
+        }
+      },
     }),
   ],
   hooks: {
