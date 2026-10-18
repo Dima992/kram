@@ -1,7 +1,7 @@
 'use client'
 
-import { NovaPoshtaSelect, type NPDelivery } from '@/components/NovaPoshtaSelect'
 import { Media } from '@/components/Media'
+import { NovaPoshtaSelect, type NPDelivery } from '@/components/NovaPoshtaSelect'
 import { Button } from '@/components/ui/button'
 import type { Cart, Media as MediaType, Variant } from '@/payload-types'
 import { useCart } from '@payloadcms/plugin-ecommerce/client/react'
@@ -574,4 +574,27 @@ export function UACheckoutPage() {
               </div>
 
               {mode === 'full' && payMethod === 'cod' && carrier === 'nova_poshta' && (
-                <div className="rounded-xl bg-amber-50 border
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 dark:bg-amber-950/30 dark:border-amber-900 dark:text-amber-300 space-y-1">
+                  <div className="font-semibold">{t.prepaymentNotice}</div>
+                  <div>
+                    {t.codNotice} <strong>{totalAmount - 200} ₴</strong>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {hasUnavailable && <p className="text-xs text-red-600">{t.unavailableLine}</p>}
+
+            <Button
+              type="submit"
+              disabled={isLoading || hasUnavailable}
+              className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-6 shadow-sm transition"
+            >
+              {mode === 'quick' ? t.btnQuickSubmit : t.btnSubmit}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </form>
+  )
+}
