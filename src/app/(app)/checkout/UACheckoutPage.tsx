@@ -1,5 +1,6 @@
 'use client'
 
+import { NovaPoshtaSelect, type NPDelivery } from '@/components/NovaPoshtaSelect'
 import { Media } from '@/components/Media'
 import { Button } from '@/components/ui/button'
 import type { Cart, Media as MediaType, Variant } from '@/payload-types'
@@ -37,6 +38,7 @@ const dictionary = {
     name: 'Ім’я',
     phone: 'Номер телефону',
     phoneRequired: 'Вкажіть номер телефону!',
+    npRequired: 'Оберіть місто та відділення Нової пошти',
     cartEmpty: 'Ваш кошик порожній.',
     goShop: 'Перейти до каталогу',
     cartTitle: 'Ваш кошик',
@@ -48,10 +50,6 @@ const dictionary = {
     delivery: '2. Спосіб доставки',
     np: 'Нова Пошта',
     ukr: 'Укрпошта',
-    city: 'Населений пункт',
-    cityPlaceholder: 'Введіть місто (наприклад, Вінниця)...',
-    warehouse: 'Відділення або поштомат',
-    warehouseSelect: 'Оберіть відділення...',
     postcode: 'Поштовий індекс (5 цифр)',
     address: 'Область, місто/село та адреса відділення',
     payment: '3. Спосіб оплати',
@@ -82,6 +80,7 @@ const dictionary = {
     name: 'Имя',
     phone: 'Номер телефона',
     phoneRequired: 'Укажите номер телефона!',
+    npRequired: 'Выберите город и отделение Новой почты',
     cartEmpty: 'Ваша корзина пуста.',
     goShop: 'Перейти в каталог',
     cartTitle: 'Ваша корзина',
@@ -93,10 +92,6 @@ const dictionary = {
     delivery: '2. Способ доставки',
     np: 'Новая Почта',
     ukr: 'Укрпочта',
-    city: 'Населенный пункт',
-    cityPlaceholder: 'Введите город (например, Винница)...',
-    warehouse: 'Отделение или почтомат',
-    warehouseSelect: 'Выберите отделение...',
     postcode: 'Почтовый индекс (5 цифр)',
     address: 'Область, город/село и адрес отделения',
     payment: '3. Способ оплаты',
@@ -193,8 +188,7 @@ export function UACheckoutPage() {
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  const [city, setCity] = useState('')
-  const [warehouse, setWarehouse] = useState('')
+  const [npDelivery, setNpDelivery] = useState<NPDelivery | null>(null)
   const [postcode, setPostcode] = useState('')
   const [address, setAddress] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -232,6 +226,10 @@ export function UACheckoutPage() {
       alert(t.phoneRequired)
       return
     }
+    if (carrier === 'nova_poshta' && !npDelivery) {
+      alert(t.npRequired)
+      return
+    }
     if (lines.length === 0 || hasUnavailable) {
       alert(t.unavailableLine)
       return
@@ -247,7 +245,7 @@ export function UACheckoutPage() {
           customerName: name || t.customerDefault,
           phone,
           deliveryCarrier: carrier,
-          deliveryDetails: { city, warehouse, postcode, address },
+          deliveryDetails: carrier === 'nova_poshta' ? npDelivery : { postcode, address },
           paymentMethod: payMethod,
           items: lines.map((line) => ({
             productId: line.productId,
@@ -451,30 +449,7 @@ export function UACheckoutPage() {
                 </div>
 
                 {carrier === 'nova_poshta' ? (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs font-medium">{t.city}</label>
-                      <input
-                        type="text"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        placeholder={t.cityPlaceholder}
-                        className="w-full mt-1 rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 text-sm outline-none dark:border-zinc-800 dark:bg-zinc-800/50"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium">{t.warehouse}</label>
-                      <select
-                        value={warehouse}
-                        onChange={(e) => setWarehouse(e.target.value)}
-                        className="w-full mt-1 rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 text-sm outline-none dark:border-zinc-800 dark:bg-zinc-800/50"
-                      >
-                        <option value="">{t.warehouseSelect}</option>
-                        <option value="1">Відділення №1: вул. Пирогова, 46</option>
-                        <option value="2">Поштомат №8492: вул. Соборна, 24</option>
-                      </select>
-                    </div>
-                  </div>
+                  <NovaPoshtaSelect onChange={setNpDelivery} />
                 ) : (
                   <div className="space-y-3">
                     <div>
@@ -599,27 +574,4 @@ export function UACheckoutPage() {
               </div>
 
               {mode === 'full' && payMethod === 'cod' && carrier === 'nova_poshta' && (
-                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 dark:bg-amber-950/30 dark:border-amber-900 dark:text-amber-300 space-y-1">
-                  <div className="font-semibold">{t.prepaymentNotice}</div>
-                  <div>
-                    {t.codNotice} <strong>{totalAmount - 200} ₴</strong>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {hasUnavailable && <p className="text-xs text-red-600">{t.unavailableLine}</p>}
-
-            <Button
-              type="submit"
-              disabled={isLoading || hasUnavailable}
-              className="w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-6 shadow-sm transition"
-            >
-              {mode === 'quick' ? t.btnQuickSubmit : t.btnSubmit}
-            </Button>
-          </div>
-        </div>
-      </div>
-    </form>
-  )
-}
+                <div className="rounded-xl bg-amber-50 border

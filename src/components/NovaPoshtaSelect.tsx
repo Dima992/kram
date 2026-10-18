@@ -5,8 +5,13 @@ import { useEffect, useState } from 'react';
 
 type City = { Ref: string; Present: string; DeliveryCity: string }
 type Warehouse = { Ref: string; Description: string; Number: string }
+export type NPDelivery = { city: string; warehouse: string }
 
-export function NovaPoshtaSelect() {
+type Props = {
+  onChange: (value: NPDelivery | null) => void
+}
+
+export function NovaPoshtaSelect({ onChange }: Props) {
   const [cityQuery, setCityQuery] = useState('')
   const [cities, setCities] = useState<City[]>([])
   const [selectedCity, setSelectedCity] = useState<City | null>(null)
@@ -65,6 +70,8 @@ export function NovaPoshtaSelect() {
           onChange={(e) => {
             setCityQuery(e.target.value)
             setSelectedCity(null)
+            setSelectedWarehouse('')
+            onChange(null)
           }}
           placeholder="Почніть вводити місто (наприклад, Вінниця)..."
           className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 text-sm outline-none transition focus:border-zinc-900 focus:bg-white dark:border-zinc-800 dark:bg-zinc-800/50 dark:focus:border-white"
@@ -79,6 +86,8 @@ export function NovaPoshtaSelect() {
                 onClick={() => {
                   setSelectedCity(city)
                   setCityQuery('')
+                  setSelectedWarehouse('')
+                  onChange(null)
                 }}
                 className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
@@ -96,7 +105,19 @@ export function NovaPoshtaSelect() {
           <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">Відділення або поштомат</label>
           <select
             value={selectedWarehouse}
-            onChange={(e) => setSelectedWarehouse(e.target.value)}
+            onChange={(e) => {
+              const ref = e.target.value
+              setSelectedWarehouse(ref)
+              const wh = warehouses.find((w) => w.Ref === ref)
+              if (selectedCity && wh) {
+                onChange({
+                  city: selectedCity.Present,
+                  warehouse: `№${wh.Number}: ${wh.Description}`,
+                })
+              } else {
+                onChange(null)
+              }
+            }}
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 text-sm outline-none transition focus:border-zinc-900 focus:bg-white dark:border-zinc-800 dark:bg-zinc-800/50 dark:focus:border-white"
           >
             <option value="">Оберіть відділення...</option>
