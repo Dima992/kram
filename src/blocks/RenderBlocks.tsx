@@ -1,15 +1,25 @@
-import { ArchiveBlock } from '@/blocks/ArchiveBlock/Component'
+import dynamic from 'next/dynamic'
+
 import { BannerBlock } from '@/blocks/Banner/Component'
 import { CallToActionBlock } from '@/blocks/CallToAction/Component'
-import { CarouselBlock } from '@/blocks/Carousel/Component'
 import { ContentBlock } from '@/blocks/Content/Component'
-import { FormBlock } from '@/blocks/Form/Component'
 import { MediaBlock } from '@/blocks/MediaBlock/Component'
-import { ThreeItemGridBlock } from '@/blocks/ThreeItemGrid/Component'
 import { toKebabCase } from '@/utilities/toKebabCase'
 import React, { Fragment } from 'react'
 
 import type { Page } from '../payload-types'
+
+// Тяжёлые блоки подгружаются только тогда, когда они есть на странице
+const ArchiveBlock = dynamic(() =>
+  import('@/blocks/ArchiveBlock/Component').then((m) => m.ArchiveBlock),
+)
+const CarouselBlock = dynamic(() =>
+  import('@/blocks/Carousel/Component').then((m) => m.CarouselBlock),
+)
+const FormBlock = dynamic(() => import('@/blocks/Form/Component').then((m) => m.FormBlock))
+const ThreeItemGridBlock = dynamic(() =>
+  import('@/blocks/ThreeItemGrid/Component').then((m) => m.ThreeItemGridBlock),
+)
 
 const blockComponents = {
   archive: ArchiveBlock,
