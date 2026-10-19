@@ -1,6 +1,5 @@
 import { AuthProvider } from '@/providers/Auth'
 import { EcommerceProvider } from '@payloadcms/plugin-ecommerce/client/react'
-import { stripeAdapterClient } from '@payloadcms/plugin-ecommerce/payments/stripe'
 import React from 'react'
 
 import { SonnerProvider } from '@/providers/Sonner'
@@ -10,7 +9,7 @@ import { ThemeProvider } from './Theme'
 export const Providers: React.FC<{
   children: React.ReactNode
   stripePublishableKey?: string
-}> = ({ children, stripePublishableKey = '' }) => {
+}> = ({ children }) => {
   return (
     <ThemeProvider>
       <AuthProvider>
@@ -43,11 +42,6 @@ export const Providers: React.FC<{
                 },
               },
             }}
-            paymentMethods={[
-              stripeAdapterClient({
-                publishableKey: stripePublishableKey,
-              }),
-            ]}
           >
             {children}
           </EcommerceProvider>
