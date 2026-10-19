@@ -1,14 +1,13 @@
-import configPromise from '@payload-config'
-import '@payloadcms/next/css'
-import './globals.css'
-import { handleServerFunctions, RootLayout } from '@payloadcms/next/layouts'
-import type { ReactNode } from 'react'
 import { Analytics } from '@/components/Analytics'
 import { Footer } from '@/components/Footer'
 import { Header } from '@/components/Header'
 import { Providers } from '@/providers'
 import { getCachedGlobal } from '@/utilities/getGlobals'
+import configPromise from '@payload-config'
+import { handleServerFunctions, RootLayout } from '@payloadcms/next/layouts'
+import type { ReactNode } from 'react'
 import { importMap } from '../(payload)/admin/importMap.js'
+import './globals.css'
 
 type Args = {
   children: ReactNode
