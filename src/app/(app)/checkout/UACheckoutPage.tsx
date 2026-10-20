@@ -53,7 +53,7 @@ const dictionary = {
     postcode: 'Поштовий індекс (5 цифр)',
     address: 'Область, місто/село та адреса відділення',
     patronymic: 'По батькові',
-    patronymicHint: 'Потрібно для Укрпошти. Можна заповнити пізніше, менеджер уточнить.',
+    patronymicHint: 'Необхідно для Укрпошти.',
     payment: '3. Спосіб оплати',
     liqpayTitle: 'Онлайн-оплата карткою / Apple Pay / Google Pay (LiqPay)',
     liqpayDesc: '100% предоплата без комісії за переказ',
@@ -97,7 +97,7 @@ const dictionary = {
     postcode: 'Почтовый индекс (5 цифр)',
     address: 'Область, город/село и адрес отделения',
     patronymic: 'Отчество',
-    patronymicHint: 'Нужно для Укрпочты. Можно заполнить позже, менеджер уточнит.',
+    patronymicHint: 'Необходимо для Укрпочты.',
     payment: '3. Способ оплаты',
     liqpayTitle: 'Онлайн-оплата картой / Apple Pay / Google Pay (LiqPay)',
     liqpayDesc: '100% предоплата без комиссии за перевод',
@@ -402,7 +402,7 @@ export function UACheckoutPage() {
             <>
               <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm space-y-4">
                 <h2 className="text-base font-semibold border-b border-zinc-100 dark:border-zinc-800 pb-3">{t.contacts}</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="text-xs font-medium">{t.name}</label>
                     <input
@@ -412,6 +412,23 @@ export function UACheckoutPage() {
                       placeholder="Олена"
                       className="w-full mt-1 rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 text-sm outline-none dark:border-zinc-800 dark:bg-zinc-800/50"
                     />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium">{t.patronymic}</label>
+                    <input
+                      type="text"
+                      value={patronymic}
+                      onChange={(e) => setPatronymic(e.target.value)}
+                      placeholder={lang === 'ua' ? 'Олександрівна' : 'Александровна'}
+                      className={`w-full mt-1 rounded-xl px-3.5 py-2.5 text-sm outline-none dark:bg-zinc-800/50 ${
+                        carrier === 'ukrposhta'
+                          ? 'border border-amber-400 bg-amber-50/50 dark:border-amber-700'
+                          : 'border border-zinc-200 bg-zinc-50/50 dark:border-zinc-800'
+                      }`}
+                    />
+                    {carrier === 'ukrposhta' && (
+                      <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">{t.patronymicHint}</p>
+                    )}
                   </div>
                   <div>
                     <label className="text-xs font-medium">{t.phone}</label>
@@ -481,24 +498,6 @@ export function UACheckoutPage() {
                     </div>
                   </div>
                 )}
-
-                <div>
-                  <label className="text-xs font-medium">{t.patronymic}</label>
-                  <input
-                    type="text"
-                    value={patronymic}
-                    onChange={(e) => setPatronymic(e.target.value)}
-                    placeholder={lang === 'ua' ? 'Олександрівна' : 'Александровна'}
-                    className={`w-full mt-1 rounded-xl px-3.5 py-2.5 text-sm outline-none dark:bg-zinc-800/50 ${
-                      carrier === 'ukrposhta'
-                        ? 'border border-amber-400 bg-amber-50/50 dark:border-amber-700'
-                        : 'border border-zinc-200 bg-zinc-50/50 dark:border-zinc-800'
-                    }`}
-                  />
-                  {carrier === 'ukrposhta' && (
-                    <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">{t.patronymicHint}</p>
-                  )}
-                </div>
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm space-y-4">
@@ -542,13 +541,13 @@ export function UACheckoutPage() {
                     }}
                     className={`flex items-start gap-3 rounded-xl border p-4 transition ${
                       carrier === 'ukrposhta'
-                        ? 'opacity-50 cursor-not-allowed border-zinc-200 bg-zinc-50'
+                        ? 'border-zinc-200 dark:border-zinc-800 cursor-default'
                         : payMethod === 'cod'
                           ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20 cursor-pointer'
                           : 'border-zinc-200 dark:border-zinc-800 cursor-pointer'
                     }`}
                   >
-                    <input type="radio" disabled={carrier === 'ukrposhta'} checked={payMethod === 'cod'} onChange={() => {}} className="mt-1 accent-emerald-600" />
+                    <input type="radio" checked={payMethod === 'cod'} onChange={() => {}} className="mt-1 accent-emerald-600" />
                     <div className="flex-1">
                       <div className="text-xs font-semibold">{t.codTitle}</div>
                       <div className="text-[11px] text-muted-foreground mt-0.5">
