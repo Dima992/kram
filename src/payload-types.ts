@@ -275,6 +275,7 @@ export interface Order {
   orderType?: ('full' | 'quick') | null;
   customerName?: string | null;
   phone?: string | null;
+  patronymic?: string | null;
   deliveryCarrier?: ('nova_poshta' | 'ukrposhta') | null;
   deliveryDetails?: {
     city?: string | null;
