@@ -1,6 +1,6 @@
-import type { CollectionConfig } from 'payload'
 import type { Order } from '@/payload-types'
 import { sendServerConversion } from '@/utilities/serverAnalytics'
+import type { CollectionConfig } from 'payload'
 
 export const Orders: CollectionConfig = {
   slug: 'orders',
@@ -49,6 +49,14 @@ export const Orders: CollectionConfig = {
       name: 'phone',
       type: 'text',
       label: 'Телефон',
+    },
+    {
+      name: 'patronymic',
+      type: 'text',
+      label: 'По батькові',
+      admin: {
+        description: 'Для Укрпошти. Може бути порожнім.',
+      },
     },
     {
       name: 'deliveryCarrier',

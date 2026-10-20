@@ -52,6 +52,8 @@ const dictionary = {
     ukr: 'Укрпошта',
     postcode: 'Поштовий індекс (5 цифр)',
     address: 'Область, місто/село та адреса відділення',
+    patronymic: 'По батькові',
+    patronymicHint: 'Потрібно для Укрпошти. Можна заповнити пізніше, менеджер уточнить.',
     payment: '3. Спосіб оплати',
     liqpayTitle: 'Онлайн-оплата карткою / Apple Pay / Google Pay (LiqPay)',
     liqpayDesc: '100% предоплата без комісії за переказ',
@@ -94,6 +96,8 @@ const dictionary = {
     ukr: 'Укрпочта',
     postcode: 'Почтовый индекс (5 цифр)',
     address: 'Область, город/село и адрес отделения',
+    patronymic: 'Отчество',
+    patronymicHint: 'Нужно для Укрпочты. Можно заполнить позже, менеджер уточнит.',
     payment: '3. Способ оплаты',
     liqpayTitle: 'Онлайн-оплата картой / Apple Pay / Google Pay (LiqPay)',
     liqpayDesc: '100% предоплата без комиссии за перевод',
@@ -191,6 +195,7 @@ export function UACheckoutPage() {
   const [npDelivery, setNpDelivery] = useState<NPDelivery | null>(null)
   const [postcode, setPostcode] = useState('')
   const [address, setAddress] = useState('')
+  const [patronymic, setPatronymic] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null)
   const [liqpayPayment, setLiqpayPayment] = useState<{
@@ -244,6 +249,7 @@ export function UACheckoutPage() {
           orderType: mode,
           customerName: name || t.customerDefault,
           phone,
+          patronymic,
           deliveryCarrier: carrier,
           deliveryDetails: carrier === 'nova_poshta' ? npDelivery : { postcode, address },
           paymentMethod: payMethod,
@@ -475,6 +481,24 @@ export function UACheckoutPage() {
                     </div>
                   </div>
                 )}
+
+                <div>
+                  <label className="text-xs font-medium">{t.patronymic}</label>
+                  <input
+                    type="text"
+                    value={patronymic}
+                    onChange={(e) => setPatronymic(e.target.value)}
+                    placeholder={lang === 'ua' ? 'Олександрівна' : 'Александровна'}
+                    className={`w-full mt-1 rounded-xl px-3.5 py-2.5 text-sm outline-none dark:bg-zinc-800/50 ${
+                      carrier === 'ukrposhta'
+                        ? 'border border-amber-400 bg-amber-50/50 dark:border-amber-700'
+                        : 'border border-zinc-200 bg-zinc-50/50 dark:border-zinc-800'
+                    }`}
+                  />
+                  {carrier === 'ukrposhta' && (
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">{t.patronymicHint}</p>
+                  )}
+                </div>
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm space-y-4">

@@ -75,6 +75,10 @@ export async function POST(req: Request) {
       return fail(messages.invalidOrder)
     }
 
+    // НОВОЕ: отчество необязательное, обрезаем пробелы и длину
+    const patronymic =
+      typeof body.patronymic === 'string' ? body.patronymic.trim().slice(0, 100) : ''
+
     const payload = await getPayload({ config: configPromise })
     const requestedItems = body.items as RequestedItem[]
 
@@ -177,6 +181,7 @@ export async function POST(req: Request) {
         orderType: body.orderType === 'quick' ? 'quick' : 'full',
         customerName: body.customerName,
         phone: body.phone,
+        patronymic: patronymic || undefined, // НОВОЕ: сохраняем отчество в заказ
         deliveryCarrier: body.deliveryCarrier,
         deliveryDetails: body.deliveryDetails,
         paymentMethod: body.paymentMethod,
@@ -220,6 +225,7 @@ export async function POST(req: Request) {
       const msg =
         `🔔 *НОВЕ ЗАМОВЛЕННЯ #${newOrder.id}*\n\n` +
         `👤 Клієнт: ${body.customerName}\n` +
+        (patronymic ? `👤 По батькові: ${patronymic}\n` : '') + // НОВОЕ: строка только если заполнено
         `📞 Тел: ${body.phone}\n` +
         `🚚 Доставка: ${body.deliveryCarrier === 'nova_poshta' ? 'Нова Пошта' : 'Укрпошта'}\n` +
         `🛍 Товари:\n${itemsText}\n` +
