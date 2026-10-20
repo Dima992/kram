@@ -12,7 +12,9 @@ import { getPayload } from 'payload'
 import type { Page } from '@/payload-types'
 import { notFound } from 'next/navigation'
 
-export const revalidate = 3600
+// Страница читает данные запроса (язык, режим черновика),
+// поэтому она динамическая. Кэш базы данных работает ниже, в unstable_cache.
+export const dynamic = 'force-dynamic'
 
 export async function generateStaticParams() {
   const payload = await getPayload({ config: configPromise })
