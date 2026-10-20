@@ -35,6 +35,7 @@ const dictionary = {
     modeQuick: 'Швидке замовлення в 1 клік',
     quickDesc: 'Вкажіть телефон, і менеджер уточнить усі деталі доставки.',
     contacts: '1. Контактні дані',
+    surname: 'Прізвище',
     name: 'Ім’я',
     phone: 'Номер телефону',
     phoneRequired: 'Вкажіть номер телефону!',
@@ -79,6 +80,7 @@ const dictionary = {
     modeQuick: 'Быстрый заказ в 1 клик',
     quickDesc: 'Укажите телефон, и менеджер уточнит все детали доставки.',
     contacts: '1. Контактные данные',
+    surname: 'Фамилия',
     name: 'Имя',
     phone: 'Номер телефона',
     phoneRequired: 'Укажите номер телефона!',
@@ -190,6 +192,7 @@ export function UACheckoutPage() {
   const [carrier, setCarrier] = useState<Carrier>('nova_poshta')
   const [payMethod, setPayMethod] = useState<PayMethod>('liqpay')
 
+  const [surname, setSurname] = useState('')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [npDelivery, setNpDelivery] = useState<NPDelivery | null>(null)
@@ -247,7 +250,8 @@ export function UACheckoutPage() {
         headers: { 'Content-Type': 'application/json', 'x-locale': lang },
         body: JSON.stringify({
           orderType: mode,
-          customerName: name || t.customerDefault,
+          surname: surname.trim(),
+          customerName: name.trim() || t.customerDefault,
           phone,
           patronymic,
           deliveryCarrier: carrier,
@@ -402,7 +406,21 @@ export function UACheckoutPage() {
             <>
               <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm space-y-4">
                 <h2 className="text-base font-semibold border-b border-zinc-100 dark:border-zinc-800 pb-3">{t.contacts}</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium">{t.surname}</label>
+                    <input
+                      type="text"
+                      value={surname}
+                      onChange={(e) => setSurname(e.target.value)}
+                      placeholder="Петренко"
+                      className={`w-full mt-1 rounded-xl px-3.5 py-2.5 text-sm outline-none dark:bg-zinc-800/50 ${
+                        carrier === 'ukrposhta'
+                          ? 'border border-amber-400 bg-amber-50/50 dark:border-amber-700'
+                          : 'border border-zinc-200 bg-zinc-50/50 dark:border-zinc-800'
+                      }`}
+                    />
+                  </div>
                   <div>
                     <label className="text-xs font-medium">{t.name}</label>
                     <input

@@ -273,6 +273,7 @@ export interface Order {
   currency?: ('UAH' | 'USD' | 'EUR') | null;
   status: OrderStatus;
   orderType?: ('full' | 'quick') | null;
+  surname?: string | null;
   customerName?: string | null;
   phone?: string | null;
   patronymic?: string | null;

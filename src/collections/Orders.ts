@@ -41,14 +41,14 @@ export const Orders: CollectionConfig = {
       },
     },
     {
+      name: 'surname',
+      type: 'text',
+      label: 'Прізвище',
+    },
+    {
       name: 'customerName',
       type: 'text',
       label: "Ім'я клієнта",
-    },
-    {
-      name: 'phone',
-      type: 'text',
-      label: 'Телефон',
     },
     {
       name: 'patronymic',
@@ -57,6 +57,11 @@ export const Orders: CollectionConfig = {
       admin: {
         description: 'Для Укрпошти. Може бути порожнім.',
       },
+    },
+    {
+      name: 'phone',
+      type: 'text',
+      label: 'Телефон',
     },
     {
       name: 'deliveryCarrier',

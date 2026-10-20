@@ -75,7 +75,9 @@ export async function POST(req: Request) {
       return fail(messages.invalidOrder)
     }
 
-    // НОВОЕ: отчество необязательное, обрезаем пробелы и длину
+    // Необязательные поля клиента: обрезаем пробелы и длину
+    const surname =
+      typeof body.surname === 'string' ? body.surname.trim().slice(0, 100) : ''
     const patronymic =
       typeof body.patronymic === 'string' ? body.patronymic.trim().slice(0, 100) : ''
 
@@ -179,9 +181,10 @@ export async function POST(req: Request) {
       data: {
         status: 'new',
         orderType: body.orderType === 'quick' ? 'quick' : 'full',
+        surname: surname || undefined, // НОВОЕ: фамилия
         customerName: body.customerName,
+        patronymic: patronymic || undefined, // отчество
         phone: body.phone,
-        patronymic: patronymic || undefined, // НОВОЕ: сохраняем отчество в заказ
         deliveryCarrier: body.deliveryCarrier,
         deliveryDetails: body.deliveryDetails,
         paymentMethod: body.paymentMethod,
@@ -222,10 +225,12 @@ export async function POST(req: Request) {
         )
         .join('\n')
 
+      const fullName = [surname, body.customerName].filter(Boolean).join(' ')
+
       const msg =
         `🔔 *НОВЕ ЗАМОВЛЕННЯ #${newOrder.id}*\n\n` +
-        `👤 Клієнт: ${body.customerName}\n` +
-        (patronymic ? `👤 По батькові: ${patronymic}\n` : '') + // НОВОЕ: строка только если заполнено
+        `👤 Клієнт: ${fullName}\n` +
+        (patronymic ? `👤 По батькові: ${patronymic}\n` : '') +
         `📞 Тел: ${body.phone}\n` +
         `🚚 Доставка: ${body.deliveryCarrier === 'nova_poshta' ? 'Нова Пошта' : 'Укрпошта'}\n` +
         `🛍 Товари:\n${itemsText}\n` +
