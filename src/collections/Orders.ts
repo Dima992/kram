@@ -69,8 +69,9 @@ export const Orders: CollectionConfig = {
       options: [
         { label: 'Нова Пошта', value: 'nova_poshta' },
         { label: 'Укрпошта', value: 'ukrposhta' },
+        { label: 'Адресна доставка', value: 'address' },
       ],
-      label: 'Перевізник',
+      label: 'Спосіб доставки',
     },
     {
       name: 'deliveryDetails',
@@ -81,6 +82,14 @@ export const Orders: CollectionConfig = {
         { name: 'postcode', type: 'text', label: 'Індекс (для Укрпошти)' },
         { name: 'address', type: 'text', label: 'Адреса (для Укрпошти)' },
       ],
+    },
+    {
+      name: 'comment',
+      type: 'textarea',
+      label: 'Коментар до замовлення',
+      admin: {
+        description: 'Побажання клієнта. При адресній доставці тут адреса. Може бути порожнім.',
+      },
     },
     {
       name: 'paymentMethod',

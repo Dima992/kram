@@ -9,6 +9,15 @@ type RequestedItem = {
   quantity: number
 }
 
+type Carrier = 'nova_poshta' | 'ukrposhta' | 'address'
+const carriers: Carrier[] = ['nova_poshta', 'ukrposhta', 'address']
+
+const carrierLabels: Record<Carrier, string> = {
+  nova_poshta: 'Нова Пошта',
+  ukrposhta: 'Укрпошта',
+  address: 'Адресна доставка',
+}
+
 const orderMessages = {
   uk: {
     invalidOrder: 'Некоректні товари або спосіб оплати.',
@@ -16,6 +25,9 @@ const orderMessages = {
     variantRequired: 'Оберіть колір і розмір товару.',
     variantUnavailable: 'Обраного варіанта немає в наявності.',
     invalidAmount: 'Сума замовлення недійсна.',
+    npRequired: 'Оберіть місто та відділення Нової пошти.',
+    ukrRequired: 'Вкажіть поштовий індекс (5 цифр) та адресу відділення Укрпошти.',
+    addressCommentRequired: 'Напишіть адресу доставки в коментарі.',
     failedCreate: 'Не вдалося створити замовлення.',
     genericError: 'Сталася помилка при створенні замовлення.',
   },
@@ -25,6 +37,9 @@ const orderMessages = {
     variantRequired: 'Выберите цвет и размер товара.',
     variantUnavailable: 'Выбранного варианта нет в наличии.',
     invalidAmount: 'Сумма заказа недействительна.',
+    npRequired: 'Выберите город и отделение Новой почты.',
+    ukrRequired: 'Укажите почтовый индекс (5 цифр) и адрес отделения Укрпочты.',
+    addressCommentRequired: 'Напишите адрес доставки в комментарии.',
     failedCreate: 'Не удалось создать заказ.',
     genericError: 'Произошла ошибка при создании заказа.',
   },
@@ -55,6 +70,15 @@ function isRequestedItem(item: unknown): item is RequestedItem {
   )
 }
 
+function isCarrier(value: unknown): value is Carrier {
+  return typeof value === 'string' && (carriers as string[]).includes(value)
+}
+
+// Экранирует символы Markdown в тексте клиента, чтобы Telegram не ломал сообщение
+function escapeMarkdown(text: string) {
+  return text.replace(/([_*`\[])/g, '\\$1')
+}
+
 export async function POST(req: Request) {
   const locale = getOrderLocale(req)
   const messages = orderMessages[locale]
@@ -75,11 +99,52 @@ export async function POST(req: Request) {
       return fail(messages.invalidOrder)
     }
 
+    const orderType: 'full' | 'quick' = body.orderType === 'quick' ? 'quick' : 'full'
+
     // Необязательные поля клиента: обрезаем пробелы и длину
     const surname =
       typeof body.surname === 'string' ? body.surname.trim().slice(0, 100) : ''
     const patronymic =
       typeof body.patronymic === 'string' ? body.patronymic.trim().slice(0, 100) : ''
+    const comment =
+      typeof body.comment === 'string' ? body.comment.trim().slice(0, 1000) : ''
+
+    // Проверка доставки. В быстром заказе доставки нет, там только телефон.
+    const carrier: Carrier | undefined = isCarrier(body.deliveryCarrier)
+      ? body.deliveryCarrier
+      : undefined
+    const details: Record<string, unknown> =
+      typeof body.deliveryDetails === 'object' && body.deliveryDetails !== null
+        ? (body.deliveryDetails as Record<string, unknown>)
+        : {}
+
+    let cleanDetails: Record<string, string> | undefined
+    let deliveryAddressText = ''
+
+    if (orderType === 'full') {
+      if (!carrier) return fail(messages.invalidOrder)
+
+      if (carrier === 'nova_poshta') {
+        const city = typeof details.city === 'string' ? details.city.trim() : ''
+        const warehouse = typeof details.warehouse === 'string' ? details.warehouse.trim() : ''
+        if (!city || !warehouse) return fail(messages.npRequired)
+        cleanDetails = { city, warehouse }
+        deliveryAddressText = `${city}, ${warehouse}`
+      }
+
+      if (carrier === 'ukrposhta') {
+        const postcode = typeof details.postcode === 'string' ? details.postcode.trim() : ''
+        const address = typeof details.address === 'string' ? details.address.trim() : ''
+        if (!/^\d{5}$/.test(postcode) || !address) return fail(messages.ukrRequired)
+        cleanDetails = { postcode, address }
+        deliveryAddressText = `${postcode}, ${address}`
+      }
+
+      if (carrier === 'address') {
+        if (!comment) return fail(messages.addressCommentRequired)
+        cleanDetails = undefined
+      }
+    }
 
     const payload = await getPayload({ config: configPromise })
     const requestedItems = body.items as RequestedItem[]
@@ -180,13 +245,14 @@ export async function POST(req: Request) {
       collection: 'orders',
       data: {
         status: 'new',
-        orderType: body.orderType === 'quick' ? 'quick' : 'full',
-        surname: surname || undefined, // НОВОЕ: фамилия
+        orderType,
+        surname: surname || undefined,
         customerName: body.customerName,
-        patronymic: patronymic || undefined, // отчество
+        patronymic: patronymic || undefined,
         phone: body.phone,
-        deliveryCarrier: body.deliveryCarrier,
-        deliveryDetails: body.deliveryDetails,
+        comment: comment || undefined,
+        deliveryCarrier: carrier,
+        deliveryDetails: cleanDetails,
         paymentMethod: body.paymentMethod,
         items: lines.map((line) => ({
           product: line.productID,
@@ -221,18 +287,21 @@ export async function POST(req: Request) {
       const itemsText = lines
         .map(
           (line) =>
-            `• ${line.title}${line.options ? ` (${line.options})` : ''} × ${line.quantity} — ${line.price * line.quantity} ₴`,
+            `• ${escapeMarkdown(line.title)}${line.options ? ` (${escapeMarkdown(line.options)})` : ''} × ${line.quantity} — ${line.price * line.quantity} ₴`,
         )
         .join('\n')
 
-      const fullName = [surname, body.customerName].filter(Boolean).join(' ')
+      const fullName = escapeMarkdown([surname, body.customerName].filter(Boolean).join(' '))
+      const carrierText = carrier ? carrierLabels[carrier] : 'Швидке замовлення'
 
       const msg =
         `🔔 *НОВЕ ЗАМОВЛЕННЯ #${newOrder.id}*\n\n` +
         `👤 Клієнт: ${fullName}\n` +
-        (patronymic ? `👤 По батькові: ${patronymic}\n` : '') +
+        (patronymic ? `👤 По батькові: ${escapeMarkdown(patronymic)}\n` : '') +
         `📞 Тел: ${body.phone}\n` +
-        `🚚 Доставка: ${body.deliveryCarrier === 'nova_poshta' ? 'Нова Пошта' : 'Укрпошта'}\n` +
+        `🚚 Доставка: ${carrierText}\n` +
+        (deliveryAddressText ? `📍 ${escapeMarkdown(deliveryAddressText)}\n` : '') +
+        (comment ? `💬 Коментар: ${escapeMarkdown(comment)}\n` : '') +
         `🛍 Товари:\n${itemsText}\n` +
         `💰 Сума: ${totalAmount} ₴`
 

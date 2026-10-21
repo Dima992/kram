@@ -7,13 +7,21 @@ import type { Cart, Media as MediaType, Variant } from '@/payload-types'
 import { useCart } from '@payloadcms/plugin-ecommerce/client/react'
 import { ArrowLeft, Building2, CreditCard, ShieldCheck, ShoppingBag, Zap } from 'lucide-react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 type Lang = 'ua' | 'ru'
 type Mode = 'full' | 'quick'
-type Carrier = 'nova_poshta' | 'ukrposhta'
+type Carrier = 'nova_poshta' | 'ukrposhta' | 'address'
 type PayMethod = 'liqpay' | 'iban' | 'cod'
 type CartItems = NonNullable<Cart['items']>
+type FieldErrors = {
+  phone?: boolean
+  np?: boolean
+  postcode?: boolean
+  address?: boolean
+  comment?: boolean
+}
 
 type CheckoutLine = {
   key: string
@@ -38,7 +46,7 @@ const dictionary = {
     surname: 'Прізвище',
     name: 'Ім’я',
     phone: 'Номер телефону',
-    phoneRequired: 'Вкажіть номер телефону!',
+    phoneRequired: 'Вкажіть номер телефону',
     npRequired: 'Оберіть місто та відділення Нової пошти',
     cartEmpty: 'Ваш кошик порожній.',
     goShop: 'Перейти до каталогу',
@@ -48,11 +56,16 @@ const dictionary = {
     customerDefault: 'Клієнт',
     orderError: 'Не вдалося створити замовлення.',
     orderSubmitError: 'Сталася помилка. Спробуйте ще раз.',
+    fillRequired: 'Заповніть позначені поля',
     delivery: '2. Спосіб доставки',
     np: 'Нова Пошта',
     ukr: 'Укрпошта',
+    addressTitle: 'Адресна доставка',
+    addressDesc: 'Менеджер уточнить вартість і деталі доставки. Адресу напишіть у коментарі.',
     postcode: 'Поштовий індекс (5 цифр)',
+    postcodeRequired: 'Вкажіть поштовий індекс (5 цифр)',
     address: 'Область, місто/село та адреса відділення',
+    addressRequired: 'Вкажіть адресу відділення',
     patronymic: 'По батькові',
     patronymicHint: 'Необхідно для Укрпошти.',
     payment: '3. Спосіб оплати',
@@ -63,8 +76,15 @@ const dictionary = {
     codTitle: 'Накладений платіж (Оплата при отриманні)',
     codDescNP: 'Предоплата 200 грн на карту/LiqPay (покриття доставки), решта при отриманні.',
     codDescUkr: 'Для Укрпошти накладений платіж недоступний. Оберіть 100% предоплату.',
+    codDescAddress: 'Для адресної доставки накладений платіж недоступний. Оберіть 100% предоплату.',
+    commentLabel: 'Коментар до замовлення',
+    commentPlaceholder: 'Побажання, наприклад: зручний час дзвінка після 11:00',
+    commentAddressHint:
+      'Напишіть повну адресу доставки (місто, вулиця, будинок, квартира) і зручну службу: Нова пошта або Укрпошта.',
+    commentRequiredAddress: 'Напишіть адресу доставки в коментарі',
     orderSummary: 'Ваше замовлення',
     total: 'Всього до сплати',
+    deliveryNote: 'Доставка оплачується окремо за тарифом перевізника',
     prepaymentNotice: 'До сплати зараз (Предоплата): 200 ₴',
     codNotice: 'Залишок при отриманні у НП: ',
     btnSubmit: 'Підтвердити замовлення',
@@ -83,7 +103,7 @@ const dictionary = {
     surname: 'Фамилия',
     name: 'Имя',
     phone: 'Номер телефона',
-    phoneRequired: 'Укажите номер телефона!',
+    phoneRequired: 'Укажите номер телефона',
     npRequired: 'Выберите город и отделение Новой почты',
     cartEmpty: 'Ваша корзина пуста.',
     goShop: 'Перейти в каталог',
@@ -93,11 +113,16 @@ const dictionary = {
     customerDefault: 'Клиент',
     orderError: 'Не удалось создать заказ.',
     orderSubmitError: 'Произошла ошибка. Попробуйте еще раз.',
+    fillRequired: 'Заполните отмеченные поля',
     delivery: '2. Способ доставки',
     np: 'Новая Почта',
     ukr: 'Укрпочта',
+    addressTitle: 'Адресная доставка',
+    addressDesc: 'Менеджер уточнит стоимость и детали доставки. Адрес напишите в комментарии.',
     postcode: 'Почтовый индекс (5 цифр)',
+    postcodeRequired: 'Укажите почтовый индекс (5 цифр)',
     address: 'Область, город/село и адрес отделения',
+    addressRequired: 'Укажите адрес отделения',
     patronymic: 'Отчество',
     patronymicHint: 'Необходимо для Укрпочты.',
     payment: '3. Способ оплаты',
@@ -108,8 +133,15 @@ const dictionary = {
     codTitle: 'Наложенный платеж (Оплата при получении)',
     codDescNP: 'Предоплата 200 грн на карту/LiqPay (покрытие доставки), остаток при получении.',
     codDescUkr: 'Для Укрпочты наложенный платеж недоступен. Выберите 100% предоплату.',
+    codDescAddress: 'Для адресной доставки наложенный платеж недоступен. Выберите 100% предоплату.',
+    commentLabel: 'Комментарий к заказу',
+    commentPlaceholder: 'Пожелания, например: удобное время звонка после 11:00',
+    commentAddressHint:
+      'Напишите полный адрес доставки (город, улица, дом, квартира) и удобную службу: Новая почта или Укрпочта.',
+    commentRequiredAddress: 'Напишите адрес доставки в комментарии',
     orderSummary: 'Ваш заказ',
     total: 'Всего к оплате',
+    deliveryNote: 'Доставка оплачивается отдельно по тарифу перевозчика',
     prepaymentNotice: 'К оплате сейчас (Предоплата): 200 ₴',
     codNotice: 'Остаток при получении на НП: ',
     btnSubmit: 'Подтвердить заказ',
@@ -119,6 +151,11 @@ const dictionary = {
     payLiqpay: 'Перейти к оплате LiqPay',
   },
 }
+
+const fieldBase = 'w-full mt-1 rounded-xl px-3.5 py-2.5 text-sm outline-none'
+const fieldNormal = 'border border-zinc-200 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-800/50'
+const fieldHighlight = 'border border-red-400 bg-red-50/60 dark:border-red-700 dark:bg-red-950/20'
+const fieldClass = (highlight: boolean) => `${fieldBase} ${highlight ? fieldHighlight : fieldNormal}`
 
 function buildLines(items: CartItems): CheckoutLine[] {
   return items.flatMap((item, index) => {
@@ -187,7 +224,11 @@ export function UACheckoutPage() {
   const cartApi = useCart() as ReturnType<typeof useCart> & { clearCart?: () => Promise<unknown> }
   const { cart } = cartApi
 
-  const [lang, setLang] = useState<Lang>('ua')
+  // Язык берём из адреса страницы, как переключатель в шапке: /ru/... или обычный адрес (украинский)
+  const pathname = usePathname()
+  const lang: Lang = pathname === '/ru' || pathname.startsWith('/ru/') ? 'ru' : 'ua'
+  const t = dictionary[lang]
+
   const [mode, setMode] = useState<Mode>('full')
   const [carrier, setCarrier] = useState<Carrier>('nova_poshta')
   const [payMethod, setPayMethod] = useState<PayMethod>('liqpay')
@@ -195,10 +236,15 @@ export function UACheckoutPage() {
   const [surname, setSurname] = useState('')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [patronymic, setPatronymic] = useState('')
   const [npDelivery, setNpDelivery] = useState<NPDelivery | null>(null)
+  const [npLoadError, setNpLoadError] = useState(false)
   const [postcode, setPostcode] = useState('')
   const [address, setAddress] = useState('')
-  const [patronymic, setPatronymic] = useState('')
+  const [comment, setComment] = useState('')
+
+  const [errors, setErrors] = useState<FieldErrors>({})
+  const [formError, setFormError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null)
   const [liqpayPayment, setLiqpayPayment] = useState<{
@@ -207,7 +253,6 @@ export function UACheckoutPage() {
     checkoutUrl: string
   } | null>(null)
 
-  const t = dictionary[lang]
   const lines = buildLines((cart?.items || []) as CartItems)
   const hasUnavailable = lines.some((line) => !line.available)
   const totalAmount = lines.reduce(
@@ -220,29 +265,53 @@ export function UACheckoutPage() {
     if (returnedOrderId) setCreatedOrderId(returnedOrderId)
   }, [])
 
+  const clearError = (key: keyof FieldErrors) =>
+    setErrors((current) => (current[key] ? { ...current, [key]: false } : current))
+
   const handleCarrierChange = (newCarrier: Carrier) => {
     setCarrier(newCarrier)
-    if (newCarrier === 'ukrposhta' && payMethod === 'cod') {
+    setErrors({})
+    setFormError(null)
+    setNpLoadError(false)
+    if (newCarrier !== 'nova_poshta' && payMethod === 'cod') {
       setPayMethod('liqpay')
     }
   }
 
+  const validate = (): FieldErrors => {
+    const found: FieldErrors = {}
+    if (!phone.trim()) found.phone = true
+    if (mode === 'full') {
+      if (carrier === 'nova_poshta' && !npDelivery) {
+        found.np = true
+        if (npLoadError) found.comment = true
+      }
+      if (carrier === 'ukrposhta') {
+        if (postcode.trim().length !== 5) found.postcode = true
+        if (!address.trim()) found.address = true
+      }
+      if (carrier === 'address' && !comment.trim()) found.comment = true
+    }
+    return found
+  }
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    setFormError(null)
 
-    if (!phone) {
-      alert(t.phoneRequired)
-      return
-    }
-    if (carrier === 'nova_poshta' && !npDelivery) {
-      alert(t.npRequired)
-      return
-    }
     if (lines.length === 0 || hasUnavailable) {
-      alert(t.unavailableLine)
+      setFormError(t.unavailableLine)
       return
     }
 
+    const found = validate()
+    setErrors(found)
+    if (Object.keys(found).length > 0) {
+      setFormError(t.fillRequired)
+      return
+    }
+
+    const isQuick = mode === 'quick'
     setIsLoading(true)
     try {
       const response = await fetch('/api/orders/create', {
@@ -254,8 +323,15 @@ export function UACheckoutPage() {
           customerName: name.trim() || t.customerDefault,
           phone,
           patronymic,
-          deliveryCarrier: carrier,
-          deliveryDetails: carrier === 'nova_poshta' ? npDelivery : { postcode, address },
+          comment: comment.trim(),
+          deliveryCarrier: isQuick ? 'nova_poshta' : carrier,
+          deliveryDetails: isQuick
+            ? null
+            : carrier === 'nova_poshta'
+              ? npDelivery
+              : carrier === 'ukrposhta'
+                ? { postcode, address }
+                : {},
           paymentMethod: payMethod,
           items: lines.map((line) => ({
             productId: line.productId,
@@ -275,7 +351,7 @@ export function UACheckoutPage() {
       await cartApi.clearCart?.()
     } catch (error) {
       console.error('Не вдалося оформити замовлення:', error)
-      alert(error instanceof Error ? error.message : t.orderSubmitError)
+      setFormError(error instanceof Error ? error.message : t.orderSubmitError)
     } finally {
       setIsLoading(false)
     }
@@ -316,6 +392,8 @@ export function UACheckoutPage() {
     )
   }
 
+  const commentHighlight = Boolean(errors.comment) || npLoadError
+
   return (
     <form
       onSubmit={handleSubmit}
@@ -325,27 +403,8 @@ export function UACheckoutPage() {
         <Link href="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> {t.back}
         </Link>
-
-        <div className="flex items-center gap-4">
-          <div className="flex gap-1 rounded-lg border border-zinc-200 dark:border-zinc-800 p-1 bg-zinc-50 dark:bg-zinc-900 text-xs">
-            <button
-              type="button"
-              onClick={() => setLang('ua')}
-              className={`px-2.5 py-1 rounded-md transition ${lang === 'ua' ? 'bg-white dark:bg-zinc-800 font-bold shadow-sm' : 'text-zinc-500'}`}
-            >
-              UA
-            </button>
-            <button
-              type="button"
-              onClick={() => setLang('ru')}
-              className={`px-2.5 py-1 rounded-md transition ${lang === 'ru' ? 'bg-white dark:bg-zinc-800 font-bold shadow-sm' : 'text-zinc-500'}`}
-            >
-              RU
-            </button>
-          </div>
-          <div className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
-            <ShieldCheck className="h-4 w-4" /> {t.secure}
-          </div>
+        <div className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+          <ShieldCheck className="h-4 w-4" /> {t.secure}
         </div>
       </div>
 
@@ -354,7 +413,9 @@ export function UACheckoutPage() {
           type="button"
           onClick={() => setMode('full')}
           className={`flex-1 py-3 px-4 rounded-xl text-xs font-semibold border transition ${
-            mode === 'full' ? 'border-zinc-900 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900'
+            mode === 'full'
+              ? 'border-zinc-900 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900'
+              : 'border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900'
           }`}
         >
           {t.modeFull}
@@ -363,7 +424,9 @@ export function UACheckoutPage() {
           type="button"
           onClick={() => setMode('quick')}
           className={`flex-1 py-3 px-4 rounded-xl text-xs font-semibold border flex items-center justify-center gap-1.5 transition ${
-            mode === 'quick' ? 'border-amber-500 bg-amber-500 text-white' : 'border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900'
+            mode === 'quick'
+              ? 'border-amber-500 bg-amber-500 text-white'
+              : 'border-zinc-200 bg-white text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900'
           }`}
         >
           <Zap className="h-4 w-4 fill-current" /> {t.modeQuick}
@@ -387,7 +450,7 @@ export function UACheckoutPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Олена"
-                    className="w-full mt-1 rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm outline-none dark:border-zinc-800 dark:bg-zinc-900"
+                    className={fieldClass(false)}
                   />
                 </div>
                 <div>
@@ -395,9 +458,23 @@ export function UACheckoutPage() {
                   <input
                     type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => {
+                      setPhone(e.target.value)
+                      clearError('phone')
+                    }}
                     placeholder="+380 (97) 000-00-00"
-                    className="w-full mt-1 rounded-xl border border-zinc-200 bg-white px-3.5 py-2.5 text-sm outline-none dark:border-zinc-800 dark:bg-zinc-900"
+                    className={fieldClass(Boolean(errors.phone))}
+                  />
+                  {errors.phone && <p className="text-xs font-medium text-red-600 mt-1">{t.phoneRequired}</p>}
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{t.commentLabel}</label>
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder={t.commentPlaceholder}
+                    rows={3}
+                    className={`${fieldClass(false)} resize-y`}
                   />
                 </div>
               </div>
@@ -405,7 +482,9 @@ export function UACheckoutPage() {
           ) : (
             <>
               <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm space-y-4">
-                <h2 className="text-base font-semibold border-b border-zinc-100 dark:border-zinc-800 pb-3">{t.contacts}</h2>
+                <h2 className="text-base font-semibold border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                  {t.contacts}
+                </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-medium">{t.surname}</label>
@@ -414,11 +493,7 @@ export function UACheckoutPage() {
                       value={surname}
                       onChange={(e) => setSurname(e.target.value)}
                       placeholder="Петренко"
-                      className={`w-full mt-1 rounded-xl px-3.5 py-2.5 text-sm outline-none dark:bg-zinc-800/50 ${
-                        carrier === 'ukrposhta'
-                          ? 'border border-amber-400 bg-amber-50/50 dark:border-amber-700'
-                          : 'border border-zinc-200 bg-zinc-50/50 dark:border-zinc-800'
-                      }`}
+                      className={fieldClass(carrier === 'ukrposhta')}
                     />
                   </div>
                   <div>
@@ -428,7 +503,7 @@ export function UACheckoutPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Олена"
-                      className="w-full mt-1 rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 text-sm outline-none dark:border-zinc-800 dark:bg-zinc-800/50"
+                      className={fieldClass(false)}
                     />
                   </div>
                   <div>
@@ -438,93 +513,133 @@ export function UACheckoutPage() {
                       value={patronymic}
                       onChange={(e) => setPatronymic(e.target.value)}
                       placeholder={lang === 'ua' ? 'Олександрівна' : 'Александровна'}
-                      className={`w-full mt-1 rounded-xl px-3.5 py-2.5 text-sm outline-none dark:bg-zinc-800/50 ${
-                        carrier === 'ukrposhta'
-                          ? 'border border-amber-400 bg-amber-50/50 dark:border-amber-700'
-                          : 'border border-zinc-200 bg-zinc-50/50 dark:border-zinc-800'
-                      }`}
+                      className={fieldClass(carrier === 'ukrposhta')}
                     />
                     {carrier === 'ukrposhta' && (
-                      <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">{t.patronymicHint}</p>
+                      <p className="text-[11px] text-red-600 mt-1">{t.patronymicHint}</p>
                     )}
                   </div>
                   <div>
-                    <label className="text-xs font-medium">{t.phone}</label>
+                    <label className="text-xs font-medium">{t.phone} *</label>
                     <input
                       type="tel"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => {
+                        setPhone(e.target.value)
+                        clearError('phone')
+                      }}
                       placeholder="+380 (97) 000-00-00"
-                      className="w-full mt-1 rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 text-sm outline-none dark:border-zinc-800 dark:bg-zinc-800/50"
+                      className={fieldClass(Boolean(errors.phone))}
                     />
+                    {errors.phone && <p className="text-xs font-medium text-red-600 mt-1">{t.phoneRequired}</p>}
                   </div>
                 </div>
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm space-y-4">
-                <h2 className="text-base font-semibold border-b border-zinc-100 dark:border-zinc-800 pb-3">{t.delivery}</h2>
+                <h2 className="text-base font-semibold border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                  {t.delivery}
+                </h2>
 
-                <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="grid grid-cols-3 gap-2 mb-4">
                   <button
                     type="button"
                     onClick={() => handleCarrierChange('nova_poshta')}
                     className={`flex items-center justify-center gap-2 rounded-xl p-3 text-xs font-semibold border transition ${
                       carrier === 'nova_poshta'
-                        ? 'border-red-500 bg-red-50 text-red-600 dark:bg-red-950/30'
+                        ? 'border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900'
                         : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
                     }`}
                   >
-                    <div className="h-2 w-2 rounded-full bg-red-500" /> {t.np}
+                    {t.np}
                   </button>
                   <button
                     type="button"
                     onClick={() => handleCarrierChange('ukrposhta')}
                     className={`flex items-center justify-center gap-2 rounded-xl p-3 text-xs font-semibold border transition ${
                       carrier === 'ukrposhta'
-                        ? 'border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-950/30'
+                        ? 'border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900'
                         : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
                     }`}
                   >
-                    <div className="h-2 w-2 rounded-full bg-amber-500" /> {t.ukr}
+                    {t.ukr}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCarrierChange('address')}
+                    className={`flex items-center justify-center gap-2 rounded-xl p-3 text-xs font-semibold border transition ${
+                      carrier === 'address'
+                        ? 'border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900'
+                        : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
+                    }`}
+                  >
+                    {t.addressTitle}
                   </button>
                 </div>
 
-                {carrier === 'nova_poshta' ? (
-                  <NovaPoshtaSelect onChange={setNpDelivery} />
-                ) : (
+                {carrier === 'nova_poshta' && (
+                  <>
+                    <NovaPoshtaSelect
+                      lang={lang}
+                      onChange={(value) => {
+                        setNpDelivery(value)
+                        clearError('np')
+                      }}
+                      onError={setNpLoadError}
+                    />
+                    {errors.np && <p className="text-xs font-medium text-red-600">{t.npRequired}</p>}
+                  </>
+                )}
+
+                {carrier === 'ukrposhta' && (
                   <div className="space-y-3">
                     <div>
                       <label className="text-xs font-medium">{t.postcode}</label>
                       <input
                         type="text"
+                        inputMode="numeric"
                         maxLength={5}
                         value={postcode}
-                        onChange={(e) => setPostcode(e.target.value.replace(/\D/g, ''))}
+                        onChange={(e) => {
+                          setPostcode(e.target.value.replace(/\D/g, ''))
+                          clearError('postcode')
+                        }}
                         placeholder="21000"
-                        className="w-full mt-1 rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 text-sm outline-none dark:border-zinc-800 dark:bg-zinc-800/50"
+                        className={fieldClass(Boolean(errors.postcode))}
                       />
+                      {errors.postcode && <p className="text-xs font-medium text-red-600 mt-1">{t.postcodeRequired}</p>}
                     </div>
                     <div>
                       <label className="text-xs font-medium">{t.address}</label>
                       <input
                         type="text"
                         value={address}
-                        onChange={(e) => setAddress(e.target.value)}
+                        onChange={(e) => {
+                          setAddress(e.target.value)
+                          clearError('address')
+                        }}
                         placeholder="Вінницька обл., м. Вінниця, вул. Соборна, 1"
-                        className="w-full mt-1 rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 text-sm outline-none dark:border-zinc-800 dark:bg-zinc-800/50"
+                        className={fieldClass(Boolean(errors.address))}
                       />
+                      {errors.address && <p className="text-xs font-medium text-red-600 mt-1">{t.addressRequired}</p>}
                     </div>
                   </div>
                 )}
+
+                {carrier === 'address' && <p className="text-xs text-muted-foreground">{t.addressDesc}</p>}
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm space-y-4">
-                <h2 className="text-base font-semibold border-b border-zinc-100 dark:border-zinc-800 pb-3">{t.payment}</h2>
+                <h2 className="text-base font-semibold border-b border-zinc-100 dark:border-zinc-800 pb-3">
+                  {t.payment}
+                </h2>
                 <div className="space-y-3">
                   <label
                     onClick={() => setPayMethod('liqpay')}
                     className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition ${
-                      payMethod === 'liqpay' ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20' : 'border-zinc-200 dark:border-zinc-800'
+                      payMethod === 'liqpay'
+                        ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20'
+                        : 'border-zinc-200 dark:border-zinc-800'
                     }`}
                   >
                     <input type="radio" checked={payMethod === 'liqpay'} onChange={() => {}} className="mt-1 accent-emerald-600" />
@@ -540,7 +655,9 @@ export function UACheckoutPage() {
                   <label
                     onClick={() => setPayMethod('iban')}
                     className={`flex items-start gap-3 rounded-xl border p-4 cursor-pointer transition ${
-                      payMethod === 'iban' ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20' : 'border-zinc-200 dark:border-zinc-800'
+                      payMethod === 'iban'
+                        ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20'
+                        : 'border-zinc-200 dark:border-zinc-800'
                     }`}
                   >
                     <input type="radio" checked={payMethod === 'iban'} onChange={() => {}} className="mt-1 accent-emerald-600" />
@@ -558,8 +675,8 @@ export function UACheckoutPage() {
                       if (carrier === 'nova_poshta') setPayMethod('cod')
                     }}
                     className={`flex items-start gap-3 rounded-xl border p-4 transition ${
-                      carrier === 'ukrposhta'
-                        ? 'border-zinc-200 dark:border-zinc-800 cursor-default'
+                      carrier !== 'nova_poshta'
+                        ? 'border-zinc-200 dark:border-zinc-800 cursor-default opacity-60'
                         : payMethod === 'cod'
                           ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20 cursor-pointer'
                           : 'border-zinc-200 dark:border-zinc-800 cursor-pointer'
@@ -569,11 +686,33 @@ export function UACheckoutPage() {
                     <div className="flex-1">
                       <div className="text-xs font-semibold">{t.codTitle}</div>
                       <div className="text-[11px] text-muted-foreground mt-0.5">
-                        {carrier === 'nova_poshta' ? t.codDescNP : t.codDescUkr}
+                        {carrier === 'nova_poshta'
+                          ? t.codDescNP
+                          : carrier === 'ukrposhta'
+                            ? t.codDescUkr
+                            : t.codDescAddress}
                       </div>
                     </div>
                   </label>
                 </div>
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm space-y-3">
+                <label className="text-sm font-semibold">{t.commentLabel}</label>
+                <textarea
+                  value={comment}
+                  onChange={(e) => {
+                    setComment(e.target.value)
+                    clearError('comment')
+                  }}
+                  placeholder={t.commentPlaceholder}
+                  rows={3}
+                  className={`${fieldClass(commentHighlight)} resize-y`}
+                />
+                {carrier === 'address' && <p className="text-xs text-muted-foreground">{t.commentAddressHint}</p>}
+                {errors.comment && carrier === 'address' && (
+                  <p className="text-xs font-medium text-red-600">{t.commentRequiredAddress}</p>
+                )}
               </div>
             </>
           )}
@@ -613,6 +752,7 @@ export function UACheckoutPage() {
                 <span>{t.total}</span>
                 <span>{totalAmount} ₴</span>
               </div>
+              <p className="text-[11px] text-muted-foreground">{t.deliveryNote}</p>
 
               {mode === 'full' && payMethod === 'cod' && carrier === 'nova_poshta' && (
                 <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 dark:bg-amber-950/30 dark:border-amber-900 dark:text-amber-300 space-y-1">
@@ -625,6 +765,7 @@ export function UACheckoutPage() {
             </div>
 
             {hasUnavailable && <p className="text-xs text-red-600">{t.unavailableLine}</p>}
+            {formError && <p className="text-xs font-medium text-red-600">{formError}</p>}
 
             <Button
               type="submit"

@@ -277,13 +277,14 @@ export interface Order {
   customerName?: string | null;
   phone?: string | null;
   patronymic?: string | null;
-  deliveryCarrier?: ('nova_poshta' | 'ukrposhta') | null;
+  deliveryCarrier?: ('nova_poshta' | 'ukrposhta' | 'address') | null;
   deliveryDetails?: {
     city?: string | null;
     warehouse?: string | null;
     postcode?: string | null;
     address?: string | null;
   };
+  comment?: string | null;
   paymentMethod?: ('liqpay' | 'iban' | 'cod') | null;
   totalAmount?: number | null;
   accessToken?: string | null;
@@ -2098,6 +2099,7 @@ export interface OrdersSelect<T extends boolean = true> {
   customerName?: T;
   phone?: T;
   deliveryCarrier?: T;
+  comment?: T;
   deliveryDetails?:
     | T
     | {
