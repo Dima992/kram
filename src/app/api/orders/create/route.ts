@@ -26,7 +26,7 @@ const orderMessages = {
     variantUnavailable: 'Обраного варіанта немає в наявності.',
     invalidAmount: 'Сума замовлення недійсна.',
     npRequired: 'Оберіть місто та відділення Нової пошти.',
-    ukrRequired: 'Вкажіть поштовий індекс (5 цифр) та адресу відділення Укрпошти.',
+    ukrRequired: 'Оберіть населений пункт і відділення Укрпошти.',
     addressCommentRequired: 'Напишіть адресу доставки в коментарі.',
     failedCreate: 'Не вдалося створити замовлення.',
     genericError: 'Сталася помилка при створенні замовлення.',
@@ -38,7 +38,7 @@ const orderMessages = {
     variantUnavailable: 'Выбранного варианта нет в наличии.',
     invalidAmount: 'Сумма заказа недействительна.',
     npRequired: 'Выберите город и отделение Новой почты.',
-    ukrRequired: 'Укажите почтовый индекс (5 цифр) и адрес отделения Укрпочты.',
+    ukrRequired: 'Выберите населенный пункт и отделение Укрпочты.',
     addressCommentRequired: 'Напишите адрес доставки в комментарии.',
     failedCreate: 'Не удалось создать заказ.',
     genericError: 'Произошла ошибка при создании заказа.',
@@ -132,12 +132,12 @@ export async function POST(req: Request) {
         deliveryAddressText = `${city}, ${warehouse}`
       }
 
-      if (carrier === 'ukrposhta') {
-        const postcode = typeof details.postcode === 'string' ? details.postcode.trim() : ''
-        const address = typeof details.address === 'string' ? details.address.trim() : ''
-        if (!/^\d{5}$/.test(postcode) || !address) return fail(messages.ukrRequired)
-        cleanDetails = { postcode, address }
-        deliveryAddressText = `${postcode}, ${address}`
+        if (carrier === 'ukrposhta') {
+        const city = typeof details.city === 'string' ? details.city.trim() : ''
+        const warehouse = typeof details.warehouse === 'string' ? details.warehouse.trim() : ''
+        if (!city || !warehouse) return fail(messages.ukrRequired)
+        cleanDetails = { city, warehouse }
+        deliveryAddressText = `${city}, ${warehouse}`
       }
 
       if (carrier === 'address') {

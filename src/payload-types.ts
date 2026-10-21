@@ -2268,6 +2268,7 @@ export interface SiteSetting {
   liqpayPublicKey?: string | null;
   liqpayPrivateKey?: string | null;
   novaPoshtaApiKey?: string | null;
+  ukrposhtaApiToken?: string | null;
   stripeSecretKey?: string | null;
   stripePublishableKey?: string | null;
   stripeWebhookSecret?: string | null;
@@ -2356,6 +2357,7 @@ export interface SiteSettingsSelect<T extends boolean = true> {
   liqpayPublicKey?: T;
   liqpayPrivateKey?: T;
   novaPoshtaApiKey?: T;
+  ukrposhtaApiToken?: T;
   stripeSecretKey?: T;
   stripePublishableKey?: T;
   stripeWebhookSecret?: T;

@@ -2,6 +2,7 @@
 
 import { Media } from '@/components/Media'
 import { NovaPoshtaSelect, type NPDelivery } from '@/components/NovaPoshtaSelect'
+import { UkrposhtaSelect, type UPDelivery } from '@/components/UkrposhtaSelect'
 import { Button } from '@/components/ui/button'
 import type { Cart, Media as MediaType, Variant } from '@/payload-types'
 import { useCart } from '@payloadcms/plugin-ecommerce/client/react'
@@ -18,8 +19,7 @@ type CartItems = NonNullable<Cart['items']>
 type FieldErrors = {
   phone?: boolean
   np?: boolean
-  postcode?: boolean
-  address?: boolean
+  up?: boolean
   comment?: boolean
 }
 
@@ -48,6 +48,7 @@ const dictionary = {
     phone: 'Номер телефону',
     phoneRequired: 'Вкажіть номер телефону',
     npRequired: 'Оберіть місто та відділення Нової пошти',
+    upRequired: 'Оберіть населений пункт і відділення Укрпошти',
     cartEmpty: 'Ваш кошик порожній.',
     goShop: 'Перейти до каталогу',
     cartTitle: 'Ваш кошик',
@@ -62,10 +63,6 @@ const dictionary = {
     ukr: 'Укрпошта',
     addressTitle: 'Адресна доставка',
     addressDesc: 'Менеджер уточнить вартість і деталі доставки. Адресу напишіть у коментарі.',
-    postcode: 'Поштовий індекс (5 цифр)',
-    postcodeRequired: 'Вкажіть поштовий індекс (5 цифр)',
-    address: 'Область, місто/село та адреса відділення',
-    addressRequired: 'Вкажіть адресу відділення',
     patronymic: 'По батькові',
     patronymicHint: 'Необхідно для Укрпошти.',
     payment: '3. Спосіб оплати',
@@ -82,6 +79,8 @@ const dictionary = {
     commentAddressHint:
       'Напишіть повну адресу доставки (місто, вулиця, будинок, квартира) і зручну службу: Нова пошта або Укрпошта.',
     commentRequiredAddress: 'Напишіть адресу доставки в коментарі',
+    commentLoadError:
+      'Не вдалося завантажити відділення. Напишіть у коментарі місто та номер відділення.',
     orderSummary: 'Ваше замовлення',
     total: 'Всього до сплати',
     deliveryNote: 'Доставка оплачується окремо за тарифом перевізника',
@@ -105,6 +104,7 @@ const dictionary = {
     phone: 'Номер телефона',
     phoneRequired: 'Укажите номер телефона',
     npRequired: 'Выберите город и отделение Новой почты',
+    upRequired: 'Выберите населенный пункт и отделение Укрпочты',
     cartEmpty: 'Ваша корзина пуста.',
     goShop: 'Перейти в каталог',
     cartTitle: 'Ваша корзина',
@@ -119,10 +119,6 @@ const dictionary = {
     ukr: 'Укрпочта',
     addressTitle: 'Адресная доставка',
     addressDesc: 'Менеджер уточнит стоимость и детали доставки. Адрес напишите в комментарии.',
-    postcode: 'Почтовый индекс (5 цифр)',
-    postcodeRequired: 'Укажите почтовый индекс (5 цифр)',
-    address: 'Область, город/село и адрес отделения',
-    addressRequired: 'Укажите адрес отделения',
     patronymic: 'Отчество',
     patronymicHint: 'Необходимо для Укрпочты.',
     payment: '3. Способ оплаты',
@@ -139,6 +135,8 @@ const dictionary = {
     commentAddressHint:
       'Напишите полный адрес доставки (город, улица, дом, квартира) и удобную службу: Новая почта или Укрпочта.',
     commentRequiredAddress: 'Напишите адрес доставки в комментарии',
+    commentLoadError:
+      'Не удалось загрузить отделения. Напишите в комментарии город и номер отделения.',
     orderSummary: 'Ваш заказ',
     total: 'Всего к оплате',
     deliveryNote: 'Доставка оплачивается отдельно по тарифу перевозчика',
@@ -239,8 +237,8 @@ export function UACheckoutPage() {
   const [patronymic, setPatronymic] = useState('')
   const [npDelivery, setNpDelivery] = useState<NPDelivery | null>(null)
   const [npLoadError, setNpLoadError] = useState(false)
-  const [postcode, setPostcode] = useState('')
-  const [address, setAddress] = useState('')
+  const [upDelivery, setUpDelivery] = useState<UPDelivery | null>(null)
+  const [upLoadError, setUpLoadError] = useState(false)
   const [comment, setComment] = useState('')
 
   const [errors, setErrors] = useState<FieldErrors>({})
@@ -273,6 +271,7 @@ export function UACheckoutPage() {
     setErrors({})
     setFormError(null)
     setNpLoadError(false)
+    setUpLoadError(false)
     if (newCarrier !== 'nova_poshta' && payMethod === 'cod') {
       setPayMethod('liqpay')
     }
@@ -286,9 +285,9 @@ export function UACheckoutPage() {
         found.np = true
         if (npLoadError) found.comment = true
       }
-      if (carrier === 'ukrposhta') {
-        if (postcode.trim().length !== 5) found.postcode = true
-        if (!address.trim()) found.address = true
+      if (carrier === 'ukrposhta' && !upDelivery) {
+        found.up = true
+        if (upLoadError) found.comment = true
       }
       if (carrier === 'address' && !comment.trim()) found.comment = true
     }
@@ -330,7 +329,7 @@ export function UACheckoutPage() {
             : carrier === 'nova_poshta'
               ? npDelivery
               : carrier === 'ukrposhta'
-                ? { postcode, address }
+                ? upDelivery
                 : {},
           paymentMethod: payMethod,
           items: lines.map((line) => ({
@@ -392,7 +391,7 @@ export function UACheckoutPage() {
     )
   }
 
-  const commentHighlight = Boolean(errors.comment) || npLoadError
+  const commentHighlight = Boolean(errors.comment) || npLoadError || upLoadError
 
   return (
     <form
@@ -592,38 +591,17 @@ export function UACheckoutPage() {
                 )}
 
                 {carrier === 'ukrposhta' && (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="text-xs font-medium">{t.postcode}</label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={5}
-                        value={postcode}
-                        onChange={(e) => {
-                          setPostcode(e.target.value.replace(/\D/g, ''))
-                          clearError('postcode')
-                        }}
-                        placeholder="21000"
-                        className={fieldClass(Boolean(errors.postcode))}
-                      />
-                      {errors.postcode && <p className="text-xs font-medium text-red-600 mt-1">{t.postcodeRequired}</p>}
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium">{t.address}</label>
-                      <input
-                        type="text"
-                        value={address}
-                        onChange={(e) => {
-                          setAddress(e.target.value)
-                          clearError('address')
-                        }}
-                        placeholder="Вінницька обл., м. Вінниця, вул. Соборна, 1"
-                        className={fieldClass(Boolean(errors.address))}
-                      />
-                      {errors.address && <p className="text-xs font-medium text-red-600 mt-1">{t.addressRequired}</p>}
-                    </div>
-                  </div>
+                  <>
+                    <UkrposhtaSelect
+                      lang={lang}
+                      onChange={(value) => {
+                        setUpDelivery(value)
+                        clearError('up')
+                      }}
+                      onError={setUpLoadError}
+                    />
+                    {errors.up && <p className="text-xs font-medium text-red-600">{t.upRequired}</p>}
+                  </>
                 )}
 
                 {carrier === 'address' && <p className="text-xs text-muted-foreground">{t.addressDesc}</p>}
@@ -709,6 +687,9 @@ export function UACheckoutPage() {
                   rows={3}
                   className={`${fieldClass(commentHighlight)} resize-y`}
                 />
+                {(npLoadError || upLoadError) && (
+                  <p className="text-xs font-medium text-red-600">{t.commentLoadError}</p>
+                )}
                 {carrier === 'address' && <p className="text-xs text-muted-foreground">{t.commentAddressHint}</p>}
                 {errors.comment && carrier === 'address' && (
                   <p className="text-xs font-medium text-red-600">{t.commentRequiredAddress}</p>

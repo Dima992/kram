@@ -100,8 +100,19 @@ export const SiteSettings: GlobalConfig = {
           ],
         },
         {
-          label: 'Доставка (Нова Пошта)',
-          fields: [{ name: 'novaPoshtaApiKey', type: 'text', label: 'Нова Пошта API Key' }],
+          label: 'Доставка',
+          fields: [
+            { name: 'novaPoshtaApiKey', type: 'text', label: 'Нова Пошта API Key' },
+            {
+              name: 'ukrposhtaApiToken',
+              type: 'text',
+              label: 'Укрпошта: токен API (eCom)',
+              admin: {
+                description:
+                  'Вставте лише значення токена, без слова Bearer. Використовується для списку відділень Укрпошти.',
+              },
+            },
+          ],
         },
         {
           label: 'Оплата (Stripe)',
