@@ -81,7 +81,6 @@ export interface Config {
     'supplier-imports': SupplierImport;
     'supplier-import-jobs': SupplierImportJob;
     'api-keys': ApiKey;
-    'ai-agents': AIAgent;
     forms: Form;
     'form-submissions': FormSubmission;
     addresses: Address;
@@ -120,7 +119,6 @@ export interface Config {
     'supplier-imports': SupplierImportsSelect<false> | SupplierImportsSelect<true>;
     'supplier-import-jobs': SupplierImportJobsSelect<false> | SupplierImportJobsSelect<true>;
     'api-keys': ApiKeysSelect<false> | ApiKeysSelect<true>;
-    'ai-agents': AIAgentsSelect<false> | AIAgentsSelect<true>;
     forms: FormsSelect<false> | FormsSelect<true>;
     'form-submissions': FormSubmissionsSelect<false> | FormSubmissionsSelect<true>;
     addresses: AddressesSelect<false> | AddressesSelect<true>;
@@ -144,13 +142,13 @@ export interface Config {
     header: Header;
     footer: Footer;
     'site-settings': SiteSetting;
-    'ai-settings': AISetting;
+    settings: Setting;
   };
   globalsSelect: {
     header: HeaderSelect<false> | HeaderSelect<true>;
     footer: FooterSelect<false> | FooterSelect<true>;
     'site-settings': SiteSettingsSelect<false> | SiteSettingsSelect<true>;
-    'ai-settings': AISettingsSelect<false> | AISettingsSelect<true>;
+    settings: SettingsSelect<false> | SettingsSelect<true>;
   };
   locale: 'uk' | 'ru';
   widgets: {
@@ -275,8 +273,11 @@ export interface Order {
   orderType?: ('full' | 'quick') | null;
   surname?: string | null;
   customerName?: string | null;
-  phone?: string | null;
+  /**
+   * Для Укрпошти. Може бути порожнім.
+   */
   patronymic?: string | null;
+  phone?: string | null;
   deliveryCarrier?: ('nova_poshta' | 'ukrposhta' | 'address') | null;
   deliveryDetails?: {
     city?: string | null;
@@ -284,6 +285,9 @@ export interface Order {
     postcode?: string | null;
     address?: string | null;
   };
+  /**
+   * Побажання клієнта. При адресній доставці тут адреса. Може бути порожнім.
+   */
   comment?: string | null;
   paymentMethod?: ('liqpay' | 'iban' | 'cod') | null;
   totalAmount?: number | null;
@@ -390,7 +394,7 @@ export interface Product {
  */
 export interface Media {
   id: string;
-  alt: string;
+  alt?: string | null;
   caption?: {
     root: {
       type: string;
@@ -675,30 +679,6 @@ export interface Category {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ai-agents".
- */
-export interface AIAgent {
-  id: string;
-  name: string;
-  systemKey?: string | null;
-  isActive?: boolean | null;
-  agentType?: ('catalog' | 'search' | 'consultant' | 'owner') | null;
-  categories?: (string | Category)[] | null;
-  systemPrompt?: string | null;
-  knowledgeBase?: string | null;
-  defaultQuestions?:
-    | {
-        question: string;
-        id?: string | null;
-      }[]
-    | null;
-  provider?: ('gemini' | 'openai') | null;
-  model?: string | null;
-  updatedAt?: string | null;
-  createdAt?: string | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "CarouselBlock".
  */
 export interface CarouselBlock {
@@ -974,10 +954,82 @@ export interface Variant {
   priceInUSD?: number | null;
   priceInEUREnabled?: boolean | null;
   priceInEUR?: number | null;
+  /**
+   * Необов’язково. Якщо порожньо, використовується ціна товару.
+   */
+  basePrice?: number | null;
+  baseCurrency?: ('UAH' | 'USD' | 'EUR') | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
+}
+/**
+ * Імпорт товарів із файлів і фідів Google Merchant. Для кожного джерела можна зберегти окремий профіль.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "import-sources".
+ */
+export interface ImportSource {
+  id: string;
+  name: string;
+  sourceKey: string;
+  /**
+   * Валюта ціни за замовчуванням, якщо у файлі немає окремої колонки.
+   */
+  defaultCurrency: 'UAH' | 'USD' | 'EUR';
+  /**
+   * Постійне HTTPS-посилання на CSV/XLSX-файл або XML-фід Google Merchant. Залиште порожнім, якщо завантажуєте файли вручну.
+   */
+  supplierFeedURL?: string | null;
+  /**
+   * Увімкніть автоматичне завантаження за розкладом Vercel Cron.
+   */
+  autoImportEnabled?: boolean | null;
+  /**
+   * На вашому поточному тарифі Hobby автоматичний запуск можливий лише раз на день. Для запуску кожні 4 години потрібен Vercel Pro.
+   */
+  autoImportFrequency?: ('daily' | 'every4hours') | null;
+  /**
+   * Залиште порожнім, якщо посилання не потребує авторизації.
+   */
+  supplierUsername?: string | null;
+  /**
+   * Доступний лише адміністраторам. Якщо можна, використовуйте окреме посилання-токен.
+   */
+  supplierPassword?: string | null;
+  /**
+   * Необов’язковий Bearer-токен для захищених посилань.
+   */
+  supplierBearerToken?: string | null;
+  lastImportAt?: string | null;
+  lastImportStatus?: ('idle' | 'running' | 'success' | 'error') | null;
+  lastImportMessage?: string | null;
+  skuColumn: string;
+  titleColumn: string;
+  priceColumn: string;
+  descriptionColumn?: string | null;
+  currencyColumn?: string | null;
+  inventoryColumn?: string | null;
+  imageColumn?: string | null;
+  brandColumn?: string | null;
+  gtinColumn?: string | null;
+  mpnColumn?: string | null;
+  categoryColumn?: string | null;
+  /**
+   * Роздільник для CSV/TSV. Для Excel-файлів це налаштування не потрібне.
+   */
+  delimiter?: ('auto' | ',' | ';' | '\t') | null;
+  /**
+   * Кодування CSV/TSV-файлів. Для Excel-файлів це налаштування не потрібне.
+   */
+  encoding?: ('utf-8' | 'windows-1251' | 'utf-16le') | null;
+  /**
+   * Якщо вимкнено, нові товари буде створено як чернетки для перевірки. Оновлення не змінює статус наявних товарів.
+   */
+  publishImportedProducts?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1150,83 +1202,40 @@ export interface Feed {
   createdAt: string;
 }
 /**
- * Імпорт товарів із файлів і фідів Google Merchant. Для кожного джерела можна зберегти окремий профіль.
+ * Вхідні товари зберігаються окремо. Після перевірки встановіть статус «Одобрен» — тоді товар буде створено або оновлено в каталозі.
  *
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "import-sources".
- */
-export interface ImportSource {
-  id: string;
-  name: string;
-  sourceKey: string;
-  /**
-   * Валюта ціни за замовчуванням, якщо у файлі немає окремої колонки.
-   */
-  defaultCurrency: 'UAH' | 'USD' | 'EUR';
-  /**
-   * Постійне HTTPS-посилання на CSV/XLSX-файл або XML-фід Google Merchant. Залиште порожнім, якщо завантажуєте файли вручну.
-   */
-  supplierFeedURL?: string | null;
-  /**
-   * Увімкніть автоматичне завантаження за розкладом Vercel Cron.
-   */
-  autoImportEnabled?: boolean | null;
-  /**
-   * На вашому поточному тарифі Hobby автоматичний запуск можливий лише раз на день. Для запуску кожні 4 години потрібен Vercel Pro.
-   */
-  autoImportFrequency?: ('daily' | 'every4hours') | null;
-  /**
-   * Залиште порожнім, якщо посилання не потребує авторизації.
-   */
-  supplierUsername?: string | null;
-  /**
-   * Доступний лише адміністраторам. Якщо можна, використовуйте окреме посилання-токен.
-   */
-  supplierPassword?: string | null;
-  /**
-   * Необов’язковий Bearer-токен для захищених посилань.
-   */
-  supplierBearerToken?: string | null;
-  lastImportAt?: string | null;
-  lastImportStatus?: ('idle' | 'running' | 'success' | 'error') | null;
-  lastImportMessage?: string | null;
-  skuColumn: string;
-  titleColumn: string;
-  priceColumn: string;
-  descriptionColumn?: string | null;
-  currencyColumn?: string | null;
-  inventoryColumn?: string | null;
-  imageColumn?: string | null;
-  brandColumn?: string | null;
-  gtinColumn?: string | null;
-  mpnColumn?: string | null;
-  categoryColumn?: string | null;
-  /**
-   * Роздільник для CSV/TSV. Для Excel-файлів це налаштування не потрібне.
-   */
-  delimiter?: ('auto' | ',' | ';' | '\t') | null;
-  /**
-   * Кодування CSV/TSV-файлів. Для Excel-файлів це налаштування не потрібне.
-   */
-  encoding?: ('utf-8' | 'windows-1251' | 'utf-16le') | null;
-  /**
-   * Якщо вимкнено, нові товари буде створено як чернетки для перевірки. Оновлення не змінює статус наявних товарів.
-   */
-  publishImportedProducts?: boolean | null;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the definition "supplier-imports".
+ * via the `definition` "supplier-imports".
  */
 export interface SupplierImport {
   id: string;
   sourceType: 'file' | 'url' | 'telegram';
   supplierRef: string | ImportSource;
   sourceRecordKey: string;
-  rawPayload: unknown;
-  mappedData?: unknown;
+  /**
+   * Оригінальні дані джерела; не змінюються AI-маппером.
+   */
+  rawPayload:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Переклади, SEO та нормалізовані поля товару.
+   */
+  mappedData?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   mappingStatus: 'queued' | 'processing' | 'completed' | 'failed';
   mappingError?: string | null;
   product?: (string | null) | Product;
@@ -1236,13 +1245,21 @@ export interface SupplierImport {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the definition "supplier-import-jobs".
+ * via the `definition` "supplier-import-jobs".
  */
 export interface SupplierImportJob {
   id: string;
   supplierRef: string | ImportSource;
   sourceType: 'file' | 'url' | 'telegram';
-  rows: unknown;
+  rows:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   nextIndex: number;
   status: 'queued' | 'processing' | 'completed';
   totalRows: number;
@@ -1328,6 +1345,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'import-sources';
         value: string | ImportSource;
+      } | null)
+    | ({
+        relationTo: 'supplier-imports';
+        value: string | SupplierImport;
+      } | null)
+    | ({
+        relationTo: 'supplier-import-jobs';
+        value: string | SupplierImportJob;
       } | null)
     | ({
         relationTo: 'api-keys';
@@ -1628,29 +1653,6 @@ export interface CategoriesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ai-agents_select".
- */
-export interface AIAgentsSelect<T extends boolean = true> {
-  name?: T;
-  systemKey?: T;
-  isActive?: T;
-  agentType?: T;
-  categories?: T;
-  systemPrompt?: T;
-  knowledgeBase?: T;
-  defaultQuestions?:
-    | T
-    | {
-        question?: T;
-        id?: T;
-      };
-  provider?: T;
-  model?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
@@ -1724,7 +1726,7 @@ export interface ImportSourcesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the definition "supplier-imports_select".
+ * via the `definition` "supplier-imports_select".
  */
 export interface SupplierImportsSelect<T extends boolean = true> {
   sourceType?: T;
@@ -1741,7 +1743,7 @@ export interface SupplierImportsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the definition "supplier-import-jobs_select".
+ * via the `definition` "supplier-import-jobs_select".
  */
 export interface SupplierImportJobsSelect<T extends boolean = true> {
   supplierRef?: T;
@@ -1951,6 +1953,8 @@ export interface VariantsSelect<T extends boolean = true> {
   priceInUSD?: T;
   priceInEUREnabled?: T;
   priceInEUR?: T;
+  basePrice?: T;
+  baseCurrency?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
@@ -2096,10 +2100,11 @@ export interface OrdersSelect<T extends boolean = true> {
   currency?: T;
   status?: T;
   orderType?: T;
+  surname?: T;
   customerName?: T;
+  patronymic?: T;
   phone?: T;
   deliveryCarrier?: T;
-  comment?: T;
   deliveryDetails?:
     | T
     | {
@@ -2108,6 +2113,7 @@ export interface OrdersSelect<T extends boolean = true> {
         postcode?: T;
         address?: T;
       };
+  comment?: T;
   paymentMethod?: T;
   totalAmount?: T;
   accessToken?: T;
@@ -2268,10 +2274,22 @@ export interface SiteSetting {
   liqpayPublicKey?: string | null;
   liqpayPrivateKey?: string | null;
   novaPoshtaApiKey?: string | null;
+  /**
+   * Вставте лише значення токена, без слова Bearer. Використовується для списку відділень Укрпошти.
+   */
   ukrposhtaApiToken?: string | null;
   stripeSecretKey?: string | null;
   stripePublishableKey?: string | null;
   stripeWebhookSecret?: string | null;
+  /**
+   * Оновлюється автоматично раз на день.
+   */
+  usdRate?: number | null;
+  /**
+   * Оновлюється автоматично раз на день.
+   */
+  eurRate?: number | null;
+  ratesUpdatedAt?: string | null;
   /**
    * Основна адреса магазину (наприклад, https://example.com). Використовується для посилань товарів і фідів.
    */
@@ -2284,13 +2302,45 @@ export interface SiteSetting {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ai-settings".
+ * via the `definition` "settings".
  */
-export interface AISetting {
+export interface Setting {
   id: string;
-  aiEnabled?: boolean | null;
-  geminiApiKey?: string | null;
-  openaiApiKey?: string | null;
+  siteName: string;
+  aiSettings?: {
+    /**
+     * Choose your preferred AI provider.
+     */
+    aiProvider?: ('openai' | 'gemini' | 'anthropic') | null;
+    /**
+     * This is your API key for the selected AI provider. It grants access to AI services. Please refer to your AI provider's documentation for instructions on how to obtain this key.
+     */
+    apiKey?: string | null;
+    /**
+     * The system prompt for the Catalog Agent, used for generating product texts, slugs, and working with categories.
+     */
+    catalogAgentPrompt?: string | null;
+    /**
+     * The system prompt for the Search Agent, used for frontend search and product recommendations.
+     */
+    searchAgentPrompt?: string | null;
+    /**
+     * Enable or disable AI-powered features across the site.
+     */
+    aiEnabled?: boolean | null;
+    /**
+     * General information about the store (payment, delivery, warranty, contacts, return policy) used by ALL AI agents.
+     */
+    generalKnowledgeBase?: string | null;
+    /**
+     * System prompt for the Main Search Agent, used when no specific category agent is active.
+     */
+    mainSearchAgentPrompt?: string | null;
+    /**
+     * System prompt for the Business Owner / Analytics Agent, providing advice on assortment, marketing, and conversion.
+     */
+    ownerAgentPrompt?: string | null;
+  };
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -2361,6 +2411,9 @@ export interface SiteSettingsSelect<T extends boolean = true> {
   stripeSecretKey?: T;
   stripePublishableKey?: T;
   stripeWebhookSecret?: T;
+  usdRate?: T;
+  eurRate?: T;
+  ratesUpdatedAt?: T;
   siteURL?: T;
   siteName?: T;
   companyName?: T;
@@ -2371,12 +2424,22 @@ export interface SiteSettingsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "ai-settings_select".
+ * via the `definition` "settings_select".
  */
-export interface AISettingsSelect<T extends boolean = true> {
-  aiEnabled?: T;
-  geminiApiKey?: T;
-  openaiApiKey?: T;
+export interface SettingsSelect<T extends boolean = true> {
+  siteName?: T;
+  aiSettings?:
+    | T
+    | {
+        aiProvider?: T;
+        apiKey?: T;
+        catalogAgentPrompt?: T;
+        searchAgentPrompt?: T;
+        aiEnabled?: T;
+        generalKnowledgeBase?: T;
+        mainSearchAgentPrompt?: T;
+        ownerAgentPrompt?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;

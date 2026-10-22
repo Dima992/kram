@@ -19,20 +19,16 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 
 import { ApiKeys } from '@/collections/ApiKeys'
-import { AIAgents, builtInAIAgents } from '@/collections/AIAgents'
 import { Categories } from '@/collections/Categories'
-import { CategoryAgents } from '@/collections/CategoryAgents'
 import { Feeds } from '@/collections/Feeds'
 import { ImportSources } from '@/collections/ImportSources'
-import { SupplierImports } from '@/collections/SupplierImports'
-import { SupplierImportJobs } from '@/collections/SupplierImportJobs'
 import { Media } from '@/collections/Media'
 import { Pages } from '@/collections/Pages'
+import { SupplierImportJobs } from '@/collections/SupplierImportJobs'
+import { SupplierImports } from '@/collections/SupplierImports'
 import { Users } from '@/collections/Users'
-import OwnerAgentChatWidget from '@/components/admin/OwnerAgentChatWidget'
 import { Footer } from '@/globals/Footer'
 import { Header } from '@/globals/Header'
-import { AISettings } from '@/globals/AISettings'
 import { Settings } from '@/globals/Settings'
 import { SiteSettings } from '@/globals/SiteSettings'
 import { plugins } from './plugins'
@@ -41,39 +37,10 @@ const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 export default buildConfig({
-  onInit: async (payload) => {
-    for (const agent of builtInAIAgents) {
-      const existingAgent = await payload.find({
-        collection: 'ai-agents',
-        depth: 0,
-        limit: 1,
-        overrideAccess: true,
-        where: {
-          systemKey: {
-            equals: agent.systemKey,
-          },
-        },
-      })
-
-      if (existingAgent.docs.length === 0) {
-        await payload.create({
-          collection: 'ai-agents',
-          data: {
-            ...agent,
-            isActive: true,
-            provider: 'gemini',
-            model: 'gemini-2.5-flash',
-          },
-          overrideAccess: true,
-        })
-      }
-    }
-  },
   admin: {
     components: {
       beforeLogin: ['@/components/BeforeLogin#BeforeLogin'],
       beforeDashboard: ['@/components/BeforeDashboard#BeforeDashboard'],
-      afterDashboard: [OwnerAgentChatWidget as any],
     },
     user: Users.slug,
   },
@@ -110,8 +77,6 @@ export default buildConfig({
     SupplierImports,
     SupplierImportJobs,
     ApiKeys,
-    CategoryAgents,
-    AIAgents,
   ],
   db: mongooseAdapter({
     url: process.env.DATABASE_URI || '',
@@ -152,7 +117,7 @@ export default buildConfig({
     },
   }),
   endpoints: [],
-  globals: [Header, Footer, SiteSettings, Settings, AISettings],
+  globals: [Header, Footer, SiteSettings, Settings],
   plugins: [
     ...plugins,
     s3Storage({
