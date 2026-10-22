@@ -146,6 +146,21 @@ export const SiteSettings: GlobalConfig = {
           ],
         },
         {
+          label: 'Логотип',
+          fields: [
+            {
+              name: 'logo',
+              type: 'upload',
+              relationTo: 'media',
+              label: 'Логотип сайту',
+              admin: {
+                description:
+                  'Необов’язково. Краще 400–600 пікселів завширшки, PNG або WebP. Якщо поле порожнє, показується стандартний логотип.',
+              },
+            },
+          ],
+        },
+        {
           label: 'Інше',
           fields: [
             {

@@ -3,10 +3,11 @@ import { Cart } from '@/components/Cart'
 import { OpenCartButton } from '@/components/Cart/OpenCart'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { CMSLink } from '@/components/Link'
+import { Media } from '@/components/Media'
 import Link from 'next/link'
 import { Suspense } from 'react'
 
-import type { Header } from 'src/payload-types'
+import type { Header, Media as MediaType } from 'src/payload-types'
 import { MobileMenu } from './MobileMenu'
 
 import { LogoIcon } from '@/components/icons/logo'
@@ -15,9 +16,10 @@ import { usePathname } from 'next/navigation'
 
 type Props = {
   header: Header
+  logo?: MediaType | null
 }
 
-export function HeaderClient({ header }: Props) {
+export function HeaderClient({ header, logo }: Props) {
   const menu = header.navItems || []
   const pathname = usePathname()
 
@@ -32,7 +34,11 @@ export function HeaderClient({ header }: Props) {
         <div className="flex w-full items-end justify-between">
           <div className="flex w-full items-end gap-6 md:w-1/3">
             <Link className="flex w-full items-center justify-center pt-4 pb-4 md:w-auto" href="/">
-              <LogoIcon className="w-6 h-auto" />
+              {logo ? (
+                <Media resource={logo} imgClassName="h-8 w-auto" />
+              ) : (
+                <LogoIcon className="w-6 h-auto" />
+              )}
             </Link>
             {menu.length ? (
               <ul className="hidden gap-4 text-sm md:flex md:items-center">

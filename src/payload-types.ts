@@ -2291,6 +2291,10 @@ export interface SiteSetting {
   eurRate?: number | null;
   ratesUpdatedAt?: string | null;
   /**
+   * Необов’язково. Краще 400–600 пікселів завширшки, PNG або WebP. Якщо поле порожнє, показується стандартний логотип.
+   */
+  logo?: (string | null) | Media;
+  /**
    * Основна адреса магазину (наприклад, https://example.com). Використовується для посилань товарів і фідів.
    */
   siteURL?: string | null;
@@ -2414,6 +2418,7 @@ export interface SiteSettingsSelect<T extends boolean = true> {
   usdRate?: T;
   eurRate?: T;
   ratesUpdatedAt?: T;
+  logo?: T;
   siteURL?: T;
   siteName?: T;
   companyName?: T;
