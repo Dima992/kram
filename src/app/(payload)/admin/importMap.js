@@ -18,9 +18,9 @@ import { MetaImageComponent as MetaImageComponent_a8a977ebc872c5d5ea7ee689724c08
 import { MetaDescriptionComponent as MetaDescriptionComponent_a8a977ebc872c5d5ea7ee689724c0860 } from '@payloadcms/plugin-seo/client'
 import { PreviewComponent as PreviewComponent_a8a977ebc872c5d5ea7ee689724c0860 } from '@payloadcms/plugin-seo/client'
 import { SlugField as SlugField_2b8867833a34864a02ddf429b0728a40 } from '@payloadcms/next/client'
+import { SupplierImportDashboard } from '@/components/admin/SupplierImportDashboard'
 import { ProductTransfer as ProductTransfer_b101d1677d0adb8e3aa73abeb8dd1e09 } from '@/components/BeforeDashboard/ProductTransfer'
 import { ImportSourceAction as ImportSourceAction_a20177eebc248e87eaf31955fadcf6cf } from '@/components/BeforeDashboard/ImportSourceAction'
-import { SupplierImportDashboard as SupplierImportDashboard_761db51eba2666fe6b7117509967c065 } from '@/components/admin/SupplierImportDashboard'
 import { VariantOptionsSelector as VariantOptionsSelector_b91672ccd6e8b071c11142ab941fedfb } from '@payloadcms/plugin-ecommerce/rsc'
 import { PriceCell as PriceCell_e27bf7b8cc50640dcdd584767b8eac3c } from '@payloadcms/plugin-ecommerce/client'
 import { PriceInput as PriceInput_b91672ccd6e8b071c11142ab941fedfb } from '@payloadcms/plugin-ecommerce/rsc'
@@ -53,9 +53,9 @@ export const importMap = {
   "@payloadcms/plugin-seo/client#MetaDescriptionComponent": MetaDescriptionComponent_a8a977ebc872c5d5ea7ee689724c0860,
   "@payloadcms/plugin-seo/client#PreviewComponent": PreviewComponent_a8a977ebc872c5d5ea7ee689724c0860,
   "@payloadcms/next/client#SlugField": SlugField_2b8867833a34864a02ddf429b0728a40,
+  "@/components/admin/SupplierImportDashboard#SupplierImportDashboard": SupplierImportDashboard,
   "@/components/BeforeDashboard/ProductTransfer#ProductTransfer": ProductTransfer_b101d1677d0adb8e3aa73abeb8dd1e09,
   "@/components/BeforeDashboard/ImportSourceAction#ImportSourceAction": ImportSourceAction_a20177eebc248e87eaf31955fadcf6cf,
-  "@/components/admin/SupplierImportDashboard#SupplierImportDashboard": SupplierImportDashboard_761db51eba2666fe6b7117509967c065,
   "@payloadcms/plugin-ecommerce/rsc#VariantOptionsSelector": VariantOptionsSelector_b91672ccd6e8b071c11142ab941fedfb,
   "@payloadcms/plugin-ecommerce/client#PriceCell": PriceCell_e27bf7b8cc50640dcdd584767b8eac3c,
   "@payloadcms/plugin-ecommerce/rsc#PriceInput": PriceInput_b91672ccd6e8b071c11142ab941fedfb,
