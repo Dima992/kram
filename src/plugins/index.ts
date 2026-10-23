@@ -124,6 +124,23 @@ export const plugins: Plugin[] = [
         const customFields = Orders.fields.filter((field) => 'name' in field)
         const customFieldNames = new Set(customFields.map((field) => field.name))
 
+        // Подпись строки позиции заказа: фото, название и ссылка (компонент OrderItemRowLabel)
+        const fieldsWithItemLabel = defaultCollection.fields.map((field) => {
+          if ('name' in field && field.name === 'items' && field.type === 'array') {
+            return {
+              ...field,
+              admin: {
+                ...field.admin,
+                components: {
+                  ...field.admin?.components,
+                  RowLabel: '@/components/admin/OrderItemRowLabel#OrderItemRowLabel',
+                },
+              },
+            }
+          }
+          return field
+        })
+
         return {
           ...defaultCollection,
           admin: {
@@ -131,7 +148,7 @@ export const plugins: Plugin[] = [
             ...Orders.admin,
           },
           fields: [
-            ...defaultCollection.fields.filter(
+            ...fieldsWithItemLabel.filter(
               (field) => !('name' in field) || !customFieldNames.has(field.name),
             ),
             ...customFields,
@@ -216,7 +233,7 @@ export const plugins: Plugin[] = [
         })(),
       ],
     },
-              products: {
+    products: {
       productsCollectionOverride: ProductsCollection,
       variants: {
         variantsCollectionOverride: VariantsCollection,
