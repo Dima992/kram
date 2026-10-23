@@ -1,6 +1,6 @@
 import { adminOnly } from '@/access/adminOnly'
-import type { CollectionConfig } from 'payload'
 import { syncApprovedSupplierImport } from '@/utilities/supplierImportProducts'
+import type { CollectionConfig } from 'payload'
 
 export const SupplierImports: CollectionConfig = {
   slug: 'supplier-imports',
@@ -16,6 +16,7 @@ export const SupplierImports: CollectionConfig = {
   },
   admin: {
     group: 'Імпорт / Експорт і Модерація',
+    hidden: true,
     useAsTitle: 'sourceRecordKey',
     defaultColumns: ['sourceType', 'supplierRef', 'mappingStatus', 'status', 'createdAt'],
     components: {

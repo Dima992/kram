@@ -15,6 +15,7 @@ export const ImportSources: CollectionConfig = {
   },
   admin: {
     group: 'Settings',
+    hidden: true,
     useAsTitle: 'name',
     defaultColumns: ['name', 'autoImportEnabled', 'autoImportFrequency', 'lastImportStatus'],
     components: {
