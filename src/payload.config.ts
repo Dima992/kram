@@ -43,8 +43,7 @@ export default buildConfig({
       beforeDashboard: ['@/components/BeforeDashboard#BeforeDashboard'],
     },
     user: Users.slug,
-    css: path.resolve(dirname, 'styles/admin.css'),
-  },
+      },
 
   // 1. Локализация контента в БД
   localization: {

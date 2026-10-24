@@ -8,3 +8,15 @@
   clip: rect(0, 0, 0, 0);
   border: 0;
 }
+
+/* Лёгкий вид списка заказов: строки ниже, шрифт аккуратнее */
+.collection-list table tbody tr {
+  height: 44px;
+}
+
+.collection-list table td,
+.collection-list table th {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  font-size: 14px;
+}
