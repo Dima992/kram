@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react'
 
 type Lang = 'ua' | 'ru'
 type Mode = 'full' | 'quick'
-type Carrier = 'nova_poshta' | 'ukrposhta' | 'address'
+type Carrier = 'nova_poshta' | 'ukrposhta'
 type PayMethod = 'liqpay' | 'iban' | 'cod'
 type CartItems = NonNullable<Cart['items']>
 type FieldErrors = {
@@ -48,13 +48,16 @@ const dictionary = {
     contacts: '1. Контактні дані',
     surname: 'Прізвище',
     name: 'Ім’я',
+    nameOptional: 'Ім’я (за бажанням)',
     phone: 'Номер телефону',
     phoneRequired: 'Вкажіть номер телефону',
     surnameRequired: 'Вкажіть прізвище',
     nameRequired: 'Вкажіть ім’я',
     patronymicRequired: 'Вкажіть по батькові (для Укрпошти)',
-    npRequired: 'Оберіть місто та відділення Нової пошти',
-    upRequired: 'Оберіть населений пункт і відділення Укрпошти або напишіть адресу в коментарі',
+    npRequired: 'Оберіть місто та відділення або поштомат',
+    upRequired: 'Оберіть населений пункт і відділення Укрпошти',
+    cityRequired: 'Оберіть населений пункт',
+    loadError: 'Зараз не вдається завантажити дані. Напишіть у коментарі місто та номер відділення.',
     cartEmpty: 'Ваш кошик порожній.',
     goShop: 'Перейти до каталогу',
     cartTitle: 'Ваш кошик',
@@ -67,8 +70,8 @@ const dictionary = {
     delivery: '2. Спосіб доставки',
     np: 'Нова Пошта',
     ukr: 'Укрпошта',
-    addressTitle: 'Адресна доставка',
-    addressDesc: 'Менеджер уточнить вартість і деталі доставки. Адресу напишіть у коментарі.',
+    addressCheckbox: 'Адресна доставка',
+    addressHint: 'Оберіть місто, а вулицю, будинок і квартиру напишіть у коментарі.',
     patronymic: 'По батькові',
     patronymicHint: 'Необхідно для Укрпошти.',
     payment: '3. Спосіб оплати',
@@ -78,16 +81,10 @@ const dictionary = {
     ibanDesc: 'Реквізити ФОП будуть надіслані після підтвердження',
     codTitle: 'Накладений платіж (Оплата при отриманні)',
     codDescNP: 'Предоплата 200 грн на карту/LiqPay (покриття доставки), решта при отриманні.',
-    codDescUkr: 'Для Укрпошти накладений платіж недоступний. Оберіть 100% предоплату.',
-    codDescAddress: 'Для адресної доставки накладений платіж недоступний. Оберіть 100% предоплату.',
+    codDescDisabled: 'Недоступно для Укрпошти та адресної доставки. Оберіть 100% предоплату.',
     commentLabel: 'Коментар до замовлення',
     commentPlaceholder: 'Побажання, наприклад: зручний час дзвінка після 11:00',
-    commentAddressHint:
-      'Напишіть повну адресу доставки (місто, вулиця, будинок, квартира) і зручну службу: Нова пошта або Укрпошта.',
-    commentRequiredAddress: 'Напишіть адресу доставки в коментарі',
-    commentLoadError:
-      'Не вдалося завантажити відділення. Напишіть у коментарі місто та номер відділення.',
-    orderSummary: 'Ваше замовлення',
+    commentRequiredAddress: 'Напишіть вулицю, будинок і квартиру в коментарі',
     total: 'Всього до сплати',
     deliveryNote: 'Доставка оплачується окремо за тарифом перевізника',
     prepaymentNotice: 'До сплати зараз (Предоплата): 200 ₴',
@@ -107,13 +104,16 @@ const dictionary = {
     contacts: '1. Контактные данные',
     surname: 'Фамилия',
     name: 'Имя',
+    nameOptional: 'Имя (по желанию)',
     phone: 'Номер телефона',
     phoneRequired: 'Укажите номер телефона',
     surnameRequired: 'Укажите фамилию',
     nameRequired: 'Укажите имя',
     patronymicRequired: 'Укажите отчество (для Укрпочты)',
-    npRequired: 'Выберите город и отделение Новой почты',
-    upRequired: 'Выберите населенный пункт и отделение Укрпочты или напишите адрес в комментарии',
+    npRequired: 'Выберите город и отделение или почтомат',
+    upRequired: 'Выберите населенный пункт и отделение Укрпочты',
+    cityRequired: 'Выберите населенный пункт',
+    loadError: 'Сейчас не удается загрузить данные. Напишите в комментарии город и номер отделения.',
     cartEmpty: 'Ваша корзина пуста.',
     goShop: 'Перейти в каталог',
     cartTitle: 'Ваша корзина',
@@ -126,8 +126,8 @@ const dictionary = {
     delivery: '2. Способ доставки',
     np: 'Новая Почта',
     ukr: 'Укрпочта',
-    addressTitle: 'Адресная доставка',
-    addressDesc: 'Менеджер уточнит стоимость и детали доставки. Адрес напишите в комментарии.',
+    addressCheckbox: 'Адресная доставка',
+    addressHint: 'Выберите город, а улицу, дом и квартиру напишите в комментарии.',
     patronymic: 'Отчество',
     patronymicHint: 'Необходимо для Укрпочты.',
     payment: '3. Способ оплаты',
@@ -137,16 +137,10 @@ const dictionary = {
     ibanDesc: 'Реквизиты ФОП будут отправлены после подтверждения',
     codTitle: 'Наложенный платеж (Оплата при получении)',
     codDescNP: 'Предоплата 200 грн на карту/LiqPay (покрытие доставки), остаток при получении.',
-    codDescUkr: 'Для Укрпочты наложенный платеж недоступен. Выберите 100% предоплату.',
-    codDescAddress: 'Для адресной доставки наложенный платеж недоступен. Выберите 100% предоплату.',
+    codDescDisabled: 'Недоступно для Укрпочты и адресной доставки. Выберите 100% предоплату.',
     commentLabel: 'Комментарий к заказу',
     commentPlaceholder: 'Пожелания, например: удобное время звонка после 11:00',
-    commentAddressHint:
-      'Напишите полный адрес доставки (город, улица, дом, квартира) и удобную службу: Новая почта или Укрпочта.',
-    commentRequiredAddress: 'Напишите адрес доставки в комментарии',
-    commentLoadError:
-      'Не удалось загрузить отделения. Напишите в комментарии город и номер отделения.',
-    orderSummary: 'Ваш заказ',
+    commentRequiredAddress: 'Напишите улицу, дом и квартиру в комментарии',
     total: 'Всего к оплате',
     deliveryNote: 'Доставка оплачивается отдельно по тарифу перевозчика',
     prepaymentNotice: 'К оплате сейчас (Предоплата): 200 ₴',
@@ -239,6 +233,7 @@ export function UACheckoutPage() {
 
   const [mode, setMode] = useState<Mode>('full')
   const [carrier, setCarrier] = useState<Carrier>('nova_poshta')
+  const [addressMode, setAddressMode] = useState(false)
   const [payMethod, setPayMethod] = useState<PayMethod>('liqpay')
 
   const [surname, setSurname] = useState('')
@@ -268,6 +263,9 @@ export function UACheckoutPage() {
     0,
   )
 
+  // Наложенный платёж только для Новой Почты с отделением или почтоматом
+  const codAvailable = carrier === 'nova_poshta' && !addressMode
+
   useEffect(() => {
     const returnedOrderId = new URLSearchParams(window.location.search).get('orderId')
     if (returnedOrderId) setCreatedOrderId(returnedOrderId)
@@ -276,18 +274,33 @@ export function UACheckoutPage() {
   const clearError = (key: keyof FieldErrors) =>
     setErrors((current) => (current[key] ? { ...current, [key]: false } : current))
 
-  const handleCarrierChange = (newCarrier: Carrier) => {
-    setCarrier(newCarrier)
-    setErrors({})
-    setFormError(null)
+  const resetDelivery = () => {
+    setNpDelivery(null)
+    setUpDelivery(null)
     setNpLoadError(false)
     setUpLoadError(false)
+    setErrors({})
+    setFormError(null)
+  }
+
+  const handleCarrierChange = (newCarrier: Carrier) => {
+    setCarrier(newCarrier)
+    resetDelivery()
     if (newCarrier !== 'nova_poshta' && payMethod === 'cod') {
       setPayMethod('liqpay')
     }
   }
 
-  // Обязательные поля: телефон всегда; фамилия и имя для доставки; отчество для Укрпочты
+  const handleAddressToggle = (checked: boolean) => {
+    setAddressMode(checked)
+    resetDelivery()
+    if (checked && payMethod === 'cod') {
+      setPayMethod('liqpay')
+    }
+  }
+
+  // Телефон обязателен всегда. Для доставки: фамилия и имя, отчество для Укрпочты,
+  // город и (если не адресная доставка) отделение. При адресной доставке адрес в комментарии.
   const validate = (): FieldErrors => {
     const found: FieldErrors = {}
     if (!phone.trim()) found.phone = true
@@ -295,23 +308,12 @@ export function UACheckoutPage() {
     if (mode === 'full') {
       if (!surname.trim()) found.surname = true
       if (!name.trim()) found.name = true
+      if (carrier === 'ukrposhta' && !patronymic.trim()) found.patronymic = true
 
-      if (carrier === 'nova_poshta' && !npDelivery) {
-        found.np = true
-      }
+      if (carrier === 'nova_poshta' && !npDelivery) found.np = true
+      if (carrier === 'ukrposhta' && !upDelivery) found.up = true
 
-      if (carrier === 'ukrposhta') {
-        if (!patronymic.trim()) found.patronymic = true
-        // Отделение или, если его нет, адрес в комментарии
-        if (!upDelivery && !comment.trim()) {
-          found.up = true
-          found.comment = true
-        }
-      }
-
-      if (carrier === 'address' && !comment.trim()) {
-        found.comment = true
-      }
+      if (addressMode && !comment.trim()) found.comment = true
     }
     return found
   }
@@ -346,13 +348,12 @@ export function UACheckoutPage() {
           patronymic: patronymic.trim(),
           comment: comment.trim(),
           deliveryCarrier: isQuick ? 'nova_poshta' : carrier,
+          addressDelivery: !isQuick && addressMode,
           deliveryDetails: isQuick
             ? null
             : carrier === 'nova_poshta'
               ? npDelivery
-              : carrier === 'ukrposhta'
-                ? upDelivery
-                : {},
+              : upDelivery,
           paymentMethod: payMethod,
           items: lines.map((line) => ({
             productId: line.productId,
@@ -412,8 +413,6 @@ export function UACheckoutPage() {
       </div>
     )
   }
-
-  const commentHighlight = Boolean(errors.comment)
 
   return (
     <form
@@ -477,6 +476,16 @@ export function UACheckoutPage() {
                     className={fieldClass(Boolean(errors.phone))}
                   />
                   {errors.phone && <p className="text-xs font-medium text-red-600 mt-1">{t.phoneRequired}</p>}
+                </div>
+                <div>
+                  <label className="text-xs font-medium">{t.nameOptional}</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Олена"
+                    className={fieldClass(false)}
+                  />
                 </div>
                 <div>
                   <label className="text-xs font-medium">{t.commentLabel}</label>
@@ -567,11 +576,11 @@ export function UACheckoutPage() {
                   {t.delivery}
                 </h2>
 
-                <div className="grid grid-cols-3 gap-2 mb-4">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => handleCarrierChange('nova_poshta')}
-                    className={`flex items-center justify-center gap-2 rounded-xl p-3 text-xs font-semibold border transition ${
+                    className={`flex items-center justify-center rounded-xl p-3 text-xs font-semibold border transition ${
                       carrier === 'nova_poshta'
                         ? 'border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900'
                         : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
@@ -582,7 +591,7 @@ export function UACheckoutPage() {
                   <button
                     type="button"
                     onClick={() => handleCarrierChange('ukrposhta')}
-                    className={`flex items-center justify-center gap-2 rounded-xl p-3 text-xs font-semibold border transition ${
+                    className={`flex items-center justify-center rounded-xl p-3 text-xs font-semibold border transition ${
                       carrier === 'ukrposhta'
                         ? 'border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900'
                         : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
@@ -590,49 +599,80 @@ export function UACheckoutPage() {
                   >
                     {t.ukr}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCarrierChange('address')}
-                    className={`flex items-center justify-center gap-2 rounded-xl p-3 text-xs font-semibold border transition ${
-                      carrier === 'address'
-                        ? 'border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900'
-                        : 'border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'
-                    }`}
-                  >
-                    {t.addressTitle}
-                  </button>
                 </div>
+
+                <label className="flex items-start gap-3 rounded-xl border border-zinc-200 p-3 cursor-pointer dark:border-zinc-800">
+                  <input
+                    type="checkbox"
+                    checked={addressMode}
+                    onChange={(e) => handleAddressToggle(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-zinc-900"
+                  />
+                  <div className="flex-1">
+                    <div className="text-xs font-semibold">{t.addressCheckbox}</div>
+                    {addressMode && <div className="text-[11px] text-muted-foreground mt-0.5">{t.addressHint}</div>}
+                  </div>
+                </label>
 
                 {carrier === 'nova_poshta' && (
                   <>
                     <NovaPoshtaSelect
+                      key={addressMode ? 'np-address' : 'np-branch'}
                       lang={lang}
+                      cityOnly={addressMode}
                       onChange={(value) => {
                         setNpDelivery(value)
                         clearError('np')
                       }}
                       onError={setNpLoadError}
                     />
-                    {errors.np && <p className="text-xs font-medium text-red-600">{t.npRequired}</p>}
+                    {errors.np && (
+                      <p className="text-xs font-medium text-red-600">
+                        {addressMode ? t.cityRequired : t.npRequired}
+                      </p>
+                    )}
+                    {npLoadError && <p className="text-xs font-medium text-red-600">{t.loadError}</p>}
                   </>
                 )}
 
                 {carrier === 'ukrposhta' && (
                   <>
                     <UkrposhtaSelect
+                      key={addressMode ? 'up-address' : 'up-branch'}
                       lang={lang}
+                      cityOnly={addressMode}
                       onChange={(value) => {
                         setUpDelivery(value)
                         clearError('up')
-                        clearError('comment')
                       }}
                       onError={setUpLoadError}
                     />
-                    {errors.up && <p className="text-xs font-medium text-red-600">{t.upRequired}</p>}
+                    {errors.up && (
+                      <p className="text-xs font-medium text-red-600">
+                        {addressMode ? t.cityRequired : t.upRequired}
+                      </p>
+                    )}
+                    {upLoadError && <p className="text-xs font-medium text-red-600">{t.loadError}</p>}
                   </>
                 )}
+              </div>
 
-                {carrier === 'address' && <p className="text-xs text-muted-foreground">{t.addressDesc}</p>}
+              <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm space-y-3">
+                <label className="text-sm font-semibold">
+                  {t.commentLabel}
+                  {addressMode && ' *'}
+                </label>
+                <textarea
+                  value={comment}
+                  onChange={(e) => {
+                    setComment(e.target.value)
+                    clearError('comment')
+                  }}
+                  placeholder={t.commentPlaceholder}
+                  rows={3}
+                  className={`${fieldClass(Boolean(errors.comment))} resize-y`}
+                />
+                {errors.comment && <p className="text-xs font-medium text-red-600">{t.commentRequiredAddress}</p>}
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm space-y-4">
@@ -678,10 +718,10 @@ export function UACheckoutPage() {
 
                   <label
                     onClick={() => {
-                      if (carrier === 'nova_poshta') setPayMethod('cod')
+                      if (codAvailable) setPayMethod('cod')
                     }}
                     className={`flex items-start gap-3 rounded-xl border p-4 transition ${
-                      carrier !== 'nova_poshta'
+                      !codAvailable
                         ? 'border-zinc-200 dark:border-zinc-800 cursor-default opacity-60'
                         : payMethod === 'cod'
                           ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20 cursor-pointer'
@@ -692,36 +732,11 @@ export function UACheckoutPage() {
                     <div className="flex-1">
                       <div className="text-xs font-semibold">{t.codTitle}</div>
                       <div className="text-[11px] text-muted-foreground mt-0.5">
-                        {carrier === 'nova_poshta'
-                          ? t.codDescNP
-                          : carrier === 'ukrposhta'
-                            ? t.codDescUkr
-                            : t.codDescAddress}
+                        {codAvailable ? t.codDescNP : t.codDescDisabled}
                       </div>
                     </div>
                   </label>
                 </div>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm space-y-3">
-                <label className="text-sm font-semibold">{t.commentLabel}</label>
-                <textarea
-                  value={comment}
-                  onChange={(e) => {
-                    setComment(e.target.value)
-                    clearError('comment')
-                  }}
-                  placeholder={t.commentPlaceholder}
-                  rows={3}
-                  className={`${fieldClass(commentHighlight)} resize-y`}
-                />
-                {(npLoadError || upLoadError) && (
-                  <p className="text-xs font-medium text-red-600">{t.commentLoadError}</p>
-                )}
-                {carrier === 'address' && <p className="text-xs text-muted-foreground">{t.commentAddressHint}</p>}
-                {errors.comment && carrier === 'address' && (
-                  <p className="text-xs font-medium text-red-600">{t.commentRequiredAddress}</p>
-                )}
               </div>
             </>
           )}
@@ -763,7 +778,7 @@ export function UACheckoutPage() {
               </div>
               <p className="text-[11px] text-muted-foreground">{t.deliveryNote}</p>
 
-              {mode === 'full' && payMethod === 'cod' && carrier === 'nova_poshta' && (
+              {mode === 'full' && payMethod === 'cod' && codAvailable && (
                 <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800 dark:bg-amber-950/30 dark:border-amber-900 dark:text-amber-300 space-y-1">
                   <div className="font-semibold">{t.prepaymentNotice}</div>
                   <div>
