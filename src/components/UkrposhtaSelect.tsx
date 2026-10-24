@@ -12,6 +12,7 @@ const dictionary = {
   ua: {
     title: 'Доставка Укрпоштою',
     subtitle: 'Оберіть населений пункт і відділення Укрпошти',
+    subtitleCity: 'Оберіть населений пункт',
     cityLabel: 'Населений пункт',
     cityPlaceholder: 'Почніть вводити назву (наприклад, Вінниця)...',
     officeLabel: 'Відділення',
@@ -24,6 +25,7 @@ const dictionary = {
   ru: {
     title: 'Доставка Укрпочтой',
     subtitle: 'Выберите населенный пункт и отделение Укрпочты',
+    subtitleCity: 'Выберите населенный пункт',
     cityLabel: 'Населенный пункт',
     cityPlaceholder: 'Начните вводить название (например, Винница)...',
     officeLabel: 'Отделение',
@@ -37,11 +39,13 @@ const dictionary = {
 
 type Props = {
   lang?: Lang
+  // Если true, выбирается только населённый пункт (адресная доставка), отделение не показываем
+  cityOnly?: boolean
   onChange: (value: UPDelivery | null) => void
   onError?: (hasError: boolean) => void
 }
 
-export function UkrposhtaSelect({ lang = 'ua', onChange, onError }: Props) {
+export function UkrposhtaSelect({ lang = 'ua', cityOnly = false, onChange, onError }: Props) {
   const t = dictionary[lang]
 
   const [cityQuery, setCityQuery] = useState('')
@@ -55,6 +59,18 @@ export function UkrposhtaSelect({ lang = 'ua', onChange, onError }: Props) {
   const reportError = (value: boolean) => {
     setLoadError(value)
     onError?.(value)
+  }
+
+  const chooseCity = (city: UkrCity) => {
+    setSelectedCity(city)
+    setCityQuery('')
+    setSelectedOffice('')
+    reportError(false)
+    if (cityOnly) {
+      onChange({ city: city.label, warehouse: '', postcode: '' })
+    } else {
+      onChange(null)
+    }
   }
 
   // Поиск населённых пунктов: от 2 букв, с паузой 300 мс после ввода
@@ -86,9 +102,9 @@ export function UkrposhtaSelect({ lang = 'ua', onChange, onError }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cityQuery, selectedCity])
 
-  // Загрузка отделений после выбора населённого пункта
+  // Загрузка отделений после выбора населённого пункта (не нужна в режиме «только город»)
   useEffect(() => {
-    if (!selectedCity) {
+    if (!selectedCity || cityOnly) {
       setOffices([])
       setNoOffices(false)
       return
@@ -118,7 +134,7 @@ export function UkrposhtaSelect({ lang = 'ua', onChange, onError }: Props) {
     }
     // reportError меняется при каждом рендере, поэтому его не включаем в зависимости
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCity])
+  }, [selectedCity, cityOnly])
 
   return (
     <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -128,7 +144,7 @@ export function UkrposhtaSelect({ lang = 'ua', onChange, onError }: Props) {
         </div>
         <div>
           <h3 className="text-sm font-semibold">{t.title}</h3>
-          <p className="text-xs text-muted-foreground">{t.subtitle}</p>
+          <p className="text-xs text-muted-foreground">{cityOnly ? t.subtitleCity : t.subtitle}</p>
         </div>
       </div>
 
@@ -155,13 +171,7 @@ export function UkrposhtaSelect({ lang = 'ua', onChange, onError }: Props) {
               <button
                 key={city.id}
                 type="button"
-                onClick={() => {
-                  setSelectedCity(city)
-                  setCityQuery('')
-                  setSelectedOffice('')
-                  reportError(false)
-                  onChange(null)
-                }}
+                onClick={() => chooseCity(city)}
                 className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 <span>{city.label}</span>
@@ -172,8 +182,8 @@ export function UkrposhtaSelect({ lang = 'ua', onChange, onError }: Props) {
         )}
       </div>
 
-      {/* Вибір відділення */}
-      {selectedCity && !noOffices && (
+      {/* Вибір відділення (не показываем в режиме «только город») */}
+      {selectedCity && !cityOnly && !noOffices && (
         <div className="space-y-1.5 pt-1">
           <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t.officeLabel}</label>
           <select
@@ -205,7 +215,7 @@ export function UkrposhtaSelect({ lang = 'ua', onChange, onError }: Props) {
         </div>
       )}
 
-      {selectedCity && noOffices && !loadError && (
+      {selectedCity && !cityOnly && noOffices && !loadError && (
         <p className="text-xs text-muted-foreground">{t.noOffices}</p>
       )}
 

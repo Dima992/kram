@@ -12,32 +12,36 @@ const dictionary = {
   ua: {
     title: 'Доставка Новою Поштою',
     subtitle: 'Оберіть ваше місто та зручне відділення',
+    subtitleCity: 'Оберіть ваше місто',
     cityLabel: 'Населений пункт',
     cityPlaceholder: 'Почніть вводити місто (наприклад, Вінниця)...',
     warehouseLabel: 'Відділення або поштомат',
     warehousePlaceholder: 'Оберіть відділення...',
     loadError:
-      'Зараз не вдається завантажити відділення. Напишіть у коментарі місто та номер відділення, ми підберемо його разом з вами.',
+      'Зараз не вдається завантажити дані. Напишіть у коментарі місто та номер відділення, ми підберемо його разом з вами.',
   },
   ru: {
     title: 'Доставка Новой Почтой',
     subtitle: 'Выберите ваш город и удобное отделение',
+    subtitleCity: 'Выберите ваш город',
     cityLabel: 'Населенный пункт',
     cityPlaceholder: 'Начните вводить город (например, Винница)...',
     warehouseLabel: 'Отделение или почтомат',
     warehousePlaceholder: 'Выберите отделение...',
     loadError:
-      'Сейчас не удается загрузить отделения. Напишите в комментарии город и номер отделения, мы подберем его вместе с вами.',
+      'Сейчас не удается загрузить данные. Напишите в комментарии город и номер отделения, мы подберем его вместе с вами.',
   },
 }
 
 type Props = {
   lang?: Lang
+  // Если true, выбирается только город (адресная доставка), отделение не показываем
+  cityOnly?: boolean
   onChange: (value: NPDelivery | null) => void
   onError?: (hasError: boolean) => void
 }
 
-export function NovaPoshtaSelect({ lang = 'ua', onChange, onError }: Props) {
+export function NovaPoshtaSelect({ lang = 'ua', cityOnly = false, onChange, onError }: Props) {
   const t = dictionary[lang]
 
   const [cityQuery, setCityQuery] = useState('')
@@ -50,6 +54,18 @@ export function NovaPoshtaSelect({ lang = 'ua', onChange, onError }: Props) {
   const reportError = (value: boolean) => {
     setLoadError(value)
     onError?.(value)
+  }
+
+  const chooseCity = (city: City) => {
+    setSelectedCity(city)
+    setCityQuery('')
+    setSelectedWarehouse('')
+    reportError(false)
+    if (cityOnly) {
+      onChange({ city: city.Present, warehouse: '' })
+    } else {
+      onChange(null)
+    }
   }
 
   // Поиск городов: от 2 букв, с паузой 300 мс после ввода
@@ -81,9 +97,9 @@ export function NovaPoshtaSelect({ lang = 'ua', onChange, onError }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cityQuery, selectedCity])
 
-  // Загрузка отделений после выбора города
+  // Загрузка отделений после выбора города (не нужна в режиме «только город»)
   useEffect(() => {
-    if (!selectedCity) {
+    if (!selectedCity || cityOnly) {
       setWarehouses([])
       return
     }
@@ -110,7 +126,7 @@ export function NovaPoshtaSelect({ lang = 'ua', onChange, onError }: Props) {
     }
     // reportError меняется при каждом рендере, поэтому его не включаем в зависимости
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCity])
+  }, [selectedCity, cityOnly])
 
   return (
     <div className="space-y-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
@@ -120,7 +136,7 @@ export function NovaPoshtaSelect({ lang = 'ua', onChange, onError }: Props) {
         </div>
         <div>
           <h3 className="text-sm font-semibold">{t.title}</h3>
-          <p className="text-xs text-muted-foreground">{t.subtitle}</p>
+          <p className="text-xs text-muted-foreground">{cityOnly ? t.subtitleCity : t.subtitle}</p>
         </div>
       </div>
 
@@ -147,13 +163,7 @@ export function NovaPoshtaSelect({ lang = 'ua', onChange, onError }: Props) {
               <button
                 key={city.DeliveryCity}
                 type="button"
-                onClick={() => {
-                  setSelectedCity(city)
-                  setCityQuery('')
-                  setSelectedWarehouse('')
-                  reportError(false)
-                  onChange(null)
-                }}
+                onClick={() => chooseCity(city)}
                 className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 <span>{city.Present}</span>
@@ -164,8 +174,8 @@ export function NovaPoshtaSelect({ lang = 'ua', onChange, onError }: Props) {
         )}
       </div>
 
-      {/* Вибір відділення */}
-      {selectedCity && (
+      {/* Вибір відділення (не показываем в режиме «только город») */}
+      {selectedCity && !cityOnly && (
         <div className="space-y-1.5 pt-1">
           <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{t.warehouseLabel}</label>
           <select
