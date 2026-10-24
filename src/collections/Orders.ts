@@ -62,6 +62,11 @@ export const Orders: CollectionConfig = {
       name: 'phone',
       type: 'text',
       label: 'Телефон',
+      admin: {
+        components: {
+          afterInput: ['@/components/admin/OrderPhoneLinks#OrderPhoneLinks'],
+        },
+      },
     },
     {
       name: 'deliveryCarrier',
