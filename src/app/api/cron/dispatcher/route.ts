@@ -3,8 +3,6 @@ import configPromise from '@payload-config'
 import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'node:crypto'
 import { getPayload } from 'payload'
-import { GET as runSupplierImport } from '../supplier-import/route'
-import { GET as runSupplierMapping } from '../supplier-mapping/route'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -29,20 +27,12 @@ export async function GET(req: Request) {
   const payload = await getPayload({ config: configPromise })
   const report: Record<string, unknown> = {}
 
-  // Шаг 1: цены по курсу НБУ. Ошибка здесь не останавливает остальные шаги.
+  // Единственное ежедневное задание: обновление цен по курсу НБУ
   try {
     report.prices = await updateAllPrices(payload)
   } catch (error) {
     report.prices = { error: error instanceof Error ? error.message : 'Помилка оновлення цін' }
   }
-
-  // Шаг 2: импорт поставщика (существующее задание)
-  const importResponse = await runSupplierImport(req)
-  report.supplierImport = importResponse.status
-
-  // Шаг 3: обработка очереди (существующее задание)
-  const mappingResponse = await runSupplierMapping(req)
-  report.supplierMapping = mappingResponse.status
 
   return NextResponse.json(report)
 }
