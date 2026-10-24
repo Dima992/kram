@@ -133,10 +133,12 @@ const socialIcons: Record<SocialPlatform, React.ReactNode> = {
 }
 
 export async function Footer() {
-  const footer: FooterGlobal = await getCachedGlobal('footer', 1)()
+  const footer: FooterGlobal = await getCachedGlobal('footer', 1, 'uk')()
+  const footerRu: FooterGlobal = await getCachedGlobal('footer', 1, 'ru')()
   const siteSettings: SiteSetting = await getCachedGlobal('site-settings', 1)()
   const extra = footer as FooterGlobal & FooterExtra
   const menu = footer.navItems || []
+  const menuRu = footerRu.navItems || []
 
   const socials = ((extra.socials || []) as SocialItem[]).filter(
     (item) => item.enabled !== false && item.url,
@@ -219,7 +221,7 @@ export async function Footer() {
                   </div>
                 }
               >
-                <FooterMenu menu={menu} />
+              <FooterMenu menuUk={menu} menuRu={menuRu} />
               </Suspense>
             </div>
           )}

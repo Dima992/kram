@@ -1,13 +1,20 @@
+'use client'
+
 import type { Footer } from '@/payload-types'
 
 import { CMSLink } from '@/components/Link'
-import React from 'react'
+import { usePathname } from 'next/navigation'
 
 interface Props {
-  menu: Footer['navItems']
+  menuUk: Footer['navItems']
+  menuRu: Footer['navItems']
 }
 
-export function FooterMenu({ menu }: Props) {
+export function FooterMenu({ menuUk, menuRu }: Props) {
+  const pathname = usePathname()
+  const isRu = pathname === '/ru' || pathname.startsWith('/ru/')
+  const menu = isRu && menuRu?.length ? menuRu : menuUk
+
   if (!menu?.length) return null
 
   return (
