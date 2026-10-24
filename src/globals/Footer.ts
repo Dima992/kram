@@ -65,5 +65,35 @@ export const Footer: GlobalConfig = {
         },
       ],
     },
+    {
+      name: 'paymentMethods',
+      label: 'Способы оплаты (логотипы в футере)',
+      type: 'array',
+      admin: {
+        description:
+          'Загружайте логотип в формате SVG (лучше) или PNG с прозрачным фоном. PNG: ширина 240 px, высота 80 px, файл до 100 КБ. JPG не загружайте (белый фон). Галочка «Показывать» выключена по умолчанию: включите её, когда подключите оплату. Порядок меняется перетаскиванием.',
+      },
+      fields: [
+        {
+          name: 'name',
+          label: 'Название (например, Visa)',
+          type: 'text',
+          required: true,
+        },
+        {
+          name: 'logo',
+          label: 'Логотип',
+          type: 'upload',
+          relationTo: 'media',
+          required: true,
+        },
+        {
+          name: 'enabled',
+          label: 'Показывать на сайте',
+          type: 'checkbox',
+          defaultValue: false,
+        },
+      ],
+    },
   ],
 }

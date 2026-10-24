@@ -1,4 +1,4 @@
-import type { Footer, SiteSetting } from '@/payload-types'
+import type { Footer as FooterGlobal, SiteSetting } from '@/payload-types'
 
 import { FooterMenu } from '@/components/Footer/menu'
 import { LogoIcon } from '@/components/icons/logo'
@@ -25,6 +25,13 @@ type SocialItem = {
   platform: SocialPlatform
   customName?: string | null
   url: string
+  enabled?: boolean | null
+}
+
+type PaymentItem = {
+  id?: string | null
+  name: string
+  logo?: number | { url?: string | null; alt?: string | null } | null
   enabled?: boolean | null
 }
 
@@ -112,12 +119,32 @@ const socialIcons: Record<SocialPlatform, React.ReactNode> = {
 }
 
 export async function Footer() {
-  const footer: Footer = await getCachedGlobal('footer', 1)()
+  const footer: FooterGlobal = await getCachedGlobal('footer', 1)()
   const siteSettings: SiteSetting = await getCachedGlobal('site-settings', 1)()
   const menu = footer.navItems || []
+
   const socials = (
-    ((footer as Footer & { socials?: SocialItem[] | null }).socials || []) as SocialItem[]
+    ((footer as FooterGlobal & { socials?: SocialItem[] | null }).socials || []) as SocialItem[]
   ).filter((item) => item.enabled !== false && item.url)
+
+  const paymentItems = (
+    ((footer as FooterGlobal & { paymentMethods?: PaymentItem[] | null }).paymentMethods ||
+      []) as PaymentItem[]
+  )
+
+  const payments = paymentItems.flatMap((item) => {
+    const logo = item.logo
+    if (!item.enabled || !logo || typeof logo !== 'object' || !logo.url) return []
+    return [
+      {
+        key: item.id || item.name,
+        name: item.name,
+        url: logo.url,
+        alt: logo.alt || item.name,
+      },
+    ]
+  })
+
   const currentYear = new Date().getFullYear()
   const copyrightDate = 2023 + (currentYear > 2023 ? `-${currentYear}` : '')
   const skeleton = 'w-full h-6 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700'
@@ -178,6 +205,29 @@ export async function Footer() {
           </div>
         </div>
       </div>
+
+      {payments.length > 0 && (
+        <div className="border-t border-neutral-200 py-6 dark:border-neutral-700">
+          <ul className="container flex flex-wrap items-center justify-center gap-3">
+            {payments.map((item) => (
+              <li
+                key={item.key}
+                className="flex h-10 items-center justify-center rounded bg-white px-2"
+              >
+                <img
+                  src={item.url}
+                  alt={item.alt}
+                  width={96}
+                  height={32}
+                  loading="lazy"
+                  className="h-8 w-auto"
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="border-t border-neutral-200 py-6 text-sm dark:border-neutral-700">
         <div className="container mx-auto flex w-full flex-col items-center gap-1 md:flex-row md:gap-0">
           <p>
