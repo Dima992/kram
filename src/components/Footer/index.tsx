@@ -177,9 +177,9 @@ export async function Footer() {
               <LogoIcon className="w-6" />
               <span className="sr-only">{siteSettings.siteName || ''}</span>
             </Link>
-            {socials.length > 0 && (
-              <ul className="flex flex-wrap items-center gap-3">
-                {socials.map((item) => {
+                        {socials.length > 0 && (
+              <ul className="flex flex-col gap-3">
+    {socials.map((item) => {
                   const label =
                     item.platform === 'other' && item.customName
                       ? item.customName
@@ -190,11 +190,12 @@ export async function Footer() {
                         href={item.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        aria-label={label}
-                        title={label}
-                        className="flex size-9 items-center justify-center rounded-full bg-neutral-100 text-black transition hover:bg-neutral-200 dark:bg-neutral-800 dark:text-white dark:hover:bg-neutral-700"
+                        className="group flex items-center gap-3 text-black transition hover:underline dark:text-white"
                       >
-                        {socialIcons[item.platform] ?? socialIcons.other}
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 transition group-hover:bg-neutral-200 dark:bg-neutral-800 dark:group-hover:bg-neutral-700">
+                          {socialIcons[item.platform] ?? socialIcons.other}
+                        </span>
+                        <span>{label}</span>
                       </a>
                     </li>
                   )
