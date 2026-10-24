@@ -68,10 +68,11 @@ export const Footer: GlobalConfig = {
             },
           ],
         },
-        {
+         {
           name: 'address',
           label: 'Адрес магазина',
           type: 'text',
+          localized: true,
         },
         {
           name: 'other',
