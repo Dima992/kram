@@ -1,5 +1,6 @@
 import type { Footer as FooterGlobal, SiteSetting } from '@/payload-types'
 
+import { FooterHeading } from '@/components/Footer/FooterHeading'
 import { FooterMenu } from '@/components/Footer/menu'
 import { LogoIcon } from '@/components/icons/logo'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
@@ -33,6 +34,19 @@ type PaymentItem = {
   name: string
   logo?: number | { url?: string | null; alt?: string | null } | null
   enabled?: boolean | null
+}
+
+type ContactsData = {
+  phones?: { id?: string | null; label?: string | null; number: string; enabled?: boolean | null }[] | null
+  emails?: { id?: string | null; email: string; enabled?: boolean | null }[] | null
+  address?: string | null
+  other?: { id?: string | null; label: string; value: string; enabled?: boolean | null }[] | null
+}
+
+type FooterExtra = {
+  socials?: SocialItem[] | null
+  paymentMethods?: PaymentItem[] | null
+  contacts?: ContactsData | null
 }
 
 const socialLabels: Record<SocialPlatform, string> = {
@@ -121,18 +135,14 @@ const socialIcons: Record<SocialPlatform, React.ReactNode> = {
 export async function Footer() {
   const footer: FooterGlobal = await getCachedGlobal('footer', 1)()
   const siteSettings: SiteSetting = await getCachedGlobal('site-settings', 1)()
+  const extra = footer as FooterGlobal & FooterExtra
   const menu = footer.navItems || []
 
-  const socials = (
-    ((footer as FooterGlobal & { socials?: SocialItem[] | null }).socials || []) as SocialItem[]
-  ).filter((item) => item.enabled !== false && item.url)
-
-  const paymentItems = (
-    ((footer as FooterGlobal & { paymentMethods?: PaymentItem[] | null }).paymentMethods ||
-      []) as PaymentItem[]
+  const socials = ((extra.socials || []) as SocialItem[]).filter(
+    (item) => item.enabled !== false && item.url,
   )
 
-  const payments = paymentItems.flatMap((item) => {
+  const payments = ((extra.paymentMethods || []) as PaymentItem[]).flatMap((item) => {
     const logo = item.logo
     if (!item.enabled || !logo || typeof logo !== 'object' || !logo.url) return []
     return [
@@ -145,6 +155,13 @@ export async function Footer() {
     ]
   })
 
+  const contacts = (extra.contacts || {}) as ContactsData
+  const phones = (contacts.phones || []).filter((p) => p.enabled !== false && p.number)
+  const emails = (contacts.emails || []).filter((e) => e.enabled !== false && e.email)
+  const others = (contacts.other || []).filter((o) => o.enabled !== false && o.label && o.value)
+  const hasContacts =
+    phones.length > 0 || emails.length > 0 || !!contacts.address || others.length > 0
+
   const currentYear = new Date().getFullYear()
   const copyrightDate = 2023 + (currentYear > 2023 ? `-${currentYear}` : '')
   const skeleton = 'w-full h-6 animate-pulse rounded bg-neutral-200 dark:bg-neutral-700'
@@ -154,7 +171,7 @@ export async function Footer() {
   return (
     <footer className="text-sm text-neutral-500 dark:text-neutral-400">
       <div className="container">
-        <div className="flex w-full flex-col gap-6 border-t border-neutral-200 py-12 text-sm md:flex-row md:gap-12 dark:border-neutral-700">
+        <div className="flex w-full flex-col gap-8 border-t border-neutral-200 py-12 text-sm md:flex-row md:gap-12 dark:border-neutral-700">
           <div className="flex flex-col gap-4">
             <Link className="flex items-center gap-2 text-black md:pt-1 dark:text-white" href="/">
               <LogoIcon className="w-6" />
@@ -185,20 +202,58 @@ export async function Footer() {
               </ul>
             )}
           </div>
-          <Suspense
-            fallback={
-              <div className="flex h-[188px] w-[200px] flex-col gap-2">
-                <div className={skeleton} />
-                <div className={skeleton} />
-                <div className={skeleton} />
-                <div className={skeleton} />
-                <div className={skeleton} />
-                <div className={skeleton} />
-              </div>
-            }
-          >
-            <FooterMenu menu={menu} />
-          </Suspense>
+
+          {menu.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <FooterHeading kind="info" />
+              <Suspense
+                fallback={
+                  <div className="flex h-[188px] w-[200px] flex-col gap-2">
+                    <div className={skeleton} />
+                    <div className={skeleton} />
+                    <div className={skeleton} />
+                    <div className={skeleton} />
+                    <div className={skeleton} />
+                    <div className={skeleton} />
+                  </div>
+                }
+              >
+                <FooterMenu menu={menu} />
+              </Suspense>
+            </div>
+          )}
+
+          {hasContacts && (
+            <div className="flex flex-col gap-3">
+              <FooterHeading kind="contacts" />
+              {phones.map((p) => (
+                <a
+                  key={p.id || p.number}
+                  href={`tel:${p.number.replace(/[^\d+]/g, '')}`}
+                  className="text-black transition hover:underline dark:text-white"
+                >
+                  {p.label ? `${p.label}: ` : ''}
+                  {p.number}
+                </a>
+              ))}
+              {emails.map((e) => (
+                <a
+                  key={e.id || e.email}
+                  href={`mailto:${e.email}`}
+                  className="break-all text-black transition hover:underline dark:text-white"
+                >
+                  {e.email}
+                </a>
+              ))}
+              {contacts.address && <p>{contacts.address}</p>}
+              {others.map((o) => (
+                <p key={o.id || o.label}>
+                  <span className="text-black dark:text-white">{o.label}:</span> {o.value}
+                </p>
+              ))}
+            </div>
+          )}
+
           <div className="md:ml-auto flex flex-col gap-4 items-end">
             <LanguageSwitcher />
             <ThemeSelector />

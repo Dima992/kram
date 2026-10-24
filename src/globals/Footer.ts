@@ -12,13 +12,93 @@ export const Footer: GlobalConfig = {
   fields: [
     {
       name: 'navItems',
+      label: 'Ссылки колонки «Информация»',
       type: 'array',
       fields: [
         link({
           appearances: false,
         }),
       ],
-      maxRows: 6,
+    },
+    {
+      name: 'contacts',
+      label: 'Контакты',
+      type: 'group',
+      fields: [
+        {
+          name: 'phones',
+          label: 'Телефоны',
+          type: 'array',
+          fields: [
+            {
+              name: 'label',
+              label: 'Подпись (необязательно, например, Основной)',
+              type: 'text',
+            },
+            {
+              name: 'number',
+              label: 'Номер (например, +380962063144)',
+              type: 'text',
+              required: true,
+            },
+            {
+              name: 'enabled',
+              label: 'Показывать на сайте',
+              type: 'checkbox',
+              defaultValue: true,
+            },
+          ],
+        },
+        {
+          name: 'emails',
+          label: 'Эл. почта',
+          type: 'array',
+          fields: [
+            {
+              name: 'email',
+              label: 'Адрес (например, info@kramnyca.com.ua)',
+              type: 'email',
+              required: true,
+            },
+            {
+              name: 'enabled',
+              label: 'Показывать на сайте',
+              type: 'checkbox',
+              defaultValue: true,
+            },
+          ],
+        },
+        {
+          name: 'address',
+          label: 'Адрес магазина',
+          type: 'text',
+        },
+        {
+          name: 'other',
+          label: 'Другое (любые дополнительные контакты)',
+          type: 'array',
+          fields: [
+            {
+              name: 'label',
+              label: 'Название (например, График работы)',
+              type: 'text',
+              required: true,
+            },
+            {
+              name: 'value',
+              label: 'Значение',
+              type: 'text',
+              required: true,
+            },
+            {
+              name: 'enabled',
+              label: 'Показывать на сайте',
+              type: 'checkbox',
+              defaultValue: true,
+            },
+          ],
+        },
+      ],
     },
     {
       name: 'socials',
