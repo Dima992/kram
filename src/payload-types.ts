@@ -2312,38 +2312,9 @@ export interface Setting {
   id: string;
   siteName: string;
   aiSettings?: {
-    /**
-     * Choose your preferred AI provider.
-     */
     aiProvider?: ('openai' | 'gemini' | 'anthropic') | null;
-    /**
-     * This is your API key for the selected AI provider. It grants access to AI services. Please refer to your AI provider's documentation for instructions on how to obtain this key.
-     */
     apiKey?: string | null;
-    /**
-     * The system prompt for the Catalog Agent, used for generating product texts, slugs, and working with categories.
-     */
-    catalogAgentPrompt?: string | null;
-    /**
-     * The system prompt for the Search Agent, used for frontend search and product recommendations.
-     */
-    searchAgentPrompt?: string | null;
-    /**
-     * Enable or disable AI-powered features across the site.
-     */
     aiEnabled?: boolean | null;
-    /**
-     * General information about the store (payment, delivery, warranty, contacts, return policy) used by ALL AI agents.
-     */
-    generalKnowledgeBase?: string | null;
-    /**
-     * System prompt for the Main Search Agent, used when no specific category agent is active.
-     */
-    mainSearchAgentPrompt?: string | null;
-    /**
-     * System prompt for the Business Owner / Analytics Agent, providing advice on assortment, marketing, and conversion.
-     */
-    ownerAgentPrompt?: string | null;
   };
   updatedAt?: string | null;
   createdAt?: string | null;
@@ -2438,12 +2409,7 @@ export interface SettingsSelect<T extends boolean = true> {
     | {
         aiProvider?: T;
         apiKey?: T;
-        catalogAgentPrompt?: T;
-        searchAgentPrompt?: T;
         aiEnabled?: T;
-        generalKnowledgeBase?: T;
-        mainSearchAgentPrompt?: T;
-        ownerAgentPrompt?: T;
       };
   updatedAt?: T;
   createdAt?: T;

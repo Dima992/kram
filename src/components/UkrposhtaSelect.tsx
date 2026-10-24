@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 type Lang = 'ua' | 'ru'
 type UkrCity = { id: string; name: string; regionId: string; label: string }
 type UkrOffice = { id: string; postcode: string; name: string; address: string }
-export type UPDelivery = { city: string; warehouse: string }
+export type UPDelivery = { city: string; warehouse: string; postcode: string }
 
 const dictionary = {
   ua: {
@@ -183,9 +183,11 @@ export function UkrposhtaSelect({ lang = 'ua', onChange, onError }: Props) {
               setSelectedOffice(id)
               const office = offices.find((o) => o.id === id)
               if (selectedCity && office) {
+                // Индекс сохраняем отдельно, в отделении только адрес
                 onChange({
                   city: selectedCity.label,
-                  warehouse: `${office.postcode}, ${office.address}`,
+                  warehouse: office.address,
+                  postcode: office.postcode,
                 })
               } else {
                 onChange(null)

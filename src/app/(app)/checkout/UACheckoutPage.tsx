@@ -18,6 +18,9 @@ type PayMethod = 'liqpay' | 'iban' | 'cod'
 type CartItems = NonNullable<Cart['items']>
 type FieldErrors = {
   phone?: boolean
+  surname?: boolean
+  name?: boolean
+  patronymic?: boolean
   np?: boolean
   up?: boolean
   comment?: boolean
@@ -47,8 +50,11 @@ const dictionary = {
     name: 'Ім’я',
     phone: 'Номер телефону',
     phoneRequired: 'Вкажіть номер телефону',
+    surnameRequired: 'Вкажіть прізвище',
+    nameRequired: 'Вкажіть ім’я',
+    patronymicRequired: 'Вкажіть по батькові (для Укрпошти)',
     npRequired: 'Оберіть місто та відділення Нової пошти',
-    upRequired: 'Оберіть населений пункт і відділення Укрпошти',
+    upRequired: 'Оберіть населений пункт і відділення Укрпошти або напишіть адресу в коментарі',
     cartEmpty: 'Ваш кошик порожній.',
     goShop: 'Перейти до каталогу',
     cartTitle: 'Ваш кошик',
@@ -103,8 +109,11 @@ const dictionary = {
     name: 'Имя',
     phone: 'Номер телефона',
     phoneRequired: 'Укажите номер телефона',
+    surnameRequired: 'Укажите фамилию',
+    nameRequired: 'Укажите имя',
+    patronymicRequired: 'Укажите отчество (для Укрпочты)',
     npRequired: 'Выберите город и отделение Новой почты',
-    upRequired: 'Выберите населенный пункт и отделение Укрпочты',
+    upRequired: 'Выберите населенный пункт и отделение Укрпочты или напишите адрес в комментарии',
     cartEmpty: 'Ваша корзина пуста.',
     goShop: 'Перейти в каталог',
     cartTitle: 'Ваша корзина',
@@ -150,6 +159,7 @@ const dictionary = {
   },
 }
 
+// Подсветка только для полей с ошибкой, и только после нажатия «Подтвердить»
 const fieldBase = 'w-full mt-1 rounded-xl px-3.5 py-2.5 text-sm outline-none'
 const fieldNormal = 'border border-zinc-200 bg-zinc-50/50 dark:border-zinc-800 dark:bg-zinc-800/50'
 const fieldHighlight = 'border border-red-400 bg-red-50/60 dark:border-red-700 dark:bg-red-950/20'
@@ -222,7 +232,7 @@ export function UACheckoutPage() {
   const cartApi = useCart() as ReturnType<typeof useCart> & { clearCart?: () => Promise<unknown> }
   const { cart } = cartApi
 
-  // Язык берём из адреса страницы, как переключатель в шапке: /ru/... или обычный адрес (украинский)
+  // Язык берём из адреса страницы: /ru/... или обычный адрес (украинский)
   const pathname = usePathname()
   const lang: Lang = pathname === '/ru' || pathname.startsWith('/ru/') ? 'ru' : 'ua'
   const t = dictionary[lang]
@@ -277,19 +287,31 @@ export function UACheckoutPage() {
     }
   }
 
+  // Обязательные поля: телефон всегда; фамилия и имя для доставки; отчество для Укрпочты
   const validate = (): FieldErrors => {
     const found: FieldErrors = {}
     if (!phone.trim()) found.phone = true
+
     if (mode === 'full') {
+      if (!surname.trim()) found.surname = true
+      if (!name.trim()) found.name = true
+
       if (carrier === 'nova_poshta' && !npDelivery) {
         found.np = true
-        if (npLoadError) found.comment = true
       }
-      if (carrier === 'ukrposhta' && !upDelivery) {
-        found.up = true
-        if (upLoadError) found.comment = true
+
+      if (carrier === 'ukrposhta') {
+        if (!patronymic.trim()) found.patronymic = true
+        // Отделение или, если его нет, адрес в комментарии
+        if (!upDelivery && !comment.trim()) {
+          found.up = true
+          found.comment = true
+        }
       }
-      if (carrier === 'address' && !comment.trim()) found.comment = true
+
+      if (carrier === 'address' && !comment.trim()) {
+        found.comment = true
+      }
     }
     return found
   }
@@ -321,7 +343,7 @@ export function UACheckoutPage() {
           surname: surname.trim(),
           customerName: name.trim() || t.customerDefault,
           phone,
-          patronymic,
+          patronymic: patronymic.trim(),
           comment: comment.trim(),
           deliveryCarrier: isQuick ? 'nova_poshta' : carrier,
           deliveryDetails: isQuick
@@ -391,7 +413,7 @@ export function UACheckoutPage() {
     )
   }
 
-  const commentHighlight = Boolean(errors.comment) || npLoadError || upLoadError
+  const commentHighlight = Boolean(errors.comment)
 
   return (
     <form
@@ -443,16 +465,6 @@ export function UACheckoutPage() {
 
               <div className="space-y-3 pt-2">
                 <div>
-                  <label className="text-xs font-medium">{t.name}</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Олена"
-                    className={fieldClass(false)}
-                  />
-                </div>
-                <div>
                   <label className="text-xs font-medium">{t.phone} *</label>
                   <input
                     type="tel"
@@ -486,38 +498,53 @@ export function UACheckoutPage() {
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-medium">{t.surname}</label>
+                    <label className="text-xs font-medium">{t.surname} *</label>
                     <input
                       type="text"
                       value={surname}
-                      onChange={(e) => setSurname(e.target.value)}
+                      onChange={(e) => {
+                        setSurname(e.target.value)
+                        clearError('surname')
+                      }}
                       placeholder="Петренко"
-                      className={fieldClass(carrier === 'ukrposhta')}
+                      className={fieldClass(Boolean(errors.surname))}
                     />
+                    {errors.surname && <p className="text-xs font-medium text-red-600 mt-1">{t.surnameRequired}</p>}
                   </div>
                   <div>
-                    <label className="text-xs font-medium">{t.name}</label>
+                    <label className="text-xs font-medium">{t.name} *</label>
                     <input
                       type="text"
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => {
+                        setName(e.target.value)
+                        clearError('name')
+                      }}
                       placeholder="Олена"
-                      className={fieldClass(false)}
+                      className={fieldClass(Boolean(errors.name))}
                     />
+                    {errors.name && <p className="text-xs font-medium text-red-600 mt-1">{t.nameRequired}</p>}
                   </div>
-                  <div>
-                    <label className="text-xs font-medium">{t.patronymic}</label>
-                    <input
-                      type="text"
-                      value={patronymic}
-                      onChange={(e) => setPatronymic(e.target.value)}
-                      placeholder={lang === 'ua' ? 'Олександрівна' : 'Александровна'}
-                      className={fieldClass(carrier === 'ukrposhta')}
-                    />
-                    {carrier === 'ukrposhta' && (
-                      <p className="text-[11px] text-red-600 mt-1">{t.patronymicHint}</p>
-                    )}
-                  </div>
+                  {carrier === 'ukrposhta' && (
+                    <div>
+                      <label className="text-xs font-medium">{t.patronymic} *</label>
+                      <input
+                        type="text"
+                        value={patronymic}
+                        onChange={(e) => {
+                          setPatronymic(e.target.value)
+                          clearError('patronymic')
+                        }}
+                        placeholder={lang === 'ua' ? 'Олександрівна' : 'Александровна'}
+                        className={fieldClass(Boolean(errors.patronymic))}
+                      />
+                      {errors.patronymic ? (
+                        <p className="text-xs font-medium text-red-600 mt-1">{t.patronymicRequired}</p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground mt-1">{t.patronymicHint}</p>
+                      )}
+                    </div>
+                  )}
                   <div>
                     <label className="text-xs font-medium">{t.phone} *</label>
                     <input
@@ -597,6 +624,7 @@ export function UACheckoutPage() {
                       onChange={(value) => {
                         setUpDelivery(value)
                         clearError('up')
+                        clearError('comment')
                       }}
                       onError={setUpLoadError}
                     />
