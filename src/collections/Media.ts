@@ -63,7 +63,7 @@ export const Media: CollectionConfig = {
     staticDir: path.resolve(dirname, '../../public/media'),
     // Точка фокуса: кружок, которым задаётся важная часть фото
     focalPoint: true,
-    // Размеры по пропорции 3:4
+    // Размеры: карточка 3:4 и статья 1:1
     imageSizes: [
       {
         name: 'large',
@@ -78,6 +78,13 @@ export const Media: CollectionConfig = {
         height: 800,
         fit: 'cover',
         formatOptions: { format: 'webp', options: { quality: 75 } },
+      },
+      {
+        name: 'square',
+        width: 800,
+        height: 800,
+        fit: 'cover',
+        formatOptions: { format: 'webp', options: { quality: 80 } },
       },
     ],
   },
