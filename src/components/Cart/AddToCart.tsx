@@ -56,11 +56,17 @@ export function AddToCart({ product, quantity = 1 }: Props) {
     (e: React.FormEvent<HTMLButtonElement>) => {
       e.preventDefault()
 
-      addItem({
-        product: product.id,
-        variant: selectedVariant?.id ?? undefined,
-        quantity,
-      }).then(() => {
+   const addMany = async () => {
+        for (let i = 0; i < quantity; i++) {
+          await addItem({
+            product: product.id,
+            variant: selectedVariant?.id ?? undefined,
+          })
+        }
+      }
+
+      addMany().then(() => {
+        
         toast.success(text[locale].added)
 
         void fetch('/api/analytics/events', {
