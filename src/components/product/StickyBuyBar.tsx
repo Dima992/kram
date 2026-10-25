@@ -40,7 +40,7 @@ export function StickyBuyBar({ product }: Props) {
           <p className="truncate text-sm font-medium text-foreground">{product.title}</p>
           <p className="text-sm text-foreground">{product.priceInUAH} грн</p>
         </div>
-    <div className="min-w-0 flex-1 [&_button]:w-full [&_button]:border-[#0b7a78] [&_button]:bg-[#0b7a78] [&_button]:text-white [&_button:hover]:opacity-90 [&_button]:animate-pulse [&_button]:[animation-duration:3s]">:animate-pulse [&_button]:[animation-duration:3s]">
+        <div className="min-w-0 flex-1 [&_button]:w-full [&_button]:border-[#0b7a78] [&_button]:bg-[#0b7a78] [&_button]:text-white [&_button:hover]:opacity-90 [&_button]:animate-pulse [&_button]:[animation-duration:3s]">
           <AddToCart product={product} />
         </div>
       </div>
