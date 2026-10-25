@@ -9,7 +9,7 @@ import configPromise from '@payload-config'
 import { ChevronLeftIcon } from 'lucide-react'
 import { Metadata } from 'next'
 import { unstable_cache } from 'next/cache'
-import { draftMode } from 'next/headers'
+import { draftMode, headers as getHeaders } from 'next/headers'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getPayload } from 'payload'
@@ -17,15 +17,24 @@ import React, { Suspense } from 'react'
 
 export const revalidate = 3600
 
+type Locale = 'uk' | 'ru'
+
 type Args = {
   params: Promise<{
     slug: string
   }>
 }
 
+// Язык берём из метки, которую ставит src/proxy.ts
+const getLocale = async (): Promise<Locale> => {
+  const headers = await getHeaders()
+  return headers.get('x-locale') === 'ru' ? 'ru' : 'uk'
+}
+
 export async function generateMetadata({ params }: Args): Promise<Metadata> {
   const { slug } = await params
-  const product = await queryProductBySlug({ slug })
+  const locale = await getLocale()
+  const product = await queryProductBySlug({ slug, locale })
 
   if (!product) return notFound()
 
@@ -64,7 +73,8 @@ export async function generateMetadata({ params }: Args): Promise<Metadata> {
 
 export default async function ProductPage({ params }: Args) {
   const { slug } = await params
-  const product = await queryProductBySlug({ slug })
+  const locale = await getLocale()
+  const product = await queryProductBySlug({ slug, locale })
 
   if (!product) return notFound()
 
@@ -120,7 +130,7 @@ export default async function ProductPage({ params }: Args) {
           </Link>
         </Button>
         <div className="flex flex-col gap-12 rounded-lg border p-8 md:py-12 lg:flex-row lg:gap-8 bg-primary-foreground">
-            <div className="order-2 h-full w-full basis-full lg:order-none lg:basis-1/2">
+          <div className="order-2 h-full w-full basis-full lg:order-none lg:basis-1/2">
             <Suspense
               fallback={
                 <div className="relative aspect-square h-full max-h-137.5 w-full overflow-hidden" />
@@ -179,17 +189,17 @@ function RelatedProducts({ products }: { products: Product[] }) {
   )
 }
 
-const queryProductBySlug = async ({ slug }: { slug: string }) => {
+const queryProductBySlug = async ({ slug, locale }: { slug: string; locale: Locale }) => {
   const { isEnabled: draft } = await draftMode()
 
   if (!draft) {
-    return getPublishedProductBySlug(slug)
+    return getPublishedProductBySlug(slug, locale)
   }
 
-  return findProductBySlug(slug, true)
+  return findProductBySlug(slug, true, locale)
 }
 
-const findProductBySlug = async (slug: string, draft: boolean) => {
+const findProductBySlug = async (slug: string, draft: boolean, locale: Locale) => {
   const payload = await getPayload({ config: configPromise })
 
   const result = await payload.find({
@@ -197,6 +207,7 @@ const findProductBySlug = async (slug: string, draft: boolean) => {
     depth: 3,
     draft,
     limit: 1,
+    locale,
     overrideAccess: draft,
     pagination: false,
     where: {
@@ -210,9 +221,8 @@ const findProductBySlug = async (slug: string, draft: boolean) => {
       ],
     },
     populate: {
-        variants: {
+      variants: {
         title: true,
-        priceInUSD: true,
         priceInUAH: true,
         inventory: true,
         options: true,
@@ -223,8 +233,9 @@ const findProductBySlug = async (slug: string, draft: boolean) => {
   return result.docs?.[0] || null
 }
 
+// Кэш отдельно для каждого языка: slug и locale попадают в ключ кэша
 const getPublishedProductBySlug = unstable_cache(
-  async (slug: string) => findProductBySlug(slug, false),
+  async (slug: string, locale: Locale) => findProductBySlug(slug, false, locale),
   ['published-product'],
   { revalidate: 3600, tags: ['products'] },
 )

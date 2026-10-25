@@ -16,7 +16,7 @@ import {
 import { revalidateTag } from 'next/cache'
 import { DefaultDocumentIDType, slugField, Where } from 'payload'
 
-import { adminOnly } from '@/access/adminOnly'
+import { adminOnlyFieldAccess } from '@/access/adminOnlyFieldAccess'
 import { CallToAction } from '@/blocks/CallToAction/config'
 import { Content } from '@/blocks/Content/config'
 import { MediaBlock } from '@/blocks/MediaBlock/config'
@@ -64,42 +64,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     meta: true,
   },
   fields: [
-        {
-      name: 'title',
-      type: 'text',
-      required: true,
-      localized: true,
-      // Проверка дубля: ищем другой товар с таким же названием на том же языке
-      validate: async (value, { req, id }) => {
-        if (!value || typeof value !== 'string') return true
-
-        const locale = req.locale === 'ru' ? 'ru' : 'uk'
-
-        const found = await req.payload.find({
-          collection: 'products',
-          locale,
-          where: {
-            and: [
-              { title: { equals: value.trim() } },
-              ...(id ? [{ id: { not_equals: id } }] : []),
-            ],
-          },
-          limit: 1,
-          depth: 0,
-          pagination: false,
-          draft: true,
-          req,
-        })
-
-        if (found.docs.length > 0) {
-          return locale === 'ru'
-            ? 'Товар с таким названием уже есть. Измените название.'
-            : 'Товар з такою назвою вже є. Змініть назву.'
-        }
-
-        return true
-      },
-    },
+    { name: 'title', type: 'text', required: true, localized: true },
     {
       type: 'tabs',
       tabs: [
@@ -237,11 +202,14 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
             }),
             MetaTitleField({
               hasGenerateFn: true,
+              overrides: { localized: true },
             }),
             MetaImageField({
               relationTo: 'media',
             }),
-            MetaDescriptionField({}),
+            MetaDescriptionField({
+              overrides: { localized: true },
+            }),
             PreviewField({
               hasGenerateFn: true,
               titlePath: 'meta.title',
@@ -298,10 +266,10 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       name: 'internalNote',
       type: 'textarea',
       label: 'Нотатка (тільки для адмінки)',
-      access: {
-        read: adminOnly,
-        create: adminOnly,
-        update: adminOnly,
+        access: {
+        read: adminOnlyFieldAccess,
+        create: adminOnlyFieldAccess,
+        update: adminOnlyFieldAccess,
       },
       admin: {
         position: 'sidebar',

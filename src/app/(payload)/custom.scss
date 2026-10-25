@@ -29,3 +29,11 @@
   z-index: 100;
   background: var(--theme-bg);
 }
+
+/* Верхняя панель админки с переключателем языка всегда видна при прокрутке */
+.app-header,
+.doc-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
