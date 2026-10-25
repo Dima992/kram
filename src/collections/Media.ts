@@ -28,13 +28,13 @@ export const Media: CollectionConfig = {
     {
       name: 'alt',
       type: 'text',
-      required: false, // Теперь поле не обязательное, ошибка при сохранении уйдёт
-      localized: true, 
+      required: false,
+      localized: true,
     },
     {
       name: 'caption',
       type: 'richText',
-      localized: true, 
+      localized: true,
       editor: lexicalEditor({
         features: ({ rootFeatures }) => {
           return [...rootFeatures, FixedToolbarFeature(), InlineToolbarFeature()]
@@ -47,10 +47,10 @@ export const Media: CollectionConfig = {
       ({ data }) => {
         // Автоматически заполняем alt уникальным хвостом, если он пустой
         if (data && !data.alt) {
-          const baseName = data.filename 
-            ? data.filename.substring(0, data.filename.lastIndexOf('.')) || data.filename 
+          const baseName = data.filename
+            ? data.filename.substring(0, data.filename.lastIndexOf('.')) || data.filename
             : 'image'
-          
+
           const uniqueId = Date.now().toString().slice(-6)
           data.alt = `${baseName}-${uniqueId}`
         }
@@ -61,5 +61,24 @@ export const Media: CollectionConfig = {
   upload: {
     disableLocalStorage: true,
     staticDir: path.resolve(dirname, '../../public/media'),
+    // Точка фокуса: кружок, которым задаётся важная часть фото
+    focalPoint: true,
+    // Размеры по пропорции 3:4
+    imageSizes: [
+      {
+        name: 'large',
+        width: 1200,
+        height: 1600,
+        fit: 'cover',
+        formatOptions: { format: 'webp', options: { quality: 80 } },
+      },
+      {
+        name: 'thumbnail',
+        width: 600,
+        height: 800,
+        fit: 'cover',
+        formatOptions: { format: 'webp', options: { quality: 75 } },
+      },
+    ],
   },
 }
