@@ -19,28 +19,33 @@ export const revalidatePage: CollectionAfterChangeHook<Page> = ({
   previousDoc,
   req: { payload, context },
 }) => {
-  if (!context.disableRevalidate) {
-    revalidateTag('pages', { expire: 0 })
+  if (context.disableRevalidate) return doc
 
+  // Обновляем сайт только для опубликованных страниц.
+  // Черновики (в том числе при открытии формы создания) не трогаем.
+  try {
     if (doc._status === 'published') {
-      const paths = getPathsToRevalidate(doc.slug)
+      revalidateTag('pages', { expire: 0 })
 
-      paths.forEach((path) => {
+      getPathsToRevalidate(doc.slug).forEach((path) => {
         payload.logger.info(`Revalidating page at path: ${path}`)
         revalidatePath(path)
       })
     }
 
-    // Если страница снята с публикации, инвалидируем старые языковые пути
+    // Если страница снята с публикации, обновляем старые пути
     if (previousDoc?._status === 'published' && doc._status !== 'published') {
-      const oldPaths = getPathsToRevalidate(previousDoc.slug)
+      revalidateTag('pages', { expire: 0 })
 
-      oldPaths.forEach((oldPath) => {
+      getPathsToRevalidate(previousDoc.slug).forEach((oldPath) => {
         payload.logger.info(`Revalidating old page at path: ${oldPath}`)
         revalidatePath(oldPath)
       })
     }
+  } catch (error) {
+    payload.logger.warn({ err: error }, 'Page revalidation skipped')
   }
+
   return doc
 }
 
