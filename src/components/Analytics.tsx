@@ -85,13 +85,13 @@ export function Analytics({ googleTagManagerId }: AnalyticsProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="cookie-title"
-            className="w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl border border-foreground bg-foreground p-6 text-background shadow-2xl"
           >
-            <h2 id="cookie-title" className="mb-3 text-lg font-medium text-foreground">
+            <h2 id="cookie-title" className="mb-3 text-lg font-medium text-background">
               {t.title}
             </h2>
 
-            <p className="mb-4 text-sm text-foreground">
+            <p className="mb-4 text-sm text-background">
               {t.message}{' '}
               <Link href={t.privacyHref} className="underline">
                 {t.details}
@@ -102,7 +102,7 @@ export function Analytics({ googleTagManagerId }: AnalyticsProps) {
               <button
                 type="button"
                 onClick={() => choose('necessary')}
-                className="flex-1 rounded-lg border border-border px-4 py-2 text-sm text-foreground"
+                className="flex-1 rounded-lg border border-background px-4 py-2 text-sm text-background"
               >
                 {t.necessary}
               </button>
