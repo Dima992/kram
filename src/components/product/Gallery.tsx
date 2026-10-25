@@ -14,29 +14,51 @@ type Props = {
   gallery: NonNullable<Product['gallery']>
 }
 
+type Pt = { x: number; y: number }
+
+const clampPos = (p: Pt, z: number): Pt => {
+  const maxX = (z - 1) * window.innerWidth * 0.5
+  const maxY = (z - 1) * window.innerHeight * 0.5
+  return {
+    x: Math.max(-maxX, Math.min(maxX, p.x)),
+    y: Math.max(-maxY, Math.min(maxY, p.y)),
+  }
+}
+
 export const Gallery: React.FC<Props> = ({ gallery }) => {
   const searchParams = useSearchParams()
   const [current, setCurrent] = useState(0)
   const [api, setApi] = useState<CarouselApi>()
   const [open, setOpen] = useState(false)
-  const [zoomed, setZoomed] = useState(false)
+  const [zoom, setZoom] = useState(1)
+  const [pos, setPos] = useState<Pt>({ x: 0, y: 0 })
+
+  // Касания и мышь: указатели на большом фото
+  const pointers = useRef(new Map<number, Pt>())
+  const drag = useRef<{ x: number; y: number; baseX: number; baseY: number } | null>(null)
+  const pinch = useRef<{ dist: number; zoom: number } | null>(null)
+  const movedRef = useRef(false)
   const touchStartX = useRef<number | null>(null)
-  const swiped = useRef(false)
 
   const total = gallery.length
   const currentItem = gallery[current]
 
+  const resetZoom = () => {
+    setZoom(1)
+    setPos({ x: 0, y: 0 })
+  }
+
   const goPrev = () => {
-    setZoomed(false)
+    resetZoom()
     setCurrent((c) => Math.max(0, c - 1))
   }
   const goNext = () => {
-    setZoomed(false)
+    resetZoom()
     setCurrent((c) => Math.min(total - 1, c + 1))
   }
   const close = () => {
     setOpen(false)
-    setZoomed(false)
+    resetZoom()
   }
 
   // Выбор варианта: переходим к фото, привязанному к варианту
@@ -78,43 +100,98 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     }
   }, [open, total])
 
-  // Свайп пальцем (один палец и только без зума)
-  const onTouchStart = (e: React.TouchEvent) => {
-    swiped.current = false
-    if (e.touches.length !== 1 || zoomed) {
-      touchStartX.current = null
-      return
-    }
+  // Свайп на обычной карточке фото
+  const onCardTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
   }
-
-  const onTouchEnd = (e: React.TouchEvent) => {
+  const onCardTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX.current === null) return
     const dx = e.changedTouches[0].clientX - touchStartX.current
     touchStartX.current = null
-    if (Math.abs(dx) > 40) {
-      swiped.current = true
-      if (dx < 0) goNext()
-      else goPrev()
+    if (dx < -40) goNext()
+    if (dx > 40) goPrev()
+  }
+
+  // Большое окно: щипок (телефон), перетаскивание, свайп, клик-зум (ПК)
+  const onStageDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    e.currentTarget.setPointerCapture(e.pointerId)
+    movedRef.current = false
+
+    if (pointers.current.size === 2) {
+      const [a, b] = Array.from(pointers.current.values())
+      pinch.current = { dist: Math.hypot(a.x - b.x, a.y - b.y), zoom }
+      drag.current = null
+    } else {
+      drag.current = { x: e.clientX, y: e.clientY, baseX: pos.x, baseY: pos.y }
     }
   }
 
-  // Клик по большому фото в окне: зум, но не после свайпа
-  const onImageClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (swiped.current) {
-      swiped.current = false
+  const onStageMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const p = pointers.current.get(e.pointerId)
+    if (!p) return
+    p.x = e.clientX
+    p.y = e.clientY
+
+    // Два пальца: щипок меняет зум
+    if (pointers.current.size === 2 && pinch.current) {
+      const [a, b] = Array.from(pointers.current.values())
+      const dist = Math.hypot(a.x - b.x, a.y - b.y)
+      const z = Math.max(1, Math.min(4, (pinch.current.zoom * dist) / pinch.current.dist))
+      movedRef.current = true
+      setZoom(z)
+      setPos((prev) => clampPos(prev, z))
       return
     }
-    setZoomed((z) => !z)
+
+    // Один палец или мышь: перетаскивание при зуме
+    const d = drag.current
+    if (!d) return
+    const dx = e.clientX - d.x
+    const dy = e.clientY - d.y
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) movedRef.current = true
+    if (zoom > 1) {
+      setPos(clampPos({ x: d.baseX + dx, y: d.baseY + dy }, zoom))
+    }
+  }
+
+  const onStageUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const wasSingle = pointers.current.size === 1
+    pointers.current.delete(e.pointerId)
+
+    if (pointers.current.size === 0) {
+      pinch.current = null
+    }
+
+    if (wasSingle && drag.current) {
+      const dx = e.clientX - drag.current.x
+
+      // Свайп влево и вправо при обычном размере (касание или мышь)
+      if (zoom === 1 && Math.abs(dx) > 50 && movedRef.current) {
+        if (dx < 0) goNext()
+        else goPrev()
+      }
+
+      // Клик мышкой по фото: зум 1 → 2 → 3 → 1 (не после перетаскивания)
+      if (e.pointerType === 'mouse' && !movedRef.current) {
+        setZoom((z) => (z === 1 ? 2 : z === 2 ? 3 : 1))
+        setPos({ x: 0, y: 0 })
+      }
+    }
+
+    drag.current = null
+    if (pointers.current.size === 1) {
+      const [only] = Array.from(pointers.current.values())
+      drag.current = { x: only.x, y: only.y, baseX: pos.x, baseY: pos.y }
+    }
   }
 
   return (
     <div>
       <div
         className="relative mb-8 w-full overflow-hidden"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
+        onTouchStart={onCardTouchStart}
+        onTouchEnd={onCardTouchEnd}
       >
         <button
           type="button"
@@ -176,20 +253,37 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
 
       {/* Большое окно фото */}
       {open && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90"
-          onClick={close}
-        >
+        <div className="fixed inset-0 z-[100] bg-black/90">
+          <div
+            className="flex h-full w-full touch-none select-none items-center justify-center overflow-hidden"
+            onPointerDown={onStageDown}
+            onPointerMove={onStageMove}
+            onPointerUp={onStageUp}
+            onPointerCancel={onStageUp}
+          >
+            <div
+              className={zoom > 1 ? 'cursor-grab' : 'cursor-zoom-in'}
+              style={{
+                transform: `translate(${pos.x}px, ${pos.y}px) scale(${zoom})`,
+                transition: pointers.current.size > 0 ? 'none' : 'transform 0.2s ease',
+              }}
+            >
+              <Media
+                resource={currentItem.image}
+                className="w-auto"
+                imgClassName="max-h-[90vh] max-w-[95vw] w-auto object-contain"
+                size="100vw"
+              />
+            </div>
+          </div>
+
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              close()
-            }}
+            onClick={close}
             aria-label="Закрыть"
-            className="absolute top-4 right-4 z-10 flex size-10 items-center justify-center rounded bg-black text-white hover:opacity-80"
+            className="absolute top-4 right-4 z-10 flex size-10 items-center justify-center rounded bg-black text-white hover:opacity-80 md:size-12"
           >
-            <X className="size-5" />
+            <X className="size-6" />
           </button>
 
           <div className="absolute top-4 left-4 z-10 rounded bg-black px-3 py-1 text-sm text-white">
@@ -199,53 +293,27 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
           {current > 0 && (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                goPrev()
-              }}
+              onClick={goPrev}
               aria-label="Предыдущее фото"
-              className="absolute top-1/2 left-3 z-10 -translate-y-1/2 flex size-10 items-center justify-center rounded bg-black text-white hover:opacity-80"
+              className="absolute top-1/2 left-3 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded bg-black text-white hover:opacity-80 md:size-14"
             >
-              <ChevronLeft className="size-5" />
+              <ChevronLeft className="size-6 md:size-8" />
             </button>
           )}
 
           {current < total - 1 && (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                goNext()
-              }}
+              onClick={goNext}
               aria-label="Следующее фото"
-              className="absolute top-1/2 right-3 z-10 -translate-y-1/2 flex size-10 items-center justify-center rounded bg-black text-white hover:opacity-80"
+              className="absolute top-1/2 right-3 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded bg-black text-white hover:opacity-80 md:size-14"
             >
-              <ChevronRight className="size-5" />
+              <ChevronRight className="size-6 md:size-8" />
             </button>
           )}
 
-          <div
-            className={
-              zoomed
-                ? 'h-full w-full overflow-auto'
-                : 'flex h-full w-full items-center justify-center p-4'
-            }
-            onClick={(e) => e.stopPropagation()}
-            onTouchStart={onTouchStart}
-            onTouchEnd={onTouchEnd}
-          >
-            <div
-              onClick={onImageClick}
-              className={zoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}
-              style={{ transform: zoomed ? 'scale(2)' : 'scale(1)', transformOrigin: 'center' }}
-            >
-              <Media
-                resource={currentItem.image}
-                className="w-auto"
-                imgClassName="h-[90vh] w-auto max-w-[95vw] object-contain"
-                size="100vw"
-              />
-            </div>
+          <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded bg-black px-3 py-1 text-sm text-white">
+            Щипок пальцами или клик по фото — зум
           </div>
         </div>
       )}

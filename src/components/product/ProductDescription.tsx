@@ -115,7 +115,7 @@ export function ProductDescription({ product }: { product: Product }) {
         </div>
         <div id="buy-block" className="flex items-center gap-3">
           <QuantityControl quantity={quantity} onChange={setQuantity} />
-                    <div className="min-w-0 flex-1 [&_button]:w-full [&_button]:border-primary [&_button]:bg-primary [&_button]:text-primary-foreground [&_button:hover]:opacity-90 [&_button]:animate-pulse [&_button]:[animation-duration:3s]">
+                              <div className="min-w-0 flex-1 [&_button]:w-full [&_button]:border-[#0b7a78] [&_button]:bg-[#0b7a78] [&_button]:text-white [&_button:hover]:opacity-90 [&_button]:animate-pulse [&_button]:[animation-duration:3s]">
             <Suspense fallback={null}>
               <AddToCart product={product} quantity={quantity} />
             </Suspense>
