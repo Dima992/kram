@@ -1,56 +1,64 @@
-import type { CollectionBeforeChangeHook } from 'payload'
+import type { CollectionAfterChangeHook } from 'payload'
 
-export const autoGenerateAlt: CollectionBeforeChangeHook = async ({ data, req }) => {
-  // Если галерея пустая — ничего не делаем и не тормозим сохранение
-  if (!data?.gallery || !Array.isArray(data.gallery) || data.gallery.length === 0) {
-    return data
-  }
+// Языки, для которых заполняем описания фото
+const LOCALES = ['uk', 'ru'] as const
 
-  const currentLocale = req.locale === 'ru' ? 'ru' : 'uk'
-  const productTitle = data.title || (currentLocale === 'ru' ? 'Товар' : 'Товар')
+// Подпись фото: «головне фото», «фото 2» (uk) или «главное фото», «фото 2» (ru)
+const photoLabel = (index: number, locale: 'uk' | 'ru') => {
+  if (locale === 'ru') return index === 0 ? 'главное фото' : `фото ${index + 1}`
+  return index === 0 ? 'головне фото' : `фото ${index + 1}`
+}
 
-  for (let index = 0; index < data.gallery.length; index++) {
-    const item = data.gallery[index]
-    if (!item?.image) continue
+// Заполняет alt у всех фото товара на украинском и русском.
+// Работает ПОСЛЕ сохранения товара, чтобы взять уже записанное название.
+// Меняет только пустые alt: вписанные вручную не трогаем.
+export const autoGenerateAlt: CollectionAfterChangeHook = async ({ doc, req }) => {
+  const gallery = Array.isArray(doc.gallery) ? doc.gallery : []
+  if (gallery.length === 0) return doc
 
-    const imageId = typeof item.image === 'object' ? item.image.id : item.image
-
-    // Формируем текст на текущем языке запроса (uk или ru)
-    const photoLabel =
-      index === 0
-        ? currentLocale === 'ru'
-          ? 'главное фото'
-          : 'головне фото'
-        : currentLocale === 'ru'
-          ? `фото ${index + 1}`
-          : `фото ${index + 1}`
-
-    const generatedAlt = `${productTitle} — ${photoLabel}`
-
+  for (const locale of LOCALES) {
     try {
-      // Ищем медиафайл на текущем языке
-      const mediaDoc = await req.payload.findByID({
-        collection: 'media',
-        id: imageId,
-        locale: currentLocale,
+      // Название товара на этом языке
+      const product = await req.payload.findByID({
+        collection: 'products',
+        id: doc.id,
+        locale,
+        depth: 0,
+        draft: true,
+        req,
       })
+      const title = product.title || 'Товар'
 
-      // Если alt не заполнен вручную — автоматически обновляем его для этой локали
-      if (mediaDoc && !mediaDoc.alt) {
+      for (let index = 0; index < gallery.length; index++) {
+        const item = gallery[index]
+        const imageId = typeof item?.image === 'object' ? item.image?.id : item?.image
+        if (!imageId) continue
+
+        // fallbackLocale: false — иначе русский alt «подтянет» украинский и не заполнится
+        const media = await req.payload.findByID({
+          collection: 'media',
+          id: imageId,
+          locale,
+          depth: 0,
+          fallbackLocale: false,
+          req,
+        })
+
+        if (media.alt) continue
+
         await req.payload.update({
           collection: 'media',
           id: imageId,
-          locale: currentLocale,
-          data: {
-            alt: generatedAlt,
-          },
+          locale,
+          data: { alt: `${title} — ${photoLabel(index, locale)}` },
+          req,
         })
       }
     } catch (err) {
-      // Логируем ошибку в консоль сервера, но НЕ блокируем сохранение товара!
-      console.error(`[AutoAlt] Не удалось обновить alt для media ID ${imageId}:`, err)
+      // Ошибка в логах сервера, но сохранение товара не блокируем
+      req.payload.logger.error({ err }, `Auto alt skipped for locale ${locale}`)
     }
   }
 
-  return data
+  return doc
 }

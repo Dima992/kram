@@ -1,9 +1,3 @@
-import { CallToAction } from '@/blocks/CallToAction/config'
-import { Content } from '@/blocks/Content/config'
-import { MediaBlock } from '@/blocks/MediaBlock/config'
-import { getStoredRates } from '@/utilities/exchangeRates'
-import { generatePreviewPath } from '@/utilities/generatePreviewPath'
-import { transliterate } from '@/utilities/transliterate'
 import { CollectionOverride } from '@payloadcms/plugin-ecommerce/types'
 import {
   MetaDescriptionField,
@@ -21,16 +15,22 @@ import {
 } from '@payloadcms/richtext-lexical'
 import { revalidateTag } from 'next/cache'
 import { DefaultDocumentIDType, slugField, Where } from 'payload'
+
+import { adminOnly } from '@/access/adminOnly'
+import { CallToAction } from '@/blocks/CallToAction/config'
+import { Content } from '@/blocks/Content/config'
+import { MediaBlock } from '@/blocks/MediaBlock/config'
+import { getStoredRates } from '@/utilities/exchangeRates'
+import { generatePreviewPath } from '@/utilities/generatePreviewPath'
+import { transliterate } from '@/utilities/transliterate'
 import { autoGenerateAlt } from './hooks/autoGenerateAlt'
 
 export const ProductsCollection: CollectionOverride = ({ defaultCollection }) => ({
   ...defaultCollection,
   admin: {
     ...defaultCollection?.admin,
-    components: {
-    },
     defaultColumns: ['title', 'basePrice', 'baseCurrency', 'priceInUAH', '_status'],
-     livePreview: {
+    livePreview: {
       url: ({ data, req }) =>
         generatePreviewPath({
           slug: data?.slug,
@@ -64,7 +64,42 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     meta: true,
   },
   fields: [
-    { name: 'title', type: 'text', required: true, localized: true },
+        {
+      name: 'title',
+      type: 'text',
+      required: true,
+      localized: true,
+      // Проверка дубля: ищем другой товар с таким же названием на том же языке
+      validate: async (value, { req, id }) => {
+        if (!value || typeof value !== 'string') return true
+
+        const locale = req.locale === 'ru' ? 'ru' : 'uk'
+
+        const found = await req.payload.find({
+          collection: 'products',
+          locale,
+          where: {
+            and: [
+              { title: { equals: value.trim() } },
+              ...(id ? [{ id: { not_equals: id } }] : []),
+            ],
+          },
+          limit: 1,
+          depth: 0,
+          pagination: false,
+          draft: true,
+          req,
+        })
+
+        if (found.docs.length > 0) {
+          return locale === 'ru'
+            ? 'Товар с таким названием уже есть. Измените название.'
+            : 'Товар з такою назвою вже є. Змініть назву.'
+        }
+
+        return true
+      },
+    },
     {
       type: 'tabs',
       tabs: [
@@ -142,7 +177,6 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
                 },
               ],
             },
-
             {
               name: 'layout',
               type: 'blocks',
@@ -207,7 +241,6 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
             MetaImageField({
               relationTo: 'media',
             }),
-
             MetaDescriptionField({}),
             PreviewField({
               hasGenerateFn: true,
@@ -239,7 +272,8 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       ],
       admin: {
         position: 'sidebar',
-        description: 'Валюта, в якій вказується базова ціна товару',
+        description:
+          'Валюта, в якій вводите ціну. Якщо вводите в гривнях, залишайте UAH. Для USD та EUR магазин сам перераховує ціну в гривні.',
       },
     },
     {
@@ -257,7 +291,21 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       admin: {
         position: 'sidebar',
         readOnly: true,
-        description: 'Розрахована ціна в грн за курсом НБУ',
+        description: 'Розрахована ціна в грн за курсом НБУ (покупцю показується ця)',
+      },
+    },
+    {
+      name: 'internalNote',
+      type: 'textarea',
+      label: 'Нотатка (тільки для адмінки)',
+      access: {
+        read: adminOnly,
+        create: adminOnly,
+        update: adminOnly,
+      },
+      admin: {
+        position: 'sidebar',
+        description: 'Для себе: нагадування, що перевірити. На сайті не показується.',
       },
     },
     {
@@ -320,7 +368,6 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       label: 'Артикул постачальника',
       admin: {
         position: 'sidebar',
-        readOnly: true,
       },
     },
     {
@@ -337,7 +384,6 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       label: 'Постачальник',
       admin: {
         position: 'sidebar',
-        readOnly: true,
       },
     },
     {
@@ -348,7 +394,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
         readOnly: true,
       },
     },
-      slugField({
+    slugField({
       slugify: async ({ valueToSlugify, data, req }) => {
         const base = transliterate(String(valueToSlugify ?? ''))
         if (!base) return ''
@@ -386,6 +432,8 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
         }
         return doc
       },
+      // Альты фото: после сохранения, на двух языках
+      autoGenerateAlt,
     ],
     afterDelete: [
       ...(defaultCollection?.hooks?.afterDelete || []),
@@ -396,7 +444,6 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     ],
     beforeChange: [
       ...(defaultCollection?.hooks?.beforeChange || []),
-      autoGenerateAlt,
       async ({ data, req }) => {
         if (!data?.basePrice) {
           data.priceInUAH = 0

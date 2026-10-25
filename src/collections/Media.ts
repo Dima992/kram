@@ -26,6 +26,7 @@ export const Media: CollectionConfig = {
   },
   fields: [
     {
+      // Описание фото для людей и поисковиков. Заполняется автоматически из названия товара.
       name: 'alt',
       type: 'text',
       required: false,
@@ -42,22 +43,6 @@ export const Media: CollectionConfig = {
       }),
     },
   ],
-  hooks: {
-    beforeValidate: [
-      ({ data }) => {
-        // Автоматически заполняем alt уникальным хвостом, если он пустой
-        if (data && !data.alt) {
-          const baseName = data.filename
-            ? data.filename.substring(0, data.filename.lastIndexOf('.')) || data.filename
-            : 'image'
-
-          const uniqueId = Date.now().toString().slice(-6)
-          data.alt = `${baseName}-${uniqueId}`
-        }
-        return data
-      },
-    ],
-  },
   upload: {
     disableLocalStorage: true,
     staticDir: path.resolve(dirname, '../../public/media'),
