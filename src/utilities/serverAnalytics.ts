@@ -26,7 +26,8 @@ const sha256 = (value: string) => createHash('sha256').update(value).digest('hex
 
 const getUserData = (event: ConversionEvent) => {
   const email = event.email?.trim().toLowerCase()
-  const phone = event.phone?.replace(/\D/g, '')
+  const digits = event.phone?.replace(/\D/g, '')
+  const phone = digits && digits.length === 10 && digits.startsWith('0') ? `38${digits}` : digits
 
   return {
     ...(email ? { email: sha256(email) } : {}),
