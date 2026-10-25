@@ -1,10 +1,10 @@
-import type { Media, Product } from '@/payload-types'
-
 import { RenderBlocks } from '@/blocks/RenderBlocks'
 import { GridTileImage } from '@/components/Grid/tile'
 import { Gallery } from '@/components/product/Gallery'
 import { ProductDescription } from '@/components/product/ProductDescription'
+import { StickyBuyBar } from '@/components/product/StickyBuyBar'
 import { Button } from '@/components/ui/button'
+import type { Media, Product } from '@/payload-types'
 import configPromise from '@payload-config'
 import { ChevronLeftIcon } from 'lucide-react'
 import { Metadata } from 'next'
@@ -136,6 +136,7 @@ export default async function ProductPage({ params }: Args) {
         </div>
       </div>
 
+      <StickyBuyBar product={product} />
       {product.layout?.length ? <RenderBlocks blocks={product.layout} /> : <></>}
 
       {relatedProducts.length ? (

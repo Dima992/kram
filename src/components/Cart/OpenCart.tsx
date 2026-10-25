@@ -1,7 +1,6 @@
 import { Button } from '@/components/ui/button'
-import clsx from 'clsx'
 import { ShoppingCart } from 'lucide-react'
-import React from 'react'
+import { usePathname } from 'next/navigation'
 
 export function OpenCartButton({
   className,
@@ -11,14 +10,19 @@ export function OpenCartButton({
   className?: string
   quantity?: number
 }) {
+  const pathname = usePathname()
+  const label = pathname.startsWith('/ru') ? 'Корзина' : 'Кошик'
+
   return (
     <Button
       variant="nav"
       size="clear"
+      aria-label={label}
       className="navLink relative items-end hover:cursor-pointer"
       {...rest}
     >
-      <span>Cart</span>
+      <ShoppingCart className="size-5" aria-hidden="true" />
+      <span className="hidden md:inline">{label}</span>
 
       {quantity ? (
         <>
