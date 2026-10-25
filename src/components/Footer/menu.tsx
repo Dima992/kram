@@ -22,8 +22,12 @@ export function FooterMenu({ menuUk, menuRu }: Props) {
       <ul>
         {menu.map((item) => {
           return (
-            <li key={item.id}>
-              <CMSLink appearance="link" {...item.link} />
+            <li key={item.id} className="py-1">
+              <CMSLink
+                appearance="link"
+                className="flex min-h-11 items-center"
+                {...item.link}
+              />
             </li>
           )
         })}
