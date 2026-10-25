@@ -5,7 +5,7 @@ import { AddToCart } from '@/components/Cart/AddToCart'
 import { Price } from '@/components/Price'
 import { RichText } from '@/components/RichText'
 import { useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 
 import { StockIndicator } from '@/components/product/StockIndicator'
 import { VariantSelector } from './VariantSelector'
@@ -45,47 +45,90 @@ function ProductPrice({ product }: { product: Product }) {
     )
   }
 
-  const amount = typeof product.priceInUAH === 'number' && product.priceInUAH > 0 ? product.priceInUAH : null
+  const amount =
+    typeof product.priceInUAH === 'number' && product.priceInUAH > 0 ? product.priceInUAH : null
   return amount !== null ? <Price amount={amount} /> : null
+}
+
+function QuantityControl({
+  quantity,
+  onChange,
+}: {
+  quantity: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <div className="flex h-10 items-center rounded-md border">
+      <button
+        type="button"
+        className="h-full w-10 disabled:opacity-40"
+        onClick={() => onChange(Math.max(1, quantity - 1))}
+        disabled={quantity <= 1}
+        aria-label="Меньше"
+      >
+        −
+      </button>
+      <span className="w-10 text-center">{quantity}</span>
+      <button
+        type="button"
+        className="h-full w-10 disabled:opacity-40"
+        onClick={() => onChange(Math.min(10, quantity + 1))}
+        disabled={quantity >= 10}
+        aria-label="Больше"
+      >
+        +
+      </button>
+    </div>
+  )
 }
 
 export function ProductDescription({ product }: { product: Product }) {
   const hasVariants = Boolean(product.enableVariants && product.variants?.docs?.length)
+  const [quantity, setQuantity] = useState(1)
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+    <>
+      {/* Название и цена: на телефоне первыми */}
+      <div className="order-1 flex flex-col gap-2 lg:order-none lg:flex-row lg:items-center lg:justify-between">
         <h1 className="text-2xl font-medium">{product.title}</h1>
-        <div className="uppercase font-mono">
+        <div className="font-mono uppercase">
           <Suspense fallback={null}>
             <ProductPrice product={product} />
           </Suspense>
         </div>
       </div>
-      {product.description ? (
-        <RichText className="" data={product.description} enableGutter={false} />
-      ) : null}
-      <hr />
-      {hasVariants && (
-        <>
+
+      {/* Варианты, наличие, количество и кнопка: после фото */}
+      <div className="order-3 flex flex-col gap-6 lg:order-none">
+        {hasVariants && (
+          <>
+            <Suspense fallback={null}>
+              <VariantSelector product={product} />
+            </Suspense>
+            <hr />
+          </>
+        )}
+        <div className="flex items-center justify-between">
           <Suspense fallback={null}>
-            <VariantSelector product={product} />
+            <StockIndicator product={product} />
           </Suspense>
-
-          <hr />
-        </>
-      )}
-      <div className="flex items-center justify-between">
-        <Suspense fallback={null}>
-          <StockIndicator product={product} />
-        </Suspense>
+        </div>
+        <div className="flex items-center gap-3">
+          <QuantityControl quantity={quantity} onChange={setQuantity} />
+          <div className="min-w-0 flex-1">
+            <Suspense fallback={null}>
+              <AddToCart product={product} quantity={quantity} />
+            </Suspense>
+          </div>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between">
-        <Suspense fallback={null}>
-          <AddToCart product={product} />
-        </Suspense>
-      </div>
-    </div>
+      {/* Описание: в самом низу */}
+      {product.description ? (
+        <div className="order-4 lg:order-none">
+          <RichText className="" data={product.description} enableGutter={false} />
+        </div>
+      ) : null}
+    </>
   )
 }

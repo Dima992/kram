@@ -120,7 +120,7 @@ export default async function ProductPage({ params }: Args) {
           </Link>
         </Button>
         <div className="flex flex-col gap-12 rounded-lg border p-8 md:py-12 lg:flex-row lg:gap-8 bg-primary-foreground">
-          <div className="h-full w-full basis-full lg:basis-1/2">
+            <div className="order-2 h-full w-full basis-full lg:order-none lg:basis-1/2">
             <Suspense
               fallback={
                 <div className="relative aspect-square h-full max-h-137.5 w-full overflow-hidden" />
@@ -130,7 +130,7 @@ export default async function ProductPage({ params }: Args) {
             </Suspense>
           </div>
 
-          <div className="basis-full lg:basis-1/2">
+          <div className="contents lg:flex lg:basis-1/2 lg:flex-col lg:gap-6">
             <ProductDescription product={product} />
           </div>
         </div>

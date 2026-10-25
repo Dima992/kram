@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 
 type Props = {
   product: Product
+  quantity?: number
 }
 
 const text = {
@@ -24,7 +25,7 @@ const text = {
   },
 }
 
-export function AddToCart({ product }: Props) {
+export function AddToCart({ product, quantity = 1 }: Props) {
   const { addItem, cart, isLoading } = useCart()
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -58,6 +59,7 @@ export function AddToCart({ product }: Props) {
       addItem({
         product: product.id,
         variant: selectedVariant?.id ?? undefined,
+        quantity,
       }).then(() => {
         toast.success(text[locale].added)
 
@@ -79,7 +81,7 @@ export function AddToCart({ product }: Props) {
           })
       })
     },
-    [addItem, product, selectedVariant, locale],
+    [addItem, product, selectedVariant, locale, quantity],
   )
 
   const disabled = useMemo<boolean>(() => {
