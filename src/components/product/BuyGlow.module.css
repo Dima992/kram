@@ -1,0 +1,13 @@
+.glow button {
+  animation: glow 3s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(11, 122, 120, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(11, 122, 120, 0);
+  }
+}

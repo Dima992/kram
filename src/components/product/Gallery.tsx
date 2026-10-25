@@ -6,7 +6,7 @@ import { GridTileImage } from '@/components/Grid/tile'
 import { Media } from '@/components/Media'
 import { Carousel, CarouselApi, CarouselContent, CarouselItem } from '@/components/ui/carousel'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { DefaultDocumentIDType } from 'payload'
 import React, { useEffect, useRef, useState } from 'react'
 
@@ -15,6 +15,9 @@ type Props = {
 }
 
 type Pt = { x: number; y: number }
+
+const MIN_ZOOM = 1
+const MAX_ZOOM = 4
 
 const clampPos = (p: Pt, z: number): Pt => {
   const maxX = (z - 1) * window.innerWidth * 0.5
@@ -27,13 +30,18 @@ const clampPos = (p: Pt, z: number): Pt => {
 
 export const Gallery: React.FC<Props> = ({ gallery }) => {
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const isRu = pathname === '/ru' || pathname.startsWith('/ru/')
+  const t = isRu
+    ? { pinch: 'Щипок пальцами — зум', wheel: 'Колесо мыши — зум, фото можно тянуть' }
+    : { pinch: 'Щипок пальцями — збільшення', wheel: 'Колесо миші — збільшення, фото можна тягнути' }
+
   const [current, setCurrent] = useState(0)
   const [api, setApi] = useState<CarouselApi>()
   const [open, setOpen] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [pos, setPos] = useState<Pt>({ x: 0, y: 0 })
 
-  // Касания и мышь: указатели на большом фото
   const pointers = useRef(new Map<number, Pt>())
   const drag = useRef<{ x: number; y: number; baseX: number; baseY: number } | null>(null)
   const pinch = useRef<{ dist: number; zoom: number } | null>(null)
@@ -46,6 +54,12 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
   const resetZoom = () => {
     setZoom(1)
     setPos({ x: 0, y: 0 })
+  }
+
+  const zoomTo = (value: number) => {
+    const z = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value))
+    setZoom(z)
+    setPos((p) => clampPos(p, z))
   }
 
   const goPrev = () => {
@@ -112,7 +126,12 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     if (dx > 40) goPrev()
   }
 
-  // Большое окно: щипок (телефон), перетаскивание, свайп, клик-зум (ПК)
+  // Колесо мыши: зум на ПК
+  const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    zoomTo(zoom + (e.deltaY < 0 ? 0.25 : -0.25))
+  }
+
+  // Большое окно: щипок (телефон), перетаскивание, свайп
   const onStageDown = (e: React.PointerEvent<HTMLDivElement>) => {
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -137,10 +156,8 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     if (pointers.current.size === 2 && pinch.current) {
       const [a, b] = Array.from(pointers.current.values())
       const dist = Math.hypot(a.x - b.x, a.y - b.y)
-      const z = Math.max(1, Math.min(4, (pinch.current.zoom * dist) / pinch.current.dist))
       movedRef.current = true
-      setZoom(z)
-      setPos((prev) => clampPos(prev, z))
+      zoomTo((pinch.current.zoom * dist) / pinch.current.dist)
       return
     }
 
@@ -165,17 +182,10 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
 
     if (wasSingle && drag.current) {
       const dx = e.clientX - drag.current.x
-
-      // Свайп влево и вправо при обычном размере (касание или мышь)
+      // Свайп влево и вправо при обычном размере
       if (zoom === 1 && Math.abs(dx) > 50 && movedRef.current) {
         if (dx < 0) goNext()
         else goPrev()
-      }
-
-      // Клик мышкой по фото: зум 1 → 2 → 3 → 1 (не после перетаскивания)
-      if (e.pointerType === 'mouse' && !movedRef.current) {
-        setZoom((z) => (z === 1 ? 2 : z === 2 ? 3 : 1))
-        setPos({ x: 0, y: 0 })
       }
     }
 
@@ -260,9 +270,10 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
             onPointerMove={onStageMove}
             onPointerUp={onStageUp}
             onPointerCancel={onStageUp}
+            onWheel={onWheel}
           >
             <div
-              className={zoom > 1 ? 'cursor-grab' : 'cursor-zoom-in'}
+              className={zoom > 1 ? 'cursor-grab' : 'cursor-default'}
               style={{
                 transform: `translate(${pos.x}px, ${pos.y}px) scale(${zoom})`,
                 transition: pointers.current.size > 0 ? 'none' : 'transform 0.2s ease',
@@ -312,8 +323,27 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
             </button>
           )}
 
-          <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded bg-black px-3 py-1 text-sm text-white">
-            Щипок пальцами или клик по фото — зум
+          {/* Внизу: на ПК кнопки зума и подсказка, на телефоне только подсказка */}
+          <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded bg-black px-3 py-1 text-sm text-white">
+            <button
+              type="button"
+              aria-label="Уменьшить"
+              onClick={() => zoomTo(zoom - 0.5)}
+              className="hidden size-8 rounded hover:bg-white/20 md:block"
+            >
+              −
+            </button>
+            <span className="hidden w-12 text-center md:inline">{Math.round(zoom * 100)}%</span>
+            <button
+              type="button"
+              aria-label="Увеличить"
+              onClick={() => zoomTo(zoom + 0.5)}
+              className="hidden size-8 rounded hover:bg-white/20 md:block"
+            >
+              +
+            </button>
+            <span className="md:hidden">{t.pinch}</span>
+            <span className="hidden md:inline">{t.wheel}</span>
           </div>
         </div>
       )}

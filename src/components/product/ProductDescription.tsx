@@ -3,11 +3,11 @@ import type { Product, Variant } from '@/payload-types'
 
 import { AddToCart } from '@/components/Cart/AddToCart'
 import { Price } from '@/components/Price'
+import { StockIndicator } from '@/components/product/StockIndicator'
 import { RichText } from '@/components/RichText'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
-
-import { StockIndicator } from '@/components/product/StockIndicator'
+import styles from './BuyGlow.module.css'
 import { VariantSelector } from './VariantSelector'
 
 const getVariantPrice = (variant: Variant, product: Product): number | null => {
@@ -115,7 +115,7 @@ export function ProductDescription({ product }: { product: Product }) {
         </div>
         <div id="buy-block" className="flex items-center gap-3">
           <QuantityControl quantity={quantity} onChange={setQuantity} />
-                              <div className="min-w-0 flex-1 [&_button]:w-full [&_button]:border-[#0b7a78] [&_button]:bg-[#0b7a78] [&_button]:text-white [&_button:hover]:opacity-90 [&_button]:animate-pulse [&_button]:[animation-duration:3s]">
+        <div className={`${styles.glow} min-w-0 flex-1 [&_button]:w-full [&_button]:border-[#0b7a78] [&_button]:bg-[#0b7a78] [&_button]:text-white [&_button:hover]:opacity-90`}>
             <Suspense fallback={null}>
               <AddToCart product={product} quantity={quantity} />
             </Suspense>
