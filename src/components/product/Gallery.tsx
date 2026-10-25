@@ -271,6 +271,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
             onPointerUp={onStageUp}
             onPointerCancel={onStageUp}
             onWheel={onWheel}
+            onDragStart={(e) => e.preventDefault()}
           >
             <div
               className={zoom > 1 ? 'cursor-grab' : 'cursor-default'}
