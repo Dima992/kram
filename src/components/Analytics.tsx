@@ -1,6 +1,5 @@
 'use client'
 
-import { X } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import Script from 'next/script'
@@ -22,7 +21,6 @@ const text = {
     all: 'Прийняти все',
     necessary: 'Тільки необхідні',
     details: 'Детальніше',
-    close: 'Закрити',
     privacyHref: '/privacy',
   },
   ru: {
@@ -31,7 +29,6 @@ const text = {
     all: 'Принять все',
     necessary: 'Только необходимые',
     details: 'Подробнее',
-    close: 'Закрыть',
     privacyHref: '/ru/privacy',
   },
 }
@@ -50,7 +47,6 @@ export function Analytics({ googleTagManagerId }: AnalyticsProps) {
     setReady(true)
   }, [])
 
-  // Закрытие крестиком или выбор кнопкой запоминаются
   const choose = (value: Consent) => {
     localStorage.setItem(STORAGE_KEY, value)
     setConsent(value)
@@ -89,18 +85,9 @@ export function Analytics({ googleTagManagerId }: AnalyticsProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="cookie-title"
-            className="relative w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-2xl"
           >
-            <button
-              type="button"
-              onClick={() => choose('necessary')}
-              aria-label={t.close}
-              className="absolute top-3 right-3 flex size-8 items-center justify-center rounded-full text-foreground hover:bg-foreground/10"
-            >
-              <X className="size-5" />
-            </button>
-
-            <h2 id="cookie-title" className="mb-3 pr-8 text-lg font-medium text-foreground">
+            <h2 id="cookie-title" className="mb-3 text-lg font-medium text-foreground">
               {t.title}
             </h2>
 
