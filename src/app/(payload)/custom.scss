@@ -38,12 +38,12 @@
   z-index: 100;
 }
 
-/* Переключатель языка админки: всегда виден вверху, рядом с полосой статуса */
+/* Переключатель языка админки: поверх полосы статуса, всегда виден */
 .localizer {
   position: fixed;
-  top: 12px;
+  top: 10px;
   right: 440px;
-  z-index: 200;
+  z-index: 1000;
   background: var(--theme-bg);
   border-radius: 6px;
 }
