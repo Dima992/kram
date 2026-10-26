@@ -164,6 +164,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
             },
             {
               name: 'layout',
+              localized: true,
               type: 'blocks',
               blocks: [CallToAction, Content, MediaBlock, YouTube],
             },
