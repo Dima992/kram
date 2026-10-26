@@ -315,6 +315,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
             onPointerUp={onStageUp}
             onPointerCancel={onStageUp}
             onWheel={onWheel}
+            onDragStart={(e) => e.preventDefault()}
           >
             <div
               ref={imgRef}

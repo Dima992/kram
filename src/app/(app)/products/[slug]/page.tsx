@@ -25,11 +25,23 @@ type Args = {
   }>
 }
 
-// Язык берём из метки, которую ставит src/proxy.ts
+// Язык берём из метки, которую ставит proxy
 const getLocale = async (): Promise<Locale> => {
   const headers = await getHeaders()
   return headers.get('x-locale') === 'ru' ? 'ru' : 'uk'
 }
+
+// Оставляем и фото, и видео YouTube (у видео нет фото, поэтому раньше их отбрасывало)
+const getGallery = (product: Product) =>
+  product.gallery
+    ?.filter(
+      (item) =>
+        typeof item.image === 'object' || (item.mediaType === 'youtube' && item.youtubeUrl),
+    )
+    .map((item) => ({
+      ...item,
+      image: typeof item.image === 'object' ? (item.image as Media) : undefined,
+    })) || []
 
 export async function generateMetadata({ params }: Args): Promise<Metadata> {
   const { slug } = await params
@@ -38,7 +50,7 @@ export async function generateMetadata({ params }: Args): Promise<Metadata> {
 
   if (!product) return notFound()
 
-  const gallery = product.gallery?.filter((item) => typeof item.image === 'object') || []
+  const gallery = getGallery(product).filter((item) => item.image)
 
   const metaImage = typeof product.meta?.image === 'object' ? product.meta?.image : undefined
   const canIndex = product._status === 'published'
@@ -78,13 +90,7 @@ export default async function ProductPage({ params }: Args) {
 
   if (!product) return notFound()
 
-  const gallery =
-    product.gallery
-      ?.filter((item) => typeof item.image === 'object')
-      .map((item) => ({
-        ...item,
-        image: item.image as Media,
-      })) || []
+  const gallery = getGallery(product)
 
   const metaImage = typeof product.meta?.image === 'object' ? product.meta?.image : undefined
   const hasStock = product.enableVariants
