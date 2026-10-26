@@ -4,10 +4,11 @@ import { BannerBlock } from '@/blocks/Banner/Component'
 import { CallToActionBlock } from '@/blocks/CallToAction/Component'
 import { ContentBlock } from '@/blocks/Content/Component'
 import { MediaBlock } from '@/blocks/MediaBlock/Component'
+import { YouTubeBlock } from '@/blocks/YouTube/Component'
 import { toKebabCase } from '@/utilities/toKebabCase'
 import React, { Fragment } from 'react'
 
-import type { Page } from '../payload-types'
+import type { Page, Product } from '../payload-types'
 
 // Тяжёлые блоки подгружаются только тогда, когда они есть на странице
 const ArchiveBlock = dynamic(() =>
@@ -30,10 +31,16 @@ const blockComponents = {
   formBlock: FormBlock,
   mediaBlock: MediaBlock,
   threeItemGrid: ThreeItemGridBlock,
+  youtube: YouTubeBlock,
 }
 
+type AnyBlock =
+  | NonNullable<Page['layout']>[number]
+  | NonNullable<Product['layout']>[number]
+
 export const RenderBlocks: React.FC<{
-  blocks: Page['layout'][0][]
+  // Блоки могут быть как страницы, так и товара (там есть блок YouTube)
+  blocks: AnyBlock[] | null | undefined
 }> = (props) => {
   const { blocks } = props
 
@@ -46,7 +53,7 @@ export const RenderBlocks: React.FC<{
           const { blockName, blockType } = block
 
           if (blockType && blockType in blockComponents) {
-            const Block = blockComponents[blockType]
+            const Block = blockComponents[blockType as keyof typeof blockComponents]
 
             if (Block) {
               return (

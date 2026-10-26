@@ -20,6 +20,7 @@ import { adminOnlyFieldAccess } from '@/access/adminOnlyFieldAccess'
 import { CallToAction } from '@/blocks/CallToAction/config'
 import { Content } from '@/blocks/Content/config'
 import { MediaBlock } from '@/blocks/MediaBlock/config'
+import { YouTube } from '@/blocks/YouTube/config'
 import { getStoredRates } from '@/utilities/exchangeRates'
 import { generatePreviewPath } from '@/utilities/generatePreviewPath'
 import { transliterate } from '@/utilities/transliterate'
@@ -93,11 +94,30 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
               type: 'array',
               minRows: 1,
               fields: [
+                                {
+                  name: 'mediaType',
+                  type: 'select',
+                  defaultValue: 'image',
+                  options: [
+                    { label: 'Фото', value: 'image' },
+                    { label: 'Відео YouTube', value: 'youtube' },
+                  ],
+                },
                 {
                   name: 'image',
                   type: 'upload',
                   relationTo: 'media',
-                  required: true,
+                  admin: {
+                    condition: (_, siblingData) => siblingData?.mediaType !== 'youtube',
+                  },
+                },
+                {
+                  name: 'youtubeUrl',
+                  type: 'text',
+                  label: 'Посилання на відео YouTube',
+                  admin: {
+                    condition: (_, siblingData) => siblingData?.mediaType === 'youtube',
+                  },
                 },
                 {
                   name: 'variantOption',
@@ -145,7 +165,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
             {
               name: 'layout',
               type: 'blocks',
-              blocks: [CallToAction, Content, MediaBlock],
+              blocks: [CallToAction, Content, MediaBlock, YouTube],
             },
           ],
           label: 'Content',

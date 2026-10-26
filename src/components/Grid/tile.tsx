@@ -2,6 +2,7 @@ import type { Media as MediaType } from '@/payload-types'
 
 import { Label } from '@/components/Grid/Label'
 import { Media } from '@/components/Media'
+import { getYouTubeId } from '@/utilities/youtube'
 import clsx from 'clsx'
 import React from 'react'
 
@@ -13,23 +14,27 @@ type Props = {
     position?: 'bottom' | 'center'
     title: string
   }
-  media: MediaType
+  media?: MediaType | null
   priority?: boolean
   sizes?: string
+  video?: string | null
 }
 
 export const GridTileImage: React.FC<Props> = ({
   active,
   isInteractive = true,
   label,
+  media,
   priority = false,
   sizes,
-  ...props
+  video,
 }) => {
   // Точка фокуса из настроек фото (0–100%). Если не задана, берём центр.
-  const focal = props.media as { focalX?: number | null; focalY?: number | null } | undefined
+  const focal = media as { focalX?: number | null; focalY?: number | null } | null | undefined
   const focalX = typeof focal?.focalX === 'number' ? focal.focalX : 50
   const focalY = typeof focal?.focalY === 'number' ? focal.focalY : 50
+
+  const videoId = video ? getYouTubeId(video) : null
 
   return (
     <div
@@ -43,7 +48,21 @@ export const GridTileImage: React.FC<Props> = ({
       )}
       style={{ '--focal-x': `${focalX}%`, '--focal-y': `${focalY}%` } as React.CSSProperties}
     >
-      {props.media ? (
+      {videoId ? (
+        <>
+          <img
+            src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+          />
+          <span className="absolute inset-0 flex items-center justify-center">
+            <span className="flex size-10 items-center justify-center rounded-full bg-black/70 text-white">
+              ▶
+            </span>
+          </span>
+        </>
+      ) : media ? (
         <Media
           fill
           className={clsx('relative h-full w-full object-cover', {
@@ -51,7 +70,7 @@ export const GridTileImage: React.FC<Props> = ({
           })}
           imgClassName="h-full w-full object-cover [object-position:var(--focal-x)_var(--focal-y)]"
           priority={priority}
-          resource={props.media}
+          resource={media}
           size={sizes}
         />
       ) : null}

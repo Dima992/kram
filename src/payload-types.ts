@@ -319,12 +319,30 @@ export interface Product {
   } | null;
   gallery?:
     | {
-        image: string | Media;
+        mediaType?: ('image' | 'youtube') | null;
+        image?: (string | null) | Media;
+        youtubeUrl?: string | null;
         variantOption?: (string | null) | VariantOption;
         id?: string | null;
       }[]
     | null;
-  layout?: (CallToActionBlock | ContentBlock | MediaBlock)[] | null;
+  layout?:
+    | (
+        | CallToActionBlock
+        | ContentBlock
+        | MediaBlock
+        | {
+            /**
+             * Вставте звичайне посилання, наприклад https://youtu.be/XXXXXXXXXXX
+             */
+            url: string;
+            caption?: string | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'youtube';
+          }
+      )[]
+    | null;
   inventory?: number | null;
   enableVariants?: boolean | null;
   variantTypes?: (string | VariantType)[] | null;
@@ -348,7 +366,7 @@ export interface Product {
   };
   categories?: (string | Category)[] | null;
   /**
-   * Валюта, в якій вказується базова ціна товару
+   * Валюта, в якій вводите ціну. Якщо вводите в гривнях, залишайте UAH. Для USD та EUR магазин сам перераховує ціну в гривні.
    */
   baseCurrency?: ('UAH' | 'USD' | 'EUR') | null;
   /**
@@ -356,9 +374,13 @@ export interface Product {
    */
   basePrice: number;
   /**
-   * Розрахована ціна в грн за курсом НБУ
+   * Розрахована ціна в грн за курсом НБУ (покупцю показується ця)
    */
   priceInUAH?: number | null;
+  /**
+   * Для себе: нагадування, що перевірити. На сайті не показується.
+   */
+  internalNote?: string | null;
   /**
    * Виключає товар з усіх фідів. Щоб виключити його лише з одного фіда, налаштуйте це у самому фіді.
    */
@@ -422,6 +444,32 @@ export interface Media {
   height?: number | null;
   focalX?: number | null;
   focalY?: number | null;
+  sizes?: {
+    large?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    thumbnail?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    square?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1670,6 +1718,40 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+  sizes?:
+    | T
+    | {
+        large?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        thumbnail?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        square?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+      };
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1995,7 +2077,9 @@ export interface ProductsSelect<T extends boolean = true> {
   gallery?:
     | T
     | {
+        mediaType?: T;
         image?: T;
+        youtubeUrl?: T;
         variantOption?: T;
         id?: T;
       };
@@ -2005,6 +2089,14 @@ export interface ProductsSelect<T extends boolean = true> {
         cta?: T | CallToActionBlockSelect<T>;
         content?: T | ContentBlockSelect<T>;
         mediaBlock?: T | MediaBlockSelect<T>;
+        youtube?:
+          | T
+          | {
+              url?: T;
+              caption?: T;
+              id?: T;
+              blockName?: T;
+            };
       };
   inventory?: T;
   enableVariants?: T;
@@ -2026,6 +2118,7 @@ export interface ProductsSelect<T extends boolean = true> {
   baseCurrency?: T;
   basePrice?: T;
   priceInUAH?: T;
+  internalNote?: T;
   excludeFromFeed?: T;
   brand?: T;
   gtin?: T;
@@ -2250,6 +2343,62 @@ export interface Footer {
         id?: string | null;
       }[]
     | null;
+  contacts?: {
+    phones?:
+      | {
+          label?: string | null;
+          number: string;
+          enabled?: boolean | null;
+          id?: string | null;
+        }[]
+      | null;
+    emails?:
+      | {
+          email: string;
+          enabled?: boolean | null;
+          id?: string | null;
+        }[]
+      | null;
+    address?: string | null;
+    other?:
+      | {
+          label: string;
+          value: string;
+          enabled?: boolean | null;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  socials?:
+    | {
+        platform:
+          | 'facebook'
+          | 'instagram'
+          | 'telegram'
+          | 'viber'
+          | 'whatsapp'
+          | 'youtube'
+          | 'linkedin'
+          | 'pinterest'
+          | 'tiktok'
+          | 'other';
+        customName?: string | null;
+        url: string;
+        enabled?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Загружайте логотип в формате SVG (лучше) или PNG с прозрачным фоном. PNG: ширина 240 px, высота 80 px, файл до 100 КБ. JPG не загружайте (белый фон). Галочка «Показывать» выключена по умолчанию: включите её, когда подключите оплату. Порядок меняется перетаскиванием.
+   */
+  paymentMethods?:
+    | {
+        name: string;
+        logo: string | Media;
+        enabled?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
   updatedAt?: string | null;
   createdAt?: string | null;
 }
@@ -2359,6 +2508,51 @@ export interface FooterSelect<T extends boolean = true> {
               url?: T;
               label?: T;
             };
+        id?: T;
+      };
+  contacts?:
+    | T
+    | {
+        phones?:
+          | T
+          | {
+              label?: T;
+              number?: T;
+              enabled?: T;
+              id?: T;
+            };
+        emails?:
+          | T
+          | {
+              email?: T;
+              enabled?: T;
+              id?: T;
+            };
+        address?: T;
+        other?:
+          | T
+          | {
+              label?: T;
+              value?: T;
+              enabled?: T;
+              id?: T;
+            };
+      };
+  socials?:
+    | T
+    | {
+        platform?: T;
+        customName?: T;
+        url?: T;
+        enabled?: T;
+        id?: T;
+      };
+  paymentMethods?:
+    | T
+    | {
+        name?: T;
+        logo?: T;
+        enabled?: T;
         id?: T;
       };
   updatedAt?: T;

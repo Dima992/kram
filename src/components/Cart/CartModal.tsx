@@ -17,7 +17,7 @@ import { usePathname } from 'next/navigation'
 import React, { useEffect, useMemo, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import type { Cart, Product, Variant } from '@/payload-types'
+import type { Cart, Media as MediaType, Product, Variant } from '@/payload-types'
 import { DeleteItemButton } from './DeleteItemButton'
 import { EditItemQuantityButton } from './EditItemQuantityButton'
 import { OpenCartButton } from './OpenCart'
@@ -85,17 +85,17 @@ export function CartModal() {
                   if (typeof product !== 'object' || !item || !product || !product.slug)
                     return <React.Fragment key={i} />
 
-                  const metaImage =
+                  const metaImage: MediaType | undefined =
                     product.meta?.image && typeof product.meta?.image === 'object'
                       ? product.meta.image
                       : undefined
 
-                  const firstGalleryImage =
-                    typeof product.gallery?.[0]?.image === 'object'
-                      ? product.gallery?.[0]?.image
+                  const firstGalleryImage: MediaType | undefined =
+                    product.gallery?.[0]?.image && typeof product.gallery[0].image === 'object'
+                      ? product.gallery[0].image
                       : undefined
 
-                  let image = firstGalleryImage || metaImage
+                  let image: MediaType | undefined = firstGalleryImage || metaImage
                   let price = product.priceInUAH
 
                   const isVariant = Boolean(variant) && typeof variant === 'object'
@@ -122,7 +122,7 @@ export function CartModal() {
                       },
                     )
 
-                    if (imageVariant && typeof imageVariant.image === 'object') {
+                    if (imageVariant?.image && typeof imageVariant.image === 'object') {
                       image = imageVariant.image
                     }
                   }

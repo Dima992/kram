@@ -4,6 +4,7 @@ import type { Product } from '@/payload-types'
 
 import { GridTileImage } from '@/components/Grid/tile'
 import { Media } from '@/components/Media'
+import { YouTubePlayer } from '@/components/YouTubePlayer'
 import { Carousel, CarouselApi, CarouselContent, CarouselItem } from '@/components/ui/carousel'
 import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
@@ -50,6 +51,14 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
 
   const total = gallery.length
   const currentItem = gallery[current]
+
+  // Текущий слайд: либо фото, либо видео YouTube
+  const currentImage =
+    currentItem && typeof currentItem.image === 'object' && currentItem.image
+      ? currentItem.image
+      : undefined
+  const currentVideo =
+    currentItem?.mediaType === 'youtube' && currentItem.youtubeUrl ? currentItem.youtubeUrl : undefined
 
   const resetZoom = () => {
     setZoom(1)
@@ -203,20 +212,28 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
         onTouchStart={onCardTouchStart}
         onTouchEnd={onCardTouchEnd}
       >
-        <button
-          type="button"
-          className="block w-full"
-          onClick={() => setOpen(true)}
-          aria-label="Открыть фото крупно"
-        >
-          <Media
-            priority={current === 0}
-            resource={currentItem.image}
-            className="w-full"
-            imgClassName="w-full rounded-lg"
-            size="(min-width: 1024px) 50vw, 100vw"
-          />
-        </button>
+        {currentVideo ? (
+          <YouTubePlayer url={currentVideo} title="Відео" />
+        ) : (
+          <button
+            type="button"
+            className="block w-full"
+            onClick={() => {
+              if (currentImage) setOpen(true)
+            }}
+            aria-label="Открыть фото крупно"
+          >
+            {currentImage ? (
+              <Media
+                priority={current === 0}
+                resource={currentImage}
+                className="w-full"
+                imgClassName="w-full rounded-lg"
+                size="(min-width: 1024px) 50vw, 100vw"
+              />
+            ) : null}
+          </button>
+        )}
 
         {current > 0 && (
           <button
@@ -244,16 +261,25 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       <Carousel setApi={setApi} className="w-full" opts={{ align: 'start', loop: false }}>
         <CarouselContent>
           {gallery.map((item, i) => {
-            if (typeof item.image !== 'object') return null
+            const image =
+              typeof item.image === 'object' && item.image ? item.image : undefined
+            const video =
+              item.mediaType === 'youtube' && item.youtubeUrl ? item.youtubeUrl : undefined
+            if (!image && !video) return null
 
             return (
               <CarouselItem
                 className="basis-1/5"
-                key={`${item.image.id}-${i}`}
+                key={`${item.id ?? i}`}
                 onClick={() => setCurrent(i)}
               >
                 <div className="relative aspect-square w-full overflow-hidden rounded-md">
-                  <GridTileImage active={i === current} media={item.image} sizes="20vw" />
+                  <GridTileImage
+                    active={i === current}
+                    media={image}
+                    video={video}
+                    sizes="20vw"
+                  />
                 </div>
               </CarouselItem>
             )
@@ -261,8 +287,8 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
         </CarouselContent>
       </Carousel>
 
-      {/* Большое окно фото */}
-      {open && (
+      {/* Большое окно фото (для видео не нужно, оно открывается на месте) */}
+      {open && currentImage && (
         <div className="fixed inset-0 z-[100] bg-black/90">
           <div
             className="flex h-full w-full touch-none select-none items-center justify-center overflow-hidden"
@@ -271,7 +297,6 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
             onPointerUp={onStageUp}
             onPointerCancel={onStageUp}
             onWheel={onWheel}
-            onDragStart={(e) => e.preventDefault()}
           >
             <div
               className={zoom > 1 ? 'cursor-grab' : 'cursor-default'}
@@ -281,7 +306,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
               }}
             >
               <Media
-                resource={currentItem.image}
+                resource={currentImage}
                 className="w-auto"
                 imgClassName="max-h-[90vh] max-w-[95vw] w-auto object-contain"
                 size="100vw"

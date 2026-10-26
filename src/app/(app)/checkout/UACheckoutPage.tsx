@@ -189,7 +189,7 @@ function buildLines(items: CartItems): CheckoutLine[] {
     if (price === null) available = false
 
     let image: MediaType | undefined =
-      typeof product.gallery?.[0]?.image === 'object' ? product.gallery[0].image : undefined
+  product.gallery?.[0]?.image && typeof product.gallery[0].image === 'object' ? (product.gallery[0].image as MediaType) : undefined
 
     if (variant) {
       const variantOptionIDs = (variant.options || []).map((option) =>
@@ -203,7 +203,7 @@ function buildLines(items: CartItems): CheckoutLine[] {
             : galleryItem.variantOption
         return variantOptionIDs.includes(id)
       })
-      if (imageVariant && typeof imageVariant.image === 'object') image = imageVariant.image
+      if (imageVariant && typeof imageVariant.image === 'object' && imageVariant.image !== null) image = imageVariant.image as MediaType
     }
 
     return [

@@ -1,6 +1,6 @@
 import { Media } from '@/components/Media'
 import { Price } from '@/components/Price'
-import { Product, Variant } from '@/payload-types'
+import type { Media as MediaType, Product, Variant } from '@/payload-types'
 import Link from 'next/link'
 
 type Props = {
@@ -20,13 +20,15 @@ export const ProductItem: React.FC<Props> = ({
 }) => {
   const { title } = product
 
-  const metaImage =
-    product.meta?.image && typeof product.meta?.image !== 'string' ? product.meta.image : undefined
+  const metaImage: MediaType | undefined =
+    product.meta?.image && typeof product.meta.image === 'object' ? product.meta.image : undefined
 
-  const firstGalleryImage =
-    typeof product.gallery?.[0]?.image !== 'string' ? product.gallery?.[0]?.image : undefined
+  const firstGalleryImage: MediaType | undefined =
+    product.gallery?.[0]?.image && typeof product.gallery[0].image === 'object'
+      ? product.gallery[0].image
+      : undefined
 
-  let image = firstGalleryImage || metaImage
+  let image: MediaType | undefined = firstGalleryImage || metaImage
 
   const isVariant = Boolean(variant) && typeof variant === 'object'
 
@@ -44,7 +46,7 @@ export const ProductItem: React.FC<Props> = ({
       return hasMatch
     })
 
-    if (imageVariant && typeof imageVariant.image !== 'string') {
+    if (imageVariant?.image && typeof imageVariant.image === 'object') {
       image = imageVariant.image
     }
   }
@@ -59,7 +61,7 @@ export const ProductItem: React.FC<Props> = ({
     <div className="flex items-center gap-4">
       <div className="flex items-stretch justify-stretch h-20 w-20 p-2 rounded-lg border">
         <div className="relative w-full h-full">
-          {image && typeof image !== 'string' && (
+          {image && (
             <Media className="" fill imgClassName="rounded-lg object-cover" resource={image} />
           )}
         </div>
