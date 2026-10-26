@@ -20,15 +20,6 @@ type Pt = { x: number; y: number }
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
 
-const clampPos = (p: Pt, z: number): Pt => {
-  const maxX = (z - 1) * window.innerWidth * 0.5
-  const maxY = (z - 1) * window.innerHeight * 0.5
-  return {
-    x: Math.max(-maxX, Math.min(maxX, p.x)),
-    y: Math.max(-maxY, Math.min(maxY, p.y)),
-  }
-}
-
 export const Gallery: React.FC<Props> = ({ gallery }) => {
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -43,6 +34,8 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
   const [zoom, setZoom] = useState(1)
   const [pos, setPos] = useState<Pt>({ x: 0, y: 0 })
 
+  // Контейнер самого фото: по его размеру считаем, докуда можно сдвигать
+  const imgRef = useRef<HTMLDivElement>(null)
   const pointers = useRef(new Map<number, Pt>())
   const drag = useRef<{ x: number; y: number; baseX: number; baseY: number } | null>(null)
   const pinch = useRef<{ dist: number; zoom: number } | null>(null)
@@ -59,6 +52,19 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       : undefined
   const currentVideo =
     currentItem?.mediaType === 'youtube' && currentItem.youtubeUrl ? currentItem.youtubeUrl : undefined
+
+  // Фото нельзя сдвинуть дальше его собственного края: край не уходит за край экрана
+  const clampPos = (p: Pt, z: number): Pt => {
+    const el = imgRef.current
+    const w = el ? el.offsetWidth : window.innerWidth
+    const h = el ? el.offsetHeight : window.innerHeight
+    const maxX = Math.max(0, (w * z - window.innerWidth) / 2)
+    const maxY = Math.max(0, (h * z - window.innerHeight) / 2)
+    return {
+      x: Math.max(-maxX, Math.min(maxX, p.x)),
+      y: Math.max(-maxY, Math.min(maxY, p.y)),
+    }
+  }
 
   const resetZoom = () => {
     setZoom(1)
@@ -135,9 +141,21 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     if (dx > 40) goPrev()
   }
 
-  // Колесо мыши: зум на ПК
+  // Колесо мыши: зум в точку под курсором, как на картах
   const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    zoomTo(zoom + (e.deltaY < 0 ? 0.25 : -0.25))
+    const rect = e.currentTarget.getBoundingClientRect()
+    // Положение курсора относительно центра окна
+    const cx = e.clientX - (rect.left + rect.width / 2)
+    const cy = e.clientY - (rect.top + rect.height / 2)
+
+    const z1 = zoom
+    const z2 = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom + (e.deltaY < 0 ? 0.25 : -0.25)))
+    if (z2 === z1) return
+
+    // Сдвигаем фото так, чтобы точка под курсором осталась на месте
+    const k = z2 / z1
+    setZoom(z2)
+    setPos(clampPos({ x: cx - (cx - pos.x) * k, y: cy - (cy - pos.y) * k }, z2))
   }
 
   // Большое окно: щипок (телефон), перетаскивание, свайп
@@ -299,6 +317,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
             onWheel={onWheel}
           >
             <div
+              ref={imgRef}
               className={zoom > 1 ? 'cursor-grab' : 'cursor-default'}
               style={{
                 transform: `translate(${pos.x}px, ${pos.y}px) scale(${zoom})`,

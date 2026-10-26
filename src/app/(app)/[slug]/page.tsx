@@ -1,122 +1,218 @@
-import type { Metadata } from 'next'
-
 import { RenderBlocks } from '@/blocks/RenderBlocks'
-import { homeStaticData } from '@/endpoints/seed/home-static'
-import { RenderHero } from '@/heros/RenderHero'
-import { generateMeta } from '@/utilities/generateMeta'
+import { GridTileImage } from '@/components/Grid/tile'
+import { Gallery } from '@/components/product/Gallery'
+import { ProductDescription } from '@/components/product/ProductDescription'
+import { StickyBuyBar } from '@/components/product/StickyBuyBar'
+import { Button } from '@/components/ui/button'
+import type { Media, Product } from '@/payload-types'
 import configPromise from '@payload-config'
+import { ChevronLeftIcon } from 'lucide-react'
+import { Metadata } from 'next'
 import { unstable_cache } from 'next/cache'
-import { draftMode, headers } from 'next/headers'
-import { getPayload } from 'payload'
-
-import type { Page } from '@/payload-types'
+import { draftMode, headers as getHeaders } from 'next/headers'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { getPayload } from 'payload'
+import React, { Suspense } from 'react'
 
-// Страница читает данные запроса (язык, режим черновика),
-// поэтому она динамическая. Кэш базы данных работает ниже, в unstable_cache.
-export const dynamic = 'force-dynamic'
+export const revalidate = 3600
 
-export async function generateStaticParams() {
-  const payload = await getPayload({ config: configPromise })
-  const pages = await payload.find({
-    collection: 'pages',
-    draft: false,
-    limit: 1000,
-    overrideAccess: false,
-    pagination: false,
-    select: {
-      slug: true,
-    },
-  })
-
-  const params = pages.docs
-    ?.filter((doc) => {
-      return doc.slug !== 'home'
-    })
-    .map(({ slug }) => {
-      return { slug }
-    })
-
-  return params
-}
+type Locale = 'uk' | 'ru'
 
 type Args = {
   params: Promise<{
-    slug?: string
-    locale?: string
+    slug: string
   }>
 }
 
-// Главная пустая, если в админке нет ни блоков, ни текста первого экрана
-const isHomeEmpty = (page: Page | null) => {
-  if (!page) return true
-
-  const hasHeroText = Boolean(page.hero?.richText?.root?.children?.length)
-  const hasLayout = Boolean(page.layout?.length)
-
-  return !hasHeroText && !hasLayout
-}
-
-export default async function Page({ params }: Args) {
-  const { slug = 'home' } = await params
-  const requestHeaders = await headers()
-  const locale = requestHeaders.get('x-locale') || 'uk'
-
-  let page = await queryPageBySlug({
-    slug,
-    locale,
-  })
-
-  if (slug === 'home' && isHomeEmpty(page)) {
-    page = homeStaticData() as unknown as Page
-  }
-
-  if (!page) {
-    return notFound()
-  }
-
-  const { hero, layout } = page
-
-  return (
-    <article className="pb-24">
-      <RenderHero {...hero} />
-      <RenderBlocks blocks={layout} />
-    </article>
-  )
+// Язык берём из метки, которую ставит proxy
+const getLocale = async (): Promise<Locale> => {
+  const headers = await getHeaders()
+  return headers.get('x-locale') === 'ru' ? 'ru' : 'uk'
 }
 
 export async function generateMetadata({ params }: Args): Promise<Metadata> {
-  const { slug = 'home' } = await params
-  const requestHeaders = await headers()
-  const locale = requestHeaders.get('x-locale') || 'uk'
+  const { slug } = await params
+  const locale = await getLocale()
+  const product = await queryProductBySlug({ slug, locale })
 
-  let page = await queryPageBySlug({
-    slug,
-    locale,
-  })
+  if (!product) return notFound()
 
-  if (slug === 'home' && isHomeEmpty(page)) {
-    page = homeStaticData() as unknown as Page
+  const gallery = product.gallery?.filter((item) => typeof item.image === 'object') || []
+
+  const metaImage = typeof product.meta?.image === 'object' ? product.meta?.image : undefined
+  const canIndex = product._status === 'published'
+
+  const seoImage = metaImage || (gallery.length ? (gallery[0]?.image as Media) : undefined)
+
+  return {
+    description: product.meta?.description || '',
+    openGraph: seoImage?.url
+      ? {
+          images: [
+            {
+              alt: seoImage?.alt ?? undefined,
+              height: seoImage.height!,
+              url: seoImage?.url,
+              width: seoImage.width!,
+            },
+          ],
+        }
+      : null,
+    robots: {
+      follow: canIndex,
+      googleBot: {
+        follow: canIndex,
+        index: canIndex,
+      },
+      index: canIndex,
+    },
+    title: product.meta?.title || product.title,
   }
-
-  return generateMeta({ doc: page })
 }
 
-const queryPageBySlug = async ({ slug, locale }: { slug: string; locale: string }) => {
+export default async function ProductPage({ params }: Args) {
+  const { slug } = await params
+  const locale = await getLocale()
+  const product = await queryProductBySlug({ slug, locale })
+
+  if (!product) return notFound()
+
+  // Оставляем и фото, и видео YouTube (у видео нет фото, поэтому раньше их отбрасывало)
+  const gallery =
+    product.gallery
+      ?.filter(
+        (item) =>
+          typeof item.image === 'object' || (item.mediaType === 'youtube' && item.youtubeUrl),
+      )
+      .map((item) => ({
+        ...item,
+        image: typeof item.image === 'object' ? (item.image as Media) : undefined,
+      })) || []
+
+  const metaImage = typeof product.meta?.image === 'object' ? product.meta?.image : undefined
+  const hasStock = product.enableVariants
+    ? product?.variants?.docs?.some((variant) => {
+        if (typeof variant !== 'object') return false
+        return variant.inventory && variant?.inventory > 0
+      })
+    : product.inventory! > 0
+
+  // Цена только в гривнах. Цены в долларах и запасные варианты не используются.
+  const price = product.priceInUAH
+
+  const productJsonLd = {
+    name: product.title,
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    description: product.description,
+    image: metaImage?.url,
+    offers: {
+      '@type': 'AggregateOffer',
+      availability: hasStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      price: price ?? undefined,
+      priceCurrency: 'UAH',
+    },
+  }
+
+  const relatedProducts =
+    product.relatedProducts?.filter((relatedProduct) => typeof relatedProduct === 'object') ?? []
+
+  return (
+    <React.Fragment>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(productJsonLd),
+        }}
+        type="application/ld+json"
+      />
+      <div className="container pt-8 pb-8">
+        <Button asChild variant="ghost" className="mb-4">
+          <Link href="/shop">
+            <ChevronLeftIcon />
+            All products
+          </Link>
+        </Button>
+        <div className="flex flex-col gap-12 rounded-lg border p-8 md:py-12 lg:flex-row lg:gap-8 bg-primary-foreground">
+          <div className="order-2 h-full w-full basis-full lg:order-none lg:basis-1/2">
+            <Suspense
+              fallback={
+                <div className="relative aspect-square h-full max-h-137.5 w-full overflow-hidden" />
+              }
+            >
+              {Boolean(gallery?.length) && <Gallery gallery={gallery} />}
+            </Suspense>
+          </div>
+
+          <div className="contents lg:flex lg:basis-1/2 lg:flex-col lg:gap-6">
+            <ProductDescription product={product} />
+          </div>
+        </div>
+      </div>
+
+      <StickyBuyBar product={product} />
+      {product.layout?.length ? <RenderBlocks blocks={product.layout} /> : <></>}
+
+      {relatedProducts.length ? (
+        <div className="container">
+          <RelatedProducts products={relatedProducts as Product[]} />
+        </div>
+      ) : (
+        <></>
+      )}
+    </React.Fragment>
+  )
+}
+
+function RelatedProducts({ products }: { products: Product[] }) {
+  if (!products.length) return null
+
+  return (
+    <div className="py-8">
+      <h2 className="mb-4 text-2xl font-bold">Related Products</h2>
+      <ul className="flex w-full gap-4 overflow-x-auto pt-1">
+        {products.map((product) => (
+          <li
+            className="aspect-square w-full flex-none min-[475px]:w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/5"
+            key={product.id}
+          >
+            <Link className="relative h-full w-full" href={`/products/${product.slug}`}>
+              <GridTileImage
+                label={{
+                  amount: product.priceInUAH!,
+                  title: product.title,
+                }}
+                media={product.meta?.image as Media}
+                sizes="(min-width: 1024px) 20vw, (min-width: 640px) 33vw, 50vw"
+              />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+const queryProductBySlug = async ({ slug, locale }: { slug: string; locale: Locale }) => {
   const { isEnabled: draft } = await draftMode()
 
   if (!draft) {
-    return getPublishedPage(slug, locale)
+    return getPublishedProductBySlug(slug, locale)
   }
 
+  return findProductBySlug(slug, true, locale)
+}
+
+const findProductBySlug = async (slug: string, draft: boolean, locale: Locale) => {
   const payload = await getPayload({ config: configPromise })
 
   const result = await payload.find({
-    collection: 'pages',
-    draft: true,
+    collection: 'products',
+    depth: 3,
+    draft,
     limit: 1,
-    locale: locale as any,
-    overrideAccess: true,
+    locale,
+    overrideAccess: draft,
     pagination: false,
     where: {
       and: [
@@ -128,28 +224,22 @@ const queryPageBySlug = async ({ slug, locale }: { slug: string; locale: string 
         ...(draft ? [] : [{ _status: { equals: 'published' } }]),
       ],
     },
+    populate: {
+      variants: {
+        title: true,
+        priceInUAH: true,
+        inventory: true,
+        options: true,
+      },
+    },
   })
 
   return result.docs?.[0] || null
 }
 
-const getPublishedPage = unstable_cache(
-  async (slug: string, locale: string) => {
-    const payload = await getPayload({ config: configPromise })
-    const result = await payload.find({
-      collection: 'pages',
-      draft: false,
-      limit: 1,
-      locale: locale as any,
-      overrideAccess: false,
-      pagination: false,
-      where: {
-        and: [{ slug: { equals: slug } }, { _status: { equals: 'published' } }],
-      },
-    })
-
-    return result.docs?.[0] || null
-  },
-  ['published-page'],
-  { revalidate: 3600, tags: ['pages'] },
+// Кэш отдельно для каждого языка: slug и locale попадают в ключ кэша
+const getPublishedProductBySlug = unstable_cache(
+  async (slug: string, locale: Locale) => findProductBySlug(slug, false, locale),
+  ['published-product'],
+  { revalidate: 3600, tags: ['products'] },
 )

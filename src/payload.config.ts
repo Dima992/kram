@@ -16,6 +16,7 @@ import {
 } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { buildConfig } from 'payload'
+import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
 import { ApiKeys } from '@/collections/ApiKeys'
@@ -37,6 +38,7 @@ const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 export default buildConfig({
+  sharp,
   admin: {
     components: {
       beforeLogin: ['@/components/BeforeLogin#BeforeLogin'],
