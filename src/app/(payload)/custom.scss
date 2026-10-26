@@ -37,3 +37,13 @@
   top: 0;
   z-index: 100;
 }
+
+/* Переключатель языка админки: всегда виден вверху, рядом с полосой статуса */
+.localizer {
+  position: fixed;
+  top: 12px;
+  right: 440px;
+  z-index: 200;
+  background: var(--theme-bg);
+  border-radius: 6px;
+}
