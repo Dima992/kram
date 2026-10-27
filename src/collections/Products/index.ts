@@ -13,7 +13,7 @@ import {
   InlineToolbarFeature,
   lexicalEditor,
 } from '@payloadcms/richtext-lexical'
-import { revalidateTag } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { DefaultDocumentIDType, Field, slugField, Where } from 'payload'
 
 import { adminOnlyFieldAccess } from '@/access/adminOnlyFieldAccess'
@@ -469,12 +469,15 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     ...defaultCollection?.hooks,
     afterChange: [
       ...(defaultCollection?.hooks?.afterChange || []),
+      
       ({ doc, req: { context } }) => {
         if (!context.disableRevalidate && doc._status === 'published') {
           revalidateTag('products', { expire: 0 })
+          revalidatePath('/shop', 'layout')
         }
         return doc
       },
+      
       // Альты фото: после сохранения, на двух языках
       autoGenerateAlt,
     ],

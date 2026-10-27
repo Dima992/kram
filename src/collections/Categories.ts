@@ -1,7 +1,9 @@
+import { revalidatePath } from 'next/cache'
 import type { CollectionConfig } from 'payload'
 import { slugField } from 'payload'
 
 import { adminOnly } from '@/access/adminOnly'
+import { transliterate } from '@/utilities/transliterate'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
@@ -15,6 +17,19 @@ export const Categories: CollectionConfig = {
     useAsTitle: 'title',
     group: 'Content',
     defaultColumns: ['title', 'parent'],
+  },
+  hooks: {
+    // После сохранения или удаления категории обновляем страницы магазина
+    afterChange: [
+      () => {
+        revalidatePath('/shop', 'layout')
+      },
+    ],
+    afterDelete: [
+      () => {
+        revalidatePath('/shop', 'layout')
+      },
+    ],
   },
   fields: [
     {
@@ -56,6 +71,31 @@ export const Categories: CollectionConfig = {
     },
     slugField({
       position: undefined,
+      // Адрес берём из украинского названия и переводим кириллицу в латиницу
+      slugify: async ({ valueToSlugify, data, req }) => {
+        const base = transliterate(String(valueToSlugify ?? ''))
+        if (!base) return ''
+
+        let candidate = base
+        for (let n = 2; ; n++) {
+          const found = await req.payload.find({
+            collection: 'categories',
+            where: {
+              and: [
+                { slug: { equals: candidate } },
+                ...(data?.id ? [{ id: { not_equals: data.id } }] : []),
+              ],
+            },
+            limit: 1,
+            depth: 0,
+            pagination: false,
+            req,
+          })
+
+          if (found.docs.length === 0) return candidate
+          candidate = `${base}-${n}`
+        }
+      },
     }),
   ],
 }
