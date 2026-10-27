@@ -20,30 +20,3 @@
   padding-bottom: 6px;
   font-size: 14px;
 }
-
-/* Верхняя панель админки и переключатель языка всегда видны при прокрутке */
-.doc-header,
-.doc-controls {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: var(--theme-bg);
-}
-
-/* Верхняя панель админки с переключателем языка всегда видна при прокрутке */
-.app-header,
-.doc-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-/* Переключатель языка админки: внизу справа, всегда виден */
-.localizer {
-  position: fixed;
-  bottom: 16px;
-  right: 16px;
-  z-index: 1000;
-  background: var(--theme-bg);
-  border-radius: 6px;
-}
