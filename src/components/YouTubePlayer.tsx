@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 
 type Props = {
-  url: string
+  url?: string | null
   title?: string
 }
 
@@ -17,8 +17,9 @@ const getVideoId = (url: string): string | null => {
 
 export const YouTubePlayer: React.FC<Props> = ({ url, title = 'Відео' }) => {
   const [playing, setPlaying] = useState(false)
-  const id = getVideoId(url)
+  const id = url ? getVideoId(url) : null
 
+  // Если ссылки нет или она не похожа на YouTube, ничего не показываем
   if (!id) return null
 
   // После нажатия: видео с разрешением на полный экран (работает и на телефоне)
@@ -37,7 +38,7 @@ export const YouTubePlayer: React.FC<Props> = ({ url, title = 'Відео' }) =>
     )
   }
 
-  // До нажатия: красивое превью с большой кнопкой запуска
+  // До нажатия: превью с большой красной кнопкой запуска
   return (
     <button
       type="button"
