@@ -302,6 +302,41 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
         description: 'Розрахована ціна в грн за курсом НБУ (покупцю показується ця)',
       },
     },
+        {
+      name: 'stockStatus',
+      type: 'select',
+      defaultValue: 'inStock',
+      label: 'Статус наявності',
+      options: [
+        { label: 'В наявності', value: 'inStock' },
+        { label: 'Під замовлення', value: 'backorder' },
+        { label: 'Немає в наявності', value: 'outOfStock' },
+      ],
+      admin: {
+        position: 'sidebar',
+        description: 'Поки що тільки для адмінки: на сайті статус покажемо на наступному кроці.',
+      },
+    },
+    {
+      name: 'backorderDays',
+      type: 'number',
+      label: 'Строк доставки під замовлення (днів)',
+      admin: {
+        position: 'sidebar',
+        condition: (data) => data?.stockStatus === 'backorder',
+        description: 'Скільки днів чекати товар.',
+      },
+    },
+    {
+      name: 'decrementOnOrder',
+      type: 'checkbox',
+      defaultValue: false,
+      label: 'Віднімати кількість при замовленні',
+      admin: {
+        position: 'sidebar',
+        description: 'Поки що тільки позначка. Логіку додамо на етапі 2в.',
+      },
+    },
     {
       name: 'internalNote',
       type: 'textarea',
