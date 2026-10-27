@@ -14,7 +14,7 @@ import {
   lexicalEditor,
 } from '@payloadcms/richtext-lexical'
 import { revalidateTag } from 'next/cache'
-import { DefaultDocumentIDType, slugField, Where } from 'payload'
+import { DefaultDocumentIDType, Field, slugField, Where } from 'payload'
 
 import { adminOnlyFieldAccess } from '@/access/adminOnlyFieldAccess'
 import { CallToAction } from '@/blocks/CallToAction/config'
@@ -25,6 +25,19 @@ import { getStoredRates } from '@/utilities/exchangeRates'
 import { generatePreviewPath } from '@/utilities/generatePreviewPath'
 import { transliterate } from '@/utilities/transliterate'
 import { autoGenerateAlt } from './hooks/autoGenerateAlt'
+
+// Прячем из админки поля цен в USD и EUR (покупатель видит только гривны).
+// Поля не удаляем: плагин магазина может их использовать.
+const hideCurrencyFields = (fields: Field[]): Field[] =>
+  fields.map((field) => {
+    if ('name' in field && (field.name === 'priceInUSD' || field.name === 'priceInEUR')) {
+      return { ...field, admin: { ...field.admin, hidden: true } } as Field
+    }
+    if ('fields' in field && Array.isArray(field.fields)) {
+      return { ...field, fields: hideCurrencyFields(field.fields) } as Field
+    }
+    return field
+  })
 
 export const ProductsCollection: CollectionOverride = ({ defaultCollection }) => ({
   ...defaultCollection,
@@ -94,7 +107,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
               type: 'array',
               minRows: 1,
               fields: [
-                                {
+                {
                   name: 'mediaType',
                   type: 'select',
                   defaultValue: 'image',
@@ -173,20 +186,22 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
         },
         {
           fields: [
-            ...defaultCollection.fields.filter(
-              (field) =>
-                !('name' in field && field.name === 'priceInUAH') &&
-                !(
-                  'fields' in field &&
-                  field.fields.some(
-                    (nestedField) =>
-                      nestedField.type === 'row' &&
-                      nestedField.fields.some(
-                        (priceField) =>
-                          'name' in priceField && priceField.name === 'priceInUAH',
-                      ),
-                  )
-                ),
+            ...hideCurrencyFields(
+              defaultCollection.fields.filter(
+                (field) =>
+                  !('name' in field && field.name === 'priceInUAH') &&
+                  !(
+                    'fields' in field &&
+                    field.fields.some(
+                      (nestedField) =>
+                        nestedField.type === 'row' &&
+                        nestedField.fields.some(
+                          (priceField) =>
+                            'name' in priceField && priceField.name === 'priceInUAH',
+                        ),
+                    )
+                  ),
+              ),
             ),
             {
               name: 'relatedProducts',
@@ -221,15 +236,31 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
               descriptionPath: 'meta.description',
               imagePath: 'meta.image',
             }),
-            MetaTitleField({
+                        MetaTitleField({
               hasGenerateFn: true,
-              overrides: { localized: true },
+              overrides: {
+                localized: true,
+                required: true,
+                admin: {
+                  components: {
+                    Description: '@/components/SeoLengthHint#SeoLengthHint',
+                  },
+                },
+              },
             }),
             MetaImageField({
               relationTo: 'media',
             }),
             MetaDescriptionField({
-              overrides: { localized: true },
+              overrides: {
+                localized: true,
+                required: true,
+                admin: {
+                  components: {
+                    Description: '@/components/SeoLengthHint#SeoLengthHint',
+                  },
+                },
+              },
             }),
             PreviewField({
               hasGenerateFn: true,
@@ -287,7 +318,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       name: 'internalNote',
       type: 'textarea',
       label: 'Нотатка (тільки для адмінки)',
-        access: {
+      access: {
         read: adminOnlyFieldAccess,
         create: adminOnlyFieldAccess,
         update: adminOnlyFieldAccess,

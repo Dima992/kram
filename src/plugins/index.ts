@@ -1,7 +1,12 @@
 import { ecommercePlugin } from '@payloadcms/plugin-ecommerce'
 import { formBuilderPlugin } from '@payloadcms/plugin-form-builder'
 import { seoPlugin } from '@payloadcms/plugin-seo'
-import { GenerateTitle, GenerateURL } from '@payloadcms/plugin-seo/types'
+import {
+  GenerateDescription,
+  GenerateImage,
+  GenerateTitle,
+  GenerateURL,
+} from '@payloadcms/plugin-seo/types'
 import { FixedToolbarFeature, HeadingFeature, lexicalEditor } from '@payloadcms/richtext-lexical'
 import { Plugin } from 'payload'
 
@@ -18,6 +23,10 @@ import { ProductsCollection } from '@/collections/Products'
 import { VariantsCollection } from '@/collections/Variants'
 import { Page, Product } from '@/payload-types'
 import { getServerSideURL } from '@/utilities/getURL'
+
+const SITE_NAME = 'Крамниця'
+const TITLE_MAX = 60
+const DESCRIPTION_MAX = 155
 
 const getSiteStripeAdapter = async (payload: Payload) => {
   const settings = await payload.findGlobal({
@@ -36,8 +45,39 @@ const getSiteStripeAdapter = async (payload: Payload) => {
   })
 }
 
+// Достаёт обычный текст из текста товара (он хранится как набор блоков)
+const extractText = (node: unknown): string => {
+  if (!node || typeof node !== 'object') return ''
+  const n = node as { text?: unknown; children?: unknown[] }
+  const own = typeof n.text === 'string' ? n.text : ''
+  const inner = Array.isArray(n.children) ? n.children.map(extractText).join(' ') : ''
+  return `${own} ${inner}`
+}
+
+// Убирает лишние пробелы и обрезает по последнему целому слову
+const cleanText = (text: string, max: number): string => {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if (clean.length <= max) return clean
+  const cut = clean.slice(0, max)
+  const lastSpace = cut.lastIndexOf(' ')
+  return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trim()
+}
+
 const generateTitle: GenerateTitle<Product | Page> = ({ doc }) => {
-  return doc?.title ? `${doc.title} | Payload Ecommerce Template` : 'Payload Ecommerce Template'
+  if (!doc?.title) return SITE_NAME
+  const full = `${doc.title} | ${SITE_NAME}`
+  return full.length <= TITLE_MAX ? full : cleanText(doc.title, TITLE_MAX)
+}
+
+const generateDescription: GenerateDescription<Product | Page> = ({ doc }) => {
+  const description = (doc as Product).description
+  return cleanText(extractText(description?.root), DESCRIPTION_MAX)
+}
+
+const generateImage: GenerateImage<Product | Page> = ({ doc }) => {
+  const gallery = (doc as Product).gallery ?? []
+  const first = gallery.find((item) => item.mediaType !== 'youtube' && item.image)
+  return first?.image ?? undefined
 }
 
 const generateURL: GenerateURL<Product | Page> = async ({ doc, req }) => {
@@ -53,6 +93,8 @@ const generateURL: GenerateURL<Product | Page> = async ({ doc, req }) => {
 export const plugins: Plugin[] = [
   seoPlugin({
     generateTitle,
+    generateDescription,
+    generateImage,
     generateURL,
   }),
   formBuilderPlugin({
@@ -216,7 +258,7 @@ export const plugins: Plugin[] = [
         })(),
       ],
     },
-              products: {
+    products: {
       productsCollectionOverride: ProductsCollection,
       variants: {
         variantsCollectionOverride: VariantsCollection,
