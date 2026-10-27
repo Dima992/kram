@@ -25,6 +25,7 @@ import { VariantOptionsSelector as VariantOptionsSelector_b91672ccd6e8b071c11142
 import { PriceCell as PriceCell_e27bf7b8cc50640dcdd584767b8eac3c } from '@payloadcms/plugin-ecommerce/client'
 import { PriceInput as PriceInput_b91672ccd6e8b071c11142ab941fedfb } from '@payloadcms/plugin-ecommerce/rsc'
 import { HorizontalRuleFeatureClient as HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
+import { CategoryTreeField as CategoryTreeField_082c042dc049e2e98f8bacfb84a5503e } from '@/components/admin/CategoryTreeField'
 import { OrderPhoneLinks as OrderPhoneLinks_7911f81a09c4c3c96f16228372f32d27 } from '@/components/admin/OrderPhoneLinks'
 import { ApiKeyManager as ApiKeyManager_6e9c6cd8a7eaf371a2835f009480b886 } from '@/components/BeforeDashboard/ApiKeyManager'
 import { BeforeDashboard as BeforeDashboard_1a7510af427896d367a49dbf838d2de6 } from '@/components/BeforeDashboard'
@@ -61,6 +62,7 @@ export const importMap = {
   "@payloadcms/plugin-ecommerce/client#PriceCell": PriceCell_e27bf7b8cc50640dcdd584767b8eac3c,
   "@payloadcms/plugin-ecommerce/rsc#PriceInput": PriceInput_b91672ccd6e8b071c11142ab941fedfb,
   "@payloadcms/richtext-lexical/client#HorizontalRuleFeatureClient": HorizontalRuleFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
+  "@/components/admin/CategoryTreeField#CategoryTreeField": CategoryTreeField_082c042dc049e2e98f8bacfb84a5503e,
   "@/components/admin/OrderPhoneLinks#OrderPhoneLinks": OrderPhoneLinks_7911f81a09c4c3c96f16228372f32d27,
   "@/components/BeforeDashboard/ApiKeyManager#ApiKeyManager": ApiKeyManager_6e9c6cd8a7eaf371a2835f009480b886,
   "@/components/BeforeDashboard#BeforeDashboard": BeforeDashboard_1a7510af427896d367a49dbf838d2de6,

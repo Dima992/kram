@@ -259,12 +259,14 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
         },
       ],
     },
-    {
+        {
       name: 'categories',
       type: 'relationship',
       admin: {
         position: 'sidebar',
-        sortOptions: 'title',
+        components: {
+          Field: '@/components/admin/CategoryTreeField#CategoryTreeField',
+        },
       },
       hasMany: true,
       relationTo: 'categories',
@@ -477,7 +479,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
         }
         return doc
       },
-      
+
       // Альты фото: после сохранения, на двух языках
       autoGenerateAlt,
     ],
