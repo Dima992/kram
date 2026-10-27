@@ -14,9 +14,10 @@ export const Categories: CollectionConfig = {
     update: adminOnly,
   },
   admin: {
-    useAsTitle: 'title',
+    // В выборе категории в товаре показываем полный путь
+    useAsTitle: 'pathTitle',
     group: 'Content',
-    defaultColumns: ['title', 'parent'],
+    defaultColumns: ['pathTitle', 'title'],
   },
   hooks: {
     // После сохранения или удаления категории обновляем страницы магазина
@@ -30,6 +31,45 @@ export const Categories: CollectionConfig = {
         revalidatePath('/shop', 'layout')
       },
     ],
+    // Собираем полный путь: родитель → подкатегория (по украинским названиям)
+    beforeChange: [
+      async ({ data, req }) => {
+        const doc = data as any
+        const names: string[] = [typeof doc?.title === 'string' ? doc.title : '']
+
+        let parentId = doc?.parent
+          ? typeof doc.parent === 'object'
+            ? doc.parent.id
+            : doc.parent
+          : null
+        let guard = 0
+
+        while (parentId && guard < 10) {
+          const parent: any = await req.payload
+            .findByID({
+              collection: 'categories',
+              id: parentId,
+              locale: 'uk',
+              depth: 0,
+              overrideAccess: true,
+              req,
+            })
+            .catch(() => null)
+          if (!parent) break
+
+          names.unshift(parent.title)
+          parentId = parent.parent
+            ? typeof parent.parent === 'object'
+              ? parent.parent.id
+              : parent.parent
+            : null
+          guard++
+        }
+
+        doc.pathTitle = names.filter(Boolean).join(' → ')
+        return doc
+      },
+    ],
   },
   fields: [
     {
@@ -37,6 +77,16 @@ export const Categories: CollectionConfig = {
       type: 'text',
       required: true,
       localized: true, // Включаем перевод названия категории (UK / RU)
+    },
+    {
+      name: 'pathTitle',
+      type: 'text',
+      label: 'Повний шлях (автоматично)',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Заповнюється сам при збереженні. Не редагуйте вручну.',
+      },
     },
     {
       name: 'parent',
