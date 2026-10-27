@@ -78,7 +78,7 @@ const generateImage: GenerateImage<Product | Page> = ({ doc }) => {
   const gallery = (doc as Product).gallery ?? []
   const first = gallery.find((item) => item.mediaType !== 'youtube' && item.image)
   const image = first?.image
-  if (!image) return undefined
+  if (!image) return ''
   return typeof image === 'object' ? image.id : image
 }
 
