@@ -51,7 +51,7 @@ export const GridTileImage: React.FC<Props> = ({
       {videoId ? (
         <>
           <img
-            src={`https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`}
+            src={`https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`}
             alt=""
             className="absolute inset-0 h-full w-full object-cover"
             loading="lazy"

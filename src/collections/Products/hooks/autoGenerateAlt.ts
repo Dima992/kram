@@ -9,9 +9,18 @@ const photoLabel = (index: number, locale: 'uk' | 'ru') => {
   return index === 0 ? 'головне фото' : `фото ${index + 1}`
 }
 
+// Считаем alt «пустым», если поле пустое или в нём стоит имя файла
+const isPlaceholderAlt = (alt: string | null | undefined, filename: string | null | undefined) => {
+  const value = (alt || '').trim()
+  if (value === '') return true
+  if (!filename) return false
+  const base = filename.replace(/\.[^.]+$/, '')
+  return value === filename || value === base
+}
+
 // Заполняет alt у всех фото товара на украинском и русском.
 // Работает ПОСЛЕ сохранения товара, чтобы взять уже записанное название.
-// Меняет только пустые alt: вписанные вручную не трогаем.
+// Вписанные вручную описания не трогаем.
 export const autoGenerateAlt: CollectionAfterChangeHook = async ({ doc, req }) => {
   const gallery = Array.isArray(doc.gallery) ? doc.gallery : []
   if (gallery.length === 0) return doc
@@ -44,7 +53,7 @@ export const autoGenerateAlt: CollectionAfterChangeHook = async ({ doc, req }) =
           req,
         })
 
-        if (media.alt) continue
+        if (!isPlaceholderAlt(media.alt, media.filename)) continue
 
         await req.payload.update({
           collection: 'media',
