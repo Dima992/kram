@@ -77,7 +77,9 @@ const generateDescription: GenerateDescription<Product | Page> = ({ doc }) => {
 const generateImage: GenerateImage<Product | Page> = ({ doc }) => {
   const gallery = (doc as Product).gallery ?? []
   const first = gallery.find((item) => item.mediaType !== 'youtube' && item.image)
-  return first?.image ?? undefined
+  const image = first?.image
+  if (!image) return undefined
+  return typeof image === 'object' ? image.id : image
 }
 
 const generateURL: GenerateURL<Product | Page> = async ({ doc, req }) => {

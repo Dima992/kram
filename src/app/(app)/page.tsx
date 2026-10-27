@@ -1,7 +1,14 @@
-import PageTemplate, { generateMetadata } from './[slug]/page'
+import PageTemplate, { generateMetadata as generatePageMetadata } from './[slug]/page'
 
 export const revalidate = 3600
 
-export default PageTemplate
+// Главная (адрес «/») — это страница с адресом «home»
+const homeParams = () => Promise.resolve({ slug: 'home' })
 
-export { generateMetadata }
+export default async function HomePage() {
+  return <PageTemplate params={homeParams()} />
+}
+
+export async function generateMetadata() {
+  return generatePageMetadata({ params: homeParams() })
+}
