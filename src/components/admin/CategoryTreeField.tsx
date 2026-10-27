@@ -64,6 +64,31 @@ export const CategoryTreeField: React.FC<{ path: string }> = ({ path }) => {
     return map
   }, [cats])
 
+  // Карта: id категории → её родитель
+  const parentOf = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const c of cats) map.set(String(c.id), parentIdOf(c))
+    return map
+  }, [cats])
+
+  // Раскрываем ветки, где есть выбранные категории, чтобы было видно галочки
+  useEffect(() => {
+    if (cats.length === 0) return
+    const toOpen = new Set<string>()
+    for (const id of selected) {
+      let parent = parentOf.get(id) ?? ''
+      let guard = 0
+      while (parent && guard < 10) {
+        toOpen.add(parent)
+        parent = parentOf.get(parent) ?? ''
+        guard++
+      }
+    }
+    if (toOpen.size > 0) {
+      setOpen((prev) => new Set([...prev, ...toOpen]))
+    }
+  }, [selected, cats, parentOf])
+
   const toggleSelect = (id: string) => {
     const next = new Set(selected)
     if (next.has(id)) next.delete(id)
@@ -85,6 +110,7 @@ export const CategoryTreeField: React.FC<{ path: string }> = ({ path }) => {
       const id = String(c.id)
       const kids = childrenOf.get(id) ?? []
       const isOpen = open.has(id)
+      const isChecked = selected.has(id)
 
       return (
         <div key={id}>
@@ -93,8 +119,12 @@ export const CategoryTreeField: React.FC<{ path: string }> = ({ path }) => {
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              marginLeft: depth * 18,
-              padding: '3px 0',
+              paddingLeft: depth * 16 + 4,
+              paddingTop: 4,
+              paddingBottom: 4,
+              paddingRight: 4,
+              borderRadius: 4,
+              background: isChecked ? 'var(--theme-elevation-100, #2a2a2a)' : 'transparent',
             }}
           >
             {kids.length > 0 ? (
@@ -102,19 +132,38 @@ export const CategoryTreeField: React.FC<{ path: string }> = ({ path }) => {
                 type="button"
                 onClick={() => toggleOpen(id)}
                 aria-label={isOpen ? 'Згорнути' : 'Розгорнути'}
-                style={{ width: 18, cursor: 'pointer', background: 'none', border: 'none' }}
+                style={{
+                  width: 20,
+                  height: 20,
+                  cursor: 'pointer',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--theme-text, inherit)',
+                  fontSize: 12,
+                  padding: 0,
+                }}
               >
-                {isOpen ? '▾' : '▸'}
+                {isOpen ? '▼' : '▶'}
               </button>
             ) : (
-              <span style={{ width: 18, display: 'inline-block' }} />
+              <span style={{ width: 20, display: 'inline-block' }} />
             )}
-            <label style={{ cursor: 'pointer' }}>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: 'pointer',
+                color: 'var(--theme-text, inherit)',
+                fontSize: 14,
+              }}
+            >
               <input
                 type="checkbox"
-                checked={selected.has(id)}
+                checked={isChecked}
                 onChange={() => toggleSelect(id)}
-              />{' '}
+                style={{ width: 16, height: 16, cursor: 'pointer' }}
+              />
               {c.title}
             </label>
           </div>
@@ -124,15 +173,34 @@ export const CategoryTreeField: React.FC<{ path: string }> = ({ path }) => {
     })
 
   return (
-    <div>
-      <div style={{ marginBottom: 6, fontSize: 13, opacity: 0.8 }}>Категорії</div>
-      {!loaded ? (
-        <div style={{ fontSize: 13, opacity: 0.6 }}>Завантаження…</div>
-      ) : cats.length === 0 ? (
-        <div style={{ fontSize: 13, opacity: 0.6 }}>Категорій ще немає.</div>
-      ) : (
-        renderLevel('', 0)
-      )}
+    <div style={{ marginBottom: 8 }}>
+      <div
+        style={{
+          marginBottom: 6,
+          fontSize: 12,
+          fontWeight: 600,
+          color: 'var(--theme-elevation-800, inherit)',
+        }}
+      >
+        Категорії
+      </div>
+      <div
+        style={{
+          maxHeight: 360,
+          overflowY: 'auto',
+          border: '1px solid var(--theme-elevation-150, #444)',
+          borderRadius: 6,
+          padding: 6,
+        }}
+      >
+        {!loaded ? (
+          <div style={{ fontSize: 13, opacity: 0.6, padding: 4 }}>Завантаження…</div>
+        ) : cats.length === 0 ? (
+          <div style={{ fontSize: 13, opacity: 0.6, padding: 4 }}>Категорій ще немає.</div>
+        ) : (
+          renderLevel('', 0)
+        )}
+      </div>
     </div>
   )
 }
