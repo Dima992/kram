@@ -30,7 +30,7 @@ import { autoGenerateAlt } from './hooks/autoGenerateAlt'
 // Поля не удаляем: плагин магазина может их использовать.
 const hideCurrencyFields = (fields: Field[]): Field[] =>
   fields.map((field) => {
-    if ('name' in field && (field.name === 'priceInUSD' || field.name === 'priceInEUR')) {
+    if ('name' in field && field.name.startsWith('priceIn') && field.name !== 'priceInUAH') {
       return { ...field, admin: { ...field.admin, hidden: true } } as Field
     }
     if ('fields' in field && Array.isArray(field.fields)) {
@@ -236,32 +236,20 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
               descriptionPath: 'meta.description',
               imagePath: 'meta.image',
             }),
-                        MetaTitleField({
+
+             MetaTitleField({
               hasGenerateFn: true,
-              overrides: {
-                localized: true,
-                required: true,
-                admin: {
-                  components: {
-                    Description: '@/components/SeoLengthHint#SeoLengthHint',
-                  },
-                },
-              },
+              overrides: { localized: true, required: true },
             }),
+
             MetaImageField({
               relationTo: 'media',
             }),
+
             MetaDescriptionField({
-              overrides: {
-                localized: true,
-                required: true,
-                admin: {
-                  components: {
-                    Description: '@/components/SeoLengthHint#SeoLengthHint',
-                  },
-                },
-              },
+              overrides: { localized: true, required: true },
             }),
+            
             PreviewField({
               hasGenerateFn: true,
               titlePath: 'meta.title',
