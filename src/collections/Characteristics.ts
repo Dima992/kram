@@ -11,20 +11,35 @@ export const Characteristics: CollectionConfig = {
     update: adminOnly,
   },
   admin: {
-    useAsTitle: 'name',
+    useAsTitle: 'name_uk',
     group: 'Content',
-    defaultColumns: ['name', 'categories'],
+    defaultColumns: ['name_uk', 'name_ru', 'categories'],
   },
   fields: [
     {
-      name: 'name',
-      type: 'text',
-      required: true,
-      localized: true,
-      label: 'Назва характеристики',
-      admin: {
-        description: 'Наприклад: Матеріал, Стать, Сезон. Назва на двох мовах.',
-      },
+      // Название укр и рус рядом, без переключения языка
+      type: 'row',
+      fields: [
+        {
+          name: 'name_uk',
+          type: 'text',
+          required: true,
+          label: 'Назва (укр)',
+          admin: {
+            width: '50%',
+            description: 'Наприклад: Матеріал, Стать, Сезон.',
+          },
+        },
+        {
+          name: 'name_ru',
+          type: 'text',
+          label: 'Название (рус)',
+          admin: {
+            width: '50%',
+            description: 'Если пусто, покажем украинское.',
+          },
+        },
+      ],
     },
     {
       name: 'categories',
@@ -44,15 +59,26 @@ export const Characteristics: CollectionConfig = {
       minRows: 1,
       label: 'Значення',
       admin: {
-        description: 'Варіанти, які можна буде вибрати в товарі (галочками).',
+        description: 'Варіанти, які можна буде вибрати в товарі галочками. Общие значения (S, M, 90 см) заполните в обоих полях одинаково.',
       },
       fields: [
         {
-          name: 'label',
-          type: 'text',
-          required: true,
-          localized: true,
-          label: 'Значення',
+          type: 'row',
+          fields: [
+            {
+              name: 'label_uk',
+              type: 'text',
+              required: true,
+              label: 'Укр',
+              admin: { width: '50%' },
+            },
+            {
+              name: 'label_ru',
+              type: 'text',
+              label: 'Рус',
+              admin: { width: '50%' },
+            },
+          ],
         },
       ],
     },
