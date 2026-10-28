@@ -1,32 +1,31 @@
 import configPromise from '@payload-config'
-import { getPayload } from 'payload'
 import clsx from 'clsx'
-import React, { Suspense } from 'react'
+import { headers as getHeaders } from 'next/headers'
+import { getPayload } from 'payload'
+import { Suspense } from 'react'
 
-import { FilterList } from './filter'
-import { CategoryItem } from './Categories.client'
+import { CategoryTree } from './Categories.client'
 
 async function CategoryList() {
+  const requestHeaders = await getHeaders()
+  const locale = requestHeaders.get('x-locale') === 'ru' ? 'ru' : 'uk'
+  const heading = locale === 'ru' ? 'Категории' : 'Категорії'
+
   const payload = await getPayload({ config: configPromise })
 
   const categories = await payload.find({
     collection: 'categories',
+    locale,
     sort: 'title',
+    depth: 0,
+    limit: 1000,
+    pagination: false,
   })
 
   return (
     <div>
-      <h3 className="text-xs mb-2 text-neutral-500 dark:text-neutral-400">Category</h3>
-
-      <ul>
-        {categories.docs.map((category) => {
-          return (
-            <li key={category.id}>
-              <CategoryItem category={category} />
-            </li>
-          )
-        })}
-      </ul>
+      <h3 className="text-xs mb-2 text-neutral-500 dark:text-neutral-400">{heading}</h3>
+      <CategoryTree categories={categories.docs} />
     </div>
   )
 }

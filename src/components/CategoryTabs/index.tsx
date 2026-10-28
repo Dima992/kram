@@ -1,15 +1,24 @@
 import configPromise from '@payload-config'
-import { getPayload } from 'payload'
 import clsx from 'clsx'
+import { headers as getHeaders } from 'next/headers'
+import { getPayload } from 'payload'
 import React, { Suspense } from 'react'
 
 import { Item } from './Item'
 
 async function List() {
+  const requestHeaders = await getHeaders()
+  const locale = requestHeaders.get('x-locale') === 'ru' ? 'ru' : 'uk'
+  const allLabel = locale === 'ru' ? 'Все' : 'Усі'
+
   const payload = await getPayload({ config: configPromise })
   const categoriesData = await payload.find({
     collection: 'categories',
+    locale,
     sort: 'title',
+    depth: 0,
+    limit: 1000,
+    pagination: false,
     select: {
       title: true,
       slug: true,
@@ -27,7 +36,7 @@ async function List() {
     <React.Fragment>
       <nav>
         <ul className="flex gap-3">
-          <Item title="All" href="/shop" />
+          <Item title={allLabel} href="/shop" />
           <Suspense fallback={null}>
             {categories.map((category) => {
               return <Item {...category} key={category.href} />
