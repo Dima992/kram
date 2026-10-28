@@ -1,3 +1,4 @@
+import { revalidatePath, revalidateTag } from 'next/cache'
 import type { CollectionConfig } from 'payload'
 
 import { adminOnly } from '@/access/adminOnly'
@@ -13,7 +14,25 @@ export const Characteristics: CollectionConfig = {
   admin: {
     useAsTitle: 'name_uk',
     group: 'Content',
-    defaultColumns: ['name_uk', 'name_ru', 'categories'],
+    defaultColumns: ['order', 'name_uk', 'name_ru', 'categories'],
+  },
+  defaultSort: 'order',
+  hooks: {
+    // После сохранения или удаления характеристики обновляем страницы товаров и магазина
+    afterChange: [
+      () => {
+        revalidateTag('products', { expire: 0 })
+        revalidatePath('/shop', 'layout')
+        revalidatePath('/products', 'layout')
+      },
+    ],
+    afterDelete: [
+      () => {
+        revalidateTag('products', { expire: 0 })
+        revalidatePath('/shop', 'layout')
+        revalidatePath('/products', 'layout')
+      },
+    ],
   },
   fields: [
     {
@@ -40,6 +59,16 @@ export const Characteristics: CollectionConfig = {
           },
         },
       ],
+    },
+    {
+      name: 'order',
+      type: 'number',
+      defaultValue: 0,
+      label: 'Порядок',
+      admin: {
+        position: 'sidebar',
+        description: 'Чем меньше число, тем выше характеристика в карточке товара (1, 2, 3…).',
+      },
     },
     {
       name: 'categories',

@@ -13,6 +13,7 @@ type Characteristic = {
   id: number | string
   name_uk?: string | null
   name_ru?: string | null
+  order?: number | null
   categories?: unknown
   values?: Value[] | null
 }
@@ -42,6 +43,8 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
   const [allCats, setAllCats] = useState<Cat[]>([])
   const [chars, setChars] = useState<Characteristic[]>([])
   const [loaded, setLoaded] = useState(false)
+  // Какие характеристики раскрыты (по умолчанию все свёрнуты)
+  const [open, setOpen] = useState<Set<string>>(new Set())
 
   // Загружаем категории и характеристики
   useEffect(() => {
@@ -50,7 +53,7 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
       fetch('/api/categories?limit=1000&depth=0&pagination=false', {
         credentials: 'include',
       }).then((r) => r.json()),
-      fetch('/api/characteristics?limit=1000&depth=0&pagination=false', {
+      fetch('/api/characteristics?limit=1000&depth=0&pagination=false&sort=order', {
         credentials: 'include',
       }).then((r) => r.json()),
     ])
@@ -93,17 +96,19 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
     return set
   }, [categoriesValue, allCats])
 
-  // Характеристики, которые относятся к основной категории или её родителям
+  // Характеристики основной категории и её родителей, по полю «Порядок»
   const visible = useMemo(
     () =>
-      chars.filter((ch) => {
-        const cats = Array.isArray(ch.categories) ? ch.categories.map(idOf) : []
-        return cats.some((id) => relevantCats.has(id))
-      }),
+      chars
+        .filter((ch) => {
+          const cats = Array.isArray(ch.categories) ? ch.categories.map(idOf) : []
+          return cats.some((id) => relevantCats.has(id))
+        })
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
     [chars, relevantCats],
   )
 
-  const toggle = (charId: string, valueId: string) => {
+  const toggleValue = (charId: string, valueId: string) => {
     const current = stored[charId] ?? []
     const next = current.includes(valueId)
       ? current.filter((v) => v !== valueId)
@@ -114,10 +119,13 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
     setValue(updated)
   }
 
-  const box = {
-    marginBottom: 8,
-    fontSize: 12,
-    fontWeight: 600 as const,
+  const toggleOpen = (charId: string) => {
+    setOpen((prev) => {
+      const next = new Set(prev)
+      if (next.has(charId)) next.delete(charId)
+      else next.add(charId)
+      return next
+    })
   }
 
   if (!loaded) {
@@ -141,54 +149,104 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
   }
 
   return (
-    <div style={{ marginBottom: 8 }}>
-      <div style={box}>Характеристики</div>
-
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       {visible.map((ch) => {
         const charId = String(ch.id)
         const selected = stored[charId] ?? []
+        const isOpen = open.has(charId)
+
+        // Сводка строится из текущего выбора: только выбранные значения
+        const selectedLabels = (ch.values ?? [])
+          .filter((v) => v.id && selected.includes(String(v.id)))
+          .map((v) => v.label_uk || v.label_ru || '')
+          .filter(Boolean)
+        const summary = selectedLabels.join(', ')
 
         return (
           <div
             key={charId}
             style={{
-              marginBottom: 10,
-              padding: 8,
               border: '1px solid var(--theme-elevation-150, #444)',
               borderRadius: 6,
+              overflow: 'hidden',
             }}
           >
-            <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 14 }}>
-              {ch.name_uk}
-              {ch.name_ru ? ` / ${ch.name_ru}` : ''}
-            </div>
+            {/* Свёрнутая строка: название и выбранные значения */}
+            <button
+              type="button"
+              onClick={() => toggleOpen(charId)}
+              aria-expanded={isOpen}
+              style={{
+                display: 'flex',
+                width: '100%',
+                alignItems: 'center',
+                gap: 12,
+                padding: '10px 12px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'inherit',
+                textAlign: 'left',
+              }}
+            >
+              <span style={{ width: 180, flexShrink: 0, fontWeight: 600, fontSize: 14 }}>
+                {ch.name_uk}
+                {ch.name_ru ? ` / ${ch.name_ru}` : ''}
+              </span>
+              <span
+                style={{
+                  flex: 1,
+                  fontSize: 14,
+                  opacity: summary ? 1 : 0.5,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {summary || 'не вибрано'}
+              </span>
+              <span style={{ fontSize: 12, opacity: 0.7 }}>{isOpen ? '▲' : '▼'}</span>
+            </button>
 
-            {(ch.values ?? []).map((v) => {
-              const valueId = v.id ? String(v.id) : ''
-              if (!valueId) return null
-              return (
-                <label
-                  key={valueId}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '3px 0',
-                    fontSize: 14,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(valueId)}
-                    onChange={() => toggle(charId, valueId)}
-                    style={{ width: 16, height: 16 }}
-                  />
-                  {v.label_uk}
-                  {v.label_ru ? ` / ${v.label_ru}` : ''}
-                </label>
-              )
-            })}
+            {/* Раскрытый список: все значения галочками */}
+            {isOpen ? (
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '6px 16px',
+                  padding: '8px 12px 12px',
+                  borderTop: '1px solid var(--theme-elevation-150, #444)',
+                }}
+              >
+                {(ch.values ?? []).map((v) => {
+                  const valueId = v.id ? String(v.id) : ''
+                  if (!valueId) return null
+                  return (
+                    <label
+                      key={valueId}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontSize: 14,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(valueId)}
+                        onChange={() => toggleValue(charId, valueId)}
+                        style={{ width: 16, height: 16 }}
+                      />
+                      {v.label_uk}
+                      {v.label_ru ? ` / ${v.label_ru}` : ''}
+                    </label>
+                  )
+                })}
+              </div>
+            ) : null}
           </div>
         )
       })}

@@ -75,6 +75,7 @@ export interface Config {
     users: User;
     pages: Page;
     categories: Category;
+    characteristics: Characteristic;
     media: Media;
     feeds: Feed;
     'import-sources': ImportSource;
@@ -113,6 +114,7 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     pages: PagesSelect<false> | PagesSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
+    characteristics: CharacteristicsSelect<false> | CharacteristicsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     feeds: FeedsSelect<false> | FeedsSelect<true>;
     'import-sources': ImportSourcesSelect<false> | ImportSourcesSelect<true>;
@@ -356,13 +358,22 @@ export interface Product {
   priceInEUREnabled?: boolean | null;
   priceInEUR?: number | null;
   relatedProducts?: (string | Product)[] | null;
-  meta?: {
-    title?: string | null;
+  attributes?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  meta: {
+    title: string;
     /**
      * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
      */
     image?: (string | null) | Media;
-    description?: string | null;
+    description: string;
   };
   categories?: (string | Category)[] | null;
   /**
@@ -377,6 +388,18 @@ export interface Product {
    * Розрахована ціна в грн за курсом НБУ (покупцю показується ця)
    */
   priceInUAH?: number | null;
+  /**
+   * Поки що тільки для адмінки: на сайті статус покажемо на наступному кроці.
+   */
+  stockStatus?: ('inStock' | 'backorder' | 'outOfStock') | null;
+  /**
+   * Скільки днів чекати товар.
+   */
+  backorderDays?: number | null;
+  /**
+   * Поки що тільки позначка. Логіку додамо на етапі 2в.
+   */
+  decrementOnOrder?: boolean | null;
   /**
    * Для себе: нагадування, що перевірити. На сайті не показується.
    */
@@ -717,6 +740,44 @@ export interface ArchiveBlock {
 export interface Category {
   id: string;
   title: string;
+  /**
+   * Заповнюється сам при збереженні. Не редагуйте вручну.
+   */
+  pathTitle?: string | null;
+  /**
+   * Порожньо — верхній рівень. Наприклад, «Шуби» можна вкласти в «Верхній одяг».
+   */
+  parent?: (string | null) | Category;
+  /**
+   * Рекомендовано 1200×600 або більше. На сайті фото обрізається під рамку: точку фокуса виберіть у редакторі фото.
+   */
+  image?: (string | null) | Media;
+  /**
+   * Кілька речень для покупців. Також використовується для SEO, якщо поле порожнє.
+   */
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  meta?: {
+    title?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (string | null) | Media;
+    description?: string | null;
+  };
   /**
    * When enabled, the slug will auto-generate from the title field on save and autosave.
    */
@@ -1207,6 +1268,35 @@ export interface Address {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "characteristics".
+ */
+export interface Characteristic {
+  id: string;
+  /**
+   * Наприклад: Матеріал, Стать, Сезон.
+   */
+  name_uk: string;
+  /**
+   * Если пусто, покажем украинское.
+   */
+  name_ru?: string | null;
+  /**
+   * Для яких категорій ця характеристика. Підкатегорії успадковують її від батьківської.
+   */
+  categories?: (string | Category)[] | null;
+  /**
+   * Варіанти, які можна буде вибрати в товарі галочками. Общие значения (S, M, 90 см) заполните в обоих полях одинаково.
+   */
+  values: {
+    label_uk: string;
+    label_ru?: string | null;
+    id?: string | null;
+  }[];
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "feeds".
  */
 export interface Feed {
@@ -1381,6 +1471,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'categories';
         value: string | Category;
+      } | null)
+    | ({
+        relationTo: 'characteristics';
+        value: string | Characteristic;
       } | null)
     | ({
         relationTo: 'media';
@@ -1694,8 +1788,37 @@ export interface FormBlockSelect<T extends boolean = true> {
  */
 export interface CategoriesSelect<T extends boolean = true> {
   title?: T;
+  pathTitle?: T;
+  parent?: T;
+  image?: T;
+  description?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        image?: T;
+        description?: T;
+      };
   generateSlug?: T;
   slug?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "characteristics_select".
+ */
+export interface CharacteristicsSelect<T extends boolean = true> {
+  name_uk?: T;
+  name_ru?: T;
+  categories?: T;
+  values?:
+    | T
+    | {
+        label_uk?: T;
+        label_ru?: T;
+        id?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2107,6 +2230,7 @@ export interface ProductsSelect<T extends boolean = true> {
   priceInEUREnabled?: T;
   priceInEUR?: T;
   relatedProducts?: T;
+  attributes?: T;
   meta?:
     | T
     | {
@@ -2118,6 +2242,9 @@ export interface ProductsSelect<T extends boolean = true> {
   baseCurrency?: T;
   basePrice?: T;
   priceInUAH?: T;
+  stockStatus?: T;
+  backorderDays?: T;
+  decrementOnOrder?: T;
   internalNote?: T;
   excludeFromFeed?: T;
   brand?: T;

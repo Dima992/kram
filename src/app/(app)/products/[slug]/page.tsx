@@ -1,6 +1,7 @@
 import { RenderBlocks } from '@/blocks/RenderBlocks'
 import { GridTileImage } from '@/components/Grid/tile'
 import { Gallery } from '@/components/product/Gallery'
+import { ProductCharacteristics, type CharacteristicView } from '@/components/product/ProductCharacteristics'
 import { ProductDescription } from '@/components/product/ProductDescription'
 import { StickyBuyBar } from '@/components/product/StickyBuyBar'
 import { Button } from '@/components/ui/button'
@@ -42,6 +43,63 @@ const getGallery = (product: Product) =>
       ...item,
       image: typeof item.image === 'object' ? (item.image as Media) : undefined,
     })) || []
+
+// Характеристики, которые выбраны у товара: только выбранные значения, пустые скрываем
+const buildCharacteristics = async (
+  product: Product,
+  locale: Locale,
+): Promise<CharacteristicView[]> => {
+  const raw = (product as Product & { attributes?: unknown }).attributes
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return []
+
+  const selectedMap = raw as Record<string, unknown>
+  const ids = Object.keys(selectedMap).filter((id) => {
+    const value = selectedMap[id]
+    return Array.isArray(value) && value.length > 0
+  })
+  if (ids.length === 0) return []
+
+  const payload = await getPayload({ config: configPromise })
+  const result = await payload.find({
+    collection: 'characteristics',
+    depth: 0,
+    limit: 200,
+    pagination: false,
+    sort: 'order',
+    where: {
+      id: { in: ids },
+    },
+  })
+
+  const items: CharacteristicView[] = []
+
+  for (const ch of result.docs) {
+    const chId = String(ch.id)
+    const selected = ((selectedMap[chId] as unknown[] | undefined) ?? []).map(String)
+
+    const values = (ch.values ?? [])
+      .filter((v) => v.id)
+      .map((v) => ({
+        id: String(v.id),
+        label:
+          locale === 'ru'
+            ? v.label_ru || v.label_uk || ''
+            : v.label_uk || v.label_ru || '',
+        selected: selected.includes(String(v.id)),
+      }))
+
+    // Если ни одно значение не выбрано — характеристику не показываем
+    if (!values.some((v) => v.selected)) continue
+
+    items.push({
+      id: chId,
+      name: locale === 'ru' ? ch.name_ru || ch.name_uk : ch.name_uk,
+      values,
+    })
+  }
+
+  return items
+}
 
 export async function generateMetadata({ params }: Args): Promise<Metadata> {
   const { slug } = await params
@@ -91,6 +149,7 @@ export default async function ProductPage({ params }: Args) {
   if (!product) return notFound()
 
   const gallery = getGallery(product)
+  const characteristics = await buildCharacteristics(product, locale)
 
   const metaImage = typeof product.meta?.image === 'object' ? product.meta?.image : undefined
   const hasStock = product.enableVariants
@@ -150,6 +209,11 @@ export default async function ProductPage({ params }: Args) {
             <ProductDescription product={product} />
           </div>
         </div>
+      </div>
+
+      {/* Характеристики: под фото, описанием и видео, перед кнопкой покупки */}
+      <div className="container">
+        <ProductCharacteristics title="Характеристики" items={characteristics} />
       </div>
 
       <StickyBuyBar product={product} />
