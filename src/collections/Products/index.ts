@@ -228,6 +228,22 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
           label: 'Product Details',
         },
         {
+          // Отдельная вкладка для характеристик (галочки по основной категории)
+          fields: [
+            {
+              name: 'attributes',
+              type: 'json',
+              label: 'Характеристики',
+              admin: {
+                components: {
+                  Field: '@/components/admin/CharacteristicsField#CharacteristicsField',
+                },
+              },
+            },
+          ],
+          label: 'Характеристики',
+        },
+        {
           name: 'meta',
           label: 'SEO',
           fields: [
@@ -236,20 +252,16 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
               descriptionPath: 'meta.description',
               imagePath: 'meta.image',
             }),
-
-             MetaTitleField({
+            MetaTitleField({
               hasGenerateFn: true,
               overrides: { localized: true, required: true },
             }),
-
             MetaImageField({
               relationTo: 'media',
             }),
-
             MetaDescriptionField({
               overrides: { localized: true, required: true },
             }),
-            
             PreviewField({
               hasGenerateFn: true,
               titlePath: 'meta.title',
@@ -259,7 +271,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
         },
       ],
     },
-        {
+    {
       name: 'categories',
       type: 'relationship',
       admin: {
@@ -304,7 +316,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
         description: 'Розрахована ціна в грн за курсом НБУ (покупцю показується ця)',
       },
     },
-        {
+    {
       name: 'stockStatus',
       type: 'select',
       defaultValue: 'inStock',
@@ -471,7 +483,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     ...defaultCollection?.hooks,
     afterChange: [
       ...(defaultCollection?.hooks?.afterChange || []),
-      
+
       ({ doc, req: { context } }) => {
         if (!context.disableRevalidate && doc._status === 'published') {
           revalidateTag('products', { expire: 0 })
