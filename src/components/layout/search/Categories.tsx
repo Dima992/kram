@@ -4,6 +4,7 @@ import { headers as getHeaders } from 'next/headers'
 import { getPayload } from 'payload'
 import { Suspense } from 'react'
 
+import { nonEmptyCategoryIds } from '@/utilities/categoryTree'
 import { CategoryTree } from './Categories.client'
 
 async function CategoryList() {
@@ -22,10 +23,14 @@ async function CategoryList() {
     pagination: false,
   })
 
+  // Прячем категории, в которых нет товаров (ни своих, ни в подкатегориях)
+  const nonEmpty = await nonEmptyCategoryIds(payload, categories.docs)
+  const visible = categories.docs.filter((c) => nonEmpty.has(String(c.id)))
+
   return (
     <div>
       <h3 className="text-xs mb-2 text-neutral-500 dark:text-neutral-400">{heading}</h3>
-      <CategoryTree categories={categories.docs} />
+      <CategoryTree categories={visible} />
     </div>
   )
 }

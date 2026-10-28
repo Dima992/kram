@@ -4,6 +4,7 @@ import { headers as getHeaders } from 'next/headers'
 import { getPayload } from 'payload'
 import React, { Suspense } from 'react'
 
+import { nonEmptyCategoryIds } from '@/utilities/categoryTree'
 import { Item } from './Item'
 
 async function List() {
@@ -22,10 +23,15 @@ async function List() {
     select: {
       title: true,
       slug: true,
+      parent: true,
     },
   })
 
-  const categories = categoriesData.docs?.map((category) => {
+  // Прячем пустые категории
+  const nonEmpty = await nonEmptyCategoryIds(payload, categoriesData.docs)
+  const visible = categoriesData.docs.filter((c) => nonEmpty.has(String(c.id)))
+
+  const categories = visible.map((category) => {
     return {
       href: `/shop/${category.slug}`,
       title: category.title,

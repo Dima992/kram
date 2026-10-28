@@ -33,6 +33,39 @@ export const Categories: CollectionConfig = {
       () => {
         revalidatePath('/shop', 'layout')
       },
+      // Alt для фото категории: название категории (если alt пустой или это имя файла)
+      async ({ doc, req }) => {
+        try {
+          const imageId =
+            doc.image && typeof doc.image === 'object' ? doc.image.id : doc.image
+          if (!imageId) return doc
+
+          const media = await req.payload.findByID({
+            collection: 'media',
+            id: imageId,
+            locale: 'uk',
+            depth: 0,
+            fallbackLocale: false,
+            req,
+          })
+
+          const alt = (media.alt || '').trim()
+          const base = (media.filename || '').replace(/\.[^.]+$/, '')
+          const isPlaceholder = alt === '' || alt === media.filename || alt === base
+          if (!isPlaceholder) return doc
+
+          await req.payload.update({
+            collection: 'media',
+            id: imageId,
+            locale: 'uk',
+            data: { alt: `${String(doc.title)} — фото категорії` },
+            req,
+          })
+        } catch (err) {
+          req.payload.logger.error({ err }, 'Category alt skipped')
+        }
+        return doc
+      },
     ],
     afterDelete: [
       () => {
@@ -139,7 +172,8 @@ export const Categories: CollectionConfig = {
               relationTo: 'media',
               label: 'Фото категорії',
               admin: {
-                description: 'Показується зверху сторінки категорії.',
+                description:
+                  'Рекомендовано 1200×600 або більше. На сайті фото обрізається під рамку: точку фокуса виберіть у редакторі фото.',
               },
             },
             {
