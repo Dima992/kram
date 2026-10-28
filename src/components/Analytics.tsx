@@ -15,19 +15,16 @@ const STORAGE_KEY = 'cookie-consent'
 
 const text = {
   uk: {
-    title: 'Cookie та конфіденційність',
-    message:
-      'Ми використовуємо cookie для статистики та реклами. Ви можете прийняти все або лише необхідні.',
+    message: 'Ми використовуємо cookie, щоб сайт працював краще.',
     all: 'Прийняти все',
-    necessary: 'Тільки необхідні',
+    decline: 'Відмовитися',
     details: 'Детальніше',
     privacyHref: '/privacy',
   },
   ru: {
-    title: 'Cookie и конфиденциальность',
-    message: 'Мы используем cookie для статистики и рекламы. Вы можете принять всё или только необходимые.',
+    message: 'Мы используем cookie, чтобы сайт работал лучше.',
     all: 'Принять все',
-    necessary: 'Только необходимые',
+    decline: 'Отказаться',
     details: 'Подробнее',
     privacyHref: '/ru/privacy',
   },
@@ -47,6 +44,7 @@ export function Analytics({ googleTagManagerId }: AnalyticsProps) {
     setReady(true)
   }, [])
 
+  // Выбор запоминаем, облачко больше не появляется
   const choose = (value: Consent) => {
     localStorage.setItem(STORAGE_KEY, value)
     setConsent(value)
@@ -79,41 +77,35 @@ export function Analytics({ googleTagManagerId }: AnalyticsProps) {
         />
       )}
 
+      {/* Облачко в правом нижнем углу: без затемнения, сайт доступен, прокрутка работает */}
       {ready && consent === null && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="cookie-title"
-            className="w-full max-w-md rounded-2xl border border-foreground bg-foreground p-6 text-background shadow-2xl"
-          >
-            <h2 id="cookie-title" className="mb-3 text-lg font-medium text-background">
-              {t.title}
-            </h2>
+        <div
+          role="region"
+          aria-label="Cookie"
+          className="fixed right-4 bottom-4 z-[60] w-[300px] max-w-[calc(100vw-2rem)] rounded-3xl border border-white/60 bg-white/90 p-5 text-sm text-neutral-800 shadow-2xl backdrop-blur-md sm:right-6 sm:bottom-6 dark:border-neutral-700 dark:bg-neutral-900/90 dark:text-neutral-100"
+        >
+          <p className="mb-4 leading-relaxed">
+            {t.message}{' '}
+            <Link href={t.privacyHref} className="underline underline-offset-2">
+              {t.details}
+            </Link>
+          </p>
 
-            <p className="mb-4 text-sm text-background">
-              {t.message}{' '}
-              <Link href={t.privacyHref} className="underline">
-                {t.details}
-              </Link>
-            </p>
-
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => choose('necessary')}
-                className="flex-1 rounded-lg border border-background px-4 py-2 text-sm text-background"
-              >
-                {t.necessary}
-              </button>
-              <button
-                type="button"
-                onClick={() => choose('all')}
-                className="flex-1 rounded-lg bg-[#0b7a78] px-4 py-2 text-sm text-white"
-              >
-                {t.all}
-              </button>
-            </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => choose('all')}
+              className="flex-1 rounded-full bg-[#0b7a78] px-4 py-2 text-xs font-medium text-white transition hover:opacity-90"
+            >
+              {t.all}
+            </button>
+            <button
+              type="button"
+              onClick={() => choose('necessary')}
+              className="flex-1 rounded-full border border-neutral-300 px-4 py-2 text-xs transition hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-800"
+            >
+              {t.decline}
+            </button>
           </div>
         </div>
       )}
