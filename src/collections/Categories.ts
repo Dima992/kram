@@ -1,3 +1,11 @@
+import {
+  MetaDescriptionField,
+  MetaImageField,
+  MetaTitleField,
+  OverviewField,
+  PreviewField,
+} from '@payloadcms/plugin-seo/fields'
+import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { revalidatePath } from 'next/cache'
 import type { CollectionConfig } from 'payload'
 import { slugField } from 'payload'
@@ -118,6 +126,61 @@ export const Categories: CollectionConfig = {
         }
         return true
       },
+    },
+    {
+      type: 'tabs',
+      tabs: [
+        {
+          label: 'Опис і фото',
+          fields: [
+            {
+              name: 'image',
+              type: 'upload',
+              relationTo: 'media',
+              label: 'Фото категорії',
+              admin: {
+                description: 'Показується зверху сторінки категорії.',
+              },
+            },
+            {
+              name: 'description',
+              type: 'richText',
+              localized: true,
+              label: 'Опис категорії',
+              editor: lexicalEditor(),
+              admin: {
+                description: 'Кілька речень для покупців. Також використовується для SEO, якщо поле порожнє.',
+              },
+            },
+          ],
+        },
+        {
+          name: 'meta',
+          label: 'SEO',
+          fields: [
+            OverviewField({
+              titlePath: 'meta.title',
+              descriptionPath: 'meta.description',
+              imagePath: 'meta.image',
+            }),
+            MetaTitleField({
+              hasGenerateFn: true,
+              overrides: { localized: true },
+            }),
+            MetaImageField({
+              relationTo: 'media',
+            }),
+            MetaDescriptionField({
+              overrides: { localized: true },
+            }),
+            PreviewField({
+              hasGenerateFn: true,
+              titlePath: 'meta.title',
+              descriptionPath: 'meta.description',
+            }),
+          ],
+        },
+      ],
     },
     slugField({
       position: undefined,

@@ -45,7 +45,7 @@ const getSiteStripeAdapter = async (payload: Payload) => {
   })
 }
 
-// Достаёт обычный текст из текста товара (он хранится как набор блоков)
+// Достаёт обычный текст из текста товара или категории (он хранится как набор блоков)
 const extractText = (node: unknown): string => {
   if (!node || typeof node !== 'object') return ''
   const n = node as { text?: unknown; children?: unknown[] }
@@ -70,16 +70,19 @@ const generateTitle: GenerateTitle<Product | Page> = ({ doc }) => {
 }
 
 const generateDescription: GenerateDescription<Product | Page> = ({ doc }) => {
+  // Текст берём из описания товара или категории (структура одинаковая)
   const description = (doc as Product).description
   return cleanText(extractText(description?.root), DESCRIPTION_MAX)
 }
 
 const generateImage: GenerateImage<Product | Page> = ({ doc }) => {
+  // Для категории берём её фото, для товара — первое фото из галереи
+  const categoryImage = (doc as { image?: unknown }).image
   const gallery = (doc as Product).gallery ?? []
   const first = gallery.find((item) => item.mediaType !== 'youtube' && item.image)
-  const image = first?.image
+  const image = categoryImage ?? first?.image
   if (!image) return ''
-  return typeof image === 'object' ? image.id : image
+  return typeof image === 'object' ? (image as { id: string | number }).id : (image as string | number)
 }
 
 const generateURL: GenerateURL<Product | Page> = async ({ doc, req }) => {

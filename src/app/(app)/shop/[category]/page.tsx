@@ -1,6 +1,10 @@
 import { Grid } from '@/components/Grid'
+import { Media } from '@/components/Media'
 import { ProductGridItem } from '@/components/ProductGridItem'
+import { RichText } from '@/components/RichText'
+import type { Media as MediaType } from '@/payload-types'
 import configPromise from '@payload-config'
+import type { SerializedEditorState } from '@payloadcms/richtext-lexical/lexical'
 import { headers as getHeaders } from 'next/headers'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -19,6 +23,9 @@ type CategoryDoc = {
   slug?: string | null
   title: string
   parent?: unknown
+  image?: unknown
+  description?: unknown
+  meta?: { title?: string | null; description?: string | null } | null
 }
 
 const labels = {
@@ -37,7 +44,7 @@ const loadCategories = async (locale: Locale): Promise<CategoryDoc[]> => {
   const result = await payload.find({
     collection: 'categories',
     locale,
-    depth: 0,
+    depth: 1, // depth 1 — чтобы получить фото категории
     limit: 1000,
     pagination: false,
     sort: 'title',
@@ -94,7 +101,10 @@ export async function generateMetadata({ params }: Args) {
 
   if (!current) return {}
 
-  return { title: current.title }
+  return {
+    title: current.meta?.title || current.title,
+    description: current.meta?.description || undefined,
+  }
 }
 
 export default async function CategoryPage({ params }: Args) {
@@ -134,6 +144,9 @@ export default async function CategoryPage({ params }: Args) {
     },
   })
 
+  const photo =
+    current.image && typeof current.image === 'object' ? (current.image as MediaType) : null
+
   return (
     <div>
       <nav aria-label="breadcrumb" className="mb-6 text-sm">
@@ -160,7 +173,19 @@ export default async function CategoryPage({ params }: Args) {
         </ol>
       </nav>
 
+      {photo ? (
+        <Media resource={photo} className="mb-6" imgClassName="w-full max-h-72 rounded-lg object-cover" size="100vw" />
+      ) : null}
+
       <h1 className="mb-6 text-3xl font-medium">{current.title}</h1>
+
+      {current.description ? (
+        <RichText
+          data={current.description as SerializedEditorState}
+          enableGutter={false}
+          className="mb-8"
+        />
+      ) : null}
 
       {products.docs.length === 0 ? (
         <p className="mb-4">{labels[locale].empty}</p>
