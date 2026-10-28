@@ -1,15 +1,14 @@
 'use client'
 
 import type { SortFilterItem as SortFilterItemType } from '@/lib/constants'
+import { sortTitle } from '@/lib/constants'
 
 import { createUrl } from '@/utilities/createUrl'
 import clsx from 'clsx'
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import React from 'react'
 
-import type { ListItem } from '.'
-import type { PathFilterItem as PathFilterItemType } from '.'
+import type { ListItem, PathFilterItem as PathFilterItemType } from '.'
 
 function PathFilterItem({ item }: { item: PathFilterItemType }) {
   const pathname = usePathname()
@@ -42,6 +41,8 @@ function SortFilterItem({ item }: { item: SortFilterItemType }) {
   const searchParams = useSearchParams()
   const active = searchParams.get('sort') === item.slug
   const q = searchParams.get('q')
+  // Язык определяем по адресу: /ru — русский, остальное — украинский
+  const locale = pathname === '/ru' || pathname.startsWith('/ru/') ? 'ru' : 'uk'
   const href = createUrl(
     pathname,
     new URLSearchParams({
@@ -60,7 +61,7 @@ function SortFilterItem({ item }: { item: SortFilterItemType }) {
         href={href}
         prefetch={!active ? false : undefined}
       >
-        {item.title}
+        {sortTitle(item, locale)}
       </DynamicTag>
     </li>
   )

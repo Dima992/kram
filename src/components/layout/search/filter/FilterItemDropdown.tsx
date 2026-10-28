@@ -1,8 +1,9 @@
 'use client'
 
+import { sortTitle } from '@/lib/constants'
 import { ChevronDownIcon } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
-import React, { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import type { ListItem } from '.'
 
@@ -14,6 +15,9 @@ export function FilterItemDropdown({ list }: { list: ListItem[] }) {
   const [active, setActive] = useState('')
   const [openSelect, setOpenSelect] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+
+  // Язык определяем по адресу: /ru — русский, остальное — украинский
+  const locale = pathname === '/ru' || pathname.startsWith('/ru/') ? 'ru' : 'uk'
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -28,14 +32,13 @@ export function FilterItemDropdown({ list }: { list: ListItem[] }) {
 
   useEffect(() => {
     list.forEach((listItem: ListItem) => {
-      if (
-        ('path' in listItem && pathname === listItem.path) ||
-        ('slug' in listItem && searchParams.get('sort') === listItem.slug)
-      ) {
-        setActive(listItem.title)
+      if ('path' in listItem) {
+        if (pathname === listItem.path) setActive(listItem.title)
+      } else if (searchParams.get('sort') === listItem.slug) {
+        setActive(sortTitle(listItem, locale))
       }
     })
-  }, [pathname, list, searchParams])
+  }, [pathname, list, searchParams, locale])
 
   return (
     <div className="relative" ref={ref}>
