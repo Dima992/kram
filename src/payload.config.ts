@@ -21,6 +21,7 @@ import { fileURLToPath } from 'url'
 
 import { ApiKeys } from '@/collections/ApiKeys'
 import { Categories } from '@/collections/Categories'
+import { Characteristics } from '@/collections/Characteristics'
 import { Feeds } from '@/collections/Feeds'
 import { ImportSources } from '@/collections/ImportSources'
 import { Media } from '@/collections/Media'
@@ -45,7 +46,7 @@ export default buildConfig({
       beforeDashboard: ['@/components/BeforeDashboard#BeforeDashboard'],
     },
     user: Users.slug,
-      },
+  },
 
   // 1. Локализация контента в БД
   localization: {
@@ -73,6 +74,7 @@ export default buildConfig({
     Users,
     Pages,
     Categories,
+    Characteristics,
     Media,
     Feeds,
     ImportSources,
