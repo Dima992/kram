@@ -14,7 +14,7 @@ export const Characteristics: CollectionConfig = {
   admin: {
     useAsTitle: 'name_uk',
     group: 'Content',
-    defaultColumns: ['order', 'name_uk', 'name_ru', 'categories'],
+    defaultColumns: ['order', 'name_uk', 'name_ru', 'categories', 'googleAttribute'],
   },
   defaultSort: 'order',
   hooks: {
@@ -71,6 +71,23 @@ export const Characteristics: CollectionConfig = {
       },
     },
     {
+      // Какое поле Google соответствует этой характеристике
+      name: 'googleAttribute',
+      type: 'select',
+      label: 'Google-атрибут',
+      options: [
+        { label: 'Пол (gender)', value: 'gender' },
+        { label: 'Возрастная группа (age_group)', value: 'age_group' },
+        { label: 'Цвет (color)', value: 'color' },
+        { label: 'Размер (size)', value: 'size' },
+        { label: 'Материал (material)', value: 'material' },
+      ],
+      admin: {
+        position: 'sidebar',
+        description: 'Какому полю Google соответствует эта характеристика. Если не нужно в фид, оставьте пусто.',
+      },
+    },
+    {
       name: 'categories',
       type: 'relationship',
       relationTo: 'categories',
@@ -99,13 +116,23 @@ export const Characteristics: CollectionConfig = {
               type: 'text',
               required: true,
               label: 'Укр',
-              admin: { width: '50%' },
+              admin: { width: '34%' },
             },
             {
               name: 'label_ru',
               type: 'text',
               label: 'Рус',
-              admin: { width: '50%' },
+              admin: { width: '33%' },
+            },
+            {
+              // Код для Google, латиницей (уходит в фид, покупатель его не видит)
+              name: 'googleValue',
+              type: 'text',
+              label: 'Google-значение',
+              admin: {
+                width: '33%',
+                description: 'Код для Google латиницей: female, male, unisex, adult, wool и т. д.',
+              },
             },
           ],
         },

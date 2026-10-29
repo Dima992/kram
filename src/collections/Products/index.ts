@@ -296,6 +296,45 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
           label: 'Характеристики',
         },
         {
+          // Вкладка Google: категория для фида и поля, которых нет в характеристиках
+          label: 'Google',
+          fields: [
+            {
+              name: 'googleCategory',
+              type: 'relationship',
+              relationTo: 'google-categories',
+              label: 'Google-категорія',
+              admin: {
+                description: 'Выберите категорию из списка. От неё зависят поля, которые Google ждёт для этого товара.',
+              },
+            },
+            {
+              name: 'googleAgeGroup',
+              type: 'select',
+              defaultValue: 'adult',
+              label: 'Вікова група (age_group)',
+              options: [
+                { label: 'Дорослі (adult)', value: 'adult' },
+                { label: 'Діти (kids)', value: 'kids' },
+              ],
+              admin: {
+                description: 'Для женской одежды обычно «Дорослі».',
+              },
+            },
+            {
+              name: 'googleCondition',
+              type: 'select',
+              defaultValue: 'new',
+              label: 'Стан (condition)',
+              options: [
+                { label: 'Нове (new)', value: 'new' },
+                { label: 'Б/у (used)', value: 'used' },
+                { label: 'Відновлене (refurbished)', value: 'refurbished' },
+              ],
+            },
+          ],
+        },
+        {
           name: 'meta',
           label: 'SEO',
           fields: [
