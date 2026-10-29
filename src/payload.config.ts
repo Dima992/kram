@@ -23,6 +23,7 @@ import { ApiKeys } from '@/collections/ApiKeys'
 import { Categories } from '@/collections/Categories'
 import { Characteristics } from '@/collections/Characteristics'
 import { Feeds } from '@/collections/Feeds'
+import { GoogleCategories } from '@/collections/GoogleCategories'
 import { ImportSources } from '@/collections/ImportSources'
 import { Media } from '@/collections/Media'
 import { Pages } from '@/collections/Pages'
@@ -75,6 +76,7 @@ export default buildConfig({
     Pages,
     Categories,
     Characteristics,
+    GoogleCategories,
     Media,
     Feeds,
     ImportSources,
