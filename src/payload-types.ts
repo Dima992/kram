@@ -367,13 +367,13 @@ export interface Product {
     | number
     | boolean
     | null;
-  meta: {
-    title: string;
+  meta?: {
+    title?: string | null;
     /**
      * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
      */
     image?: (string | null) | Media;
-    description: string;
+    description?: string | null;
   };
   categories?: (string | Category)[] | null;
   /**
@@ -1281,6 +1281,10 @@ export interface Characteristic {
    */
   name_ru?: string | null;
   /**
+   * Чем меньше число, тем выше характеристика в карточке товара (1, 2, 3…).
+   */
+  order?: number | null;
+  /**
    * Для яких категорій ця характеристика. Підкатегорії успадковують її від батьківської.
    */
   categories?: (string | Category)[] | null;
@@ -1811,6 +1815,7 @@ export interface CategoriesSelect<T extends boolean = true> {
 export interface CharacteristicsSelect<T extends boolean = true> {
   name_uk?: T;
   name_ru?: T;
+  order?: T;
   categories?: T;
   values?:
     | T
