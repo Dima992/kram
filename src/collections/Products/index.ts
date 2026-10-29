@@ -26,6 +26,58 @@ import { generatePreviewPath } from '@/utilities/generatePreviewPath'
 import { transliterate } from '@/utilities/transliterate'
 import { autoGenerateAlt } from './hooks/autoGenerateAlt'
 
+const SITE_NAME = 'Крамниця'
+
+// Обрезает текст по последнему целому слову
+const cleanText = (text: string, max: number): string => {
+  const clean = text.replace(/\s+/g, ' ').trim()
+  if (clean.length <= max) return clean
+  const cut = clean.slice(0, max)
+  const lastSpace = cut.lastIndexOf(' ')
+  return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trim()
+}
+
+// Достаёт обычный текст из описания (оно хранится как набор блоков)
+const extractText = (node: unknown): string => {
+  if (!node || typeof node !== 'object') return ''
+  const n = node as { text?: unknown; children?: unknown[] }
+  const own = typeof n.text === 'string' ? n.text : ''
+  const inner = Array.isArray(n.children) ? n.children.map(extractText).join(' ') : ''
+  return `${own} ${inner}`
+}
+
+// Заполняет пустые SEO-поля при сохранении товара.
+// Работает для любого товара: созданного вручную, импортом или через API.
+const fillEmptySeo = ({ data }: { data: any }) => {
+  if (!data) return data
+
+  const title = typeof data.title === 'string' ? data.title.trim() : ''
+  const meta = { ...(data.meta ?? {}) }
+
+  // Заголовок: «Название | Крамниця», не длиннее 60 знаков
+  if (!meta.title?.trim() && title) {
+    const full = `${title} | ${SITE_NAME}`
+    meta.title = full.length <= 60 ? full : cleanText(title, 60)
+  }
+
+  // Описание: начало текста товара, до 155 знаков
+  if (!meta.description?.trim()) {
+    meta.description = cleanText(extractText(data.description?.root), 155)
+  }
+
+  // Картинка: первое фото из галереи (видео не берём)
+  if (!meta.image) {
+    const gallery: any[] = Array.isArray(data.gallery) ? data.gallery : []
+    const first = gallery.find((item) => item && item.mediaType !== 'youtube' && item.image)
+    if (first?.image) {
+      meta.image = typeof first.image === 'object' ? first.image.id : first.image
+    }
+  }
+
+  data.meta = meta
+  return data
+}
+
 // Прячем из админки поля цен в USD и EUR (покупатель видит только гривны).
 // Поля не удаляем: плагин магазина может их использовать.
 const hideCurrencyFields = (fields: Field[]): Field[] =>
@@ -252,15 +304,16 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
               descriptionPath: 'meta.description',
               imagePath: 'meta.image',
             }),
+            // Поля не обязательные: если пусто, заполнятся сами при сохранении
             MetaTitleField({
               hasGenerateFn: true,
-              overrides: { localized: true, required: true },
+              overrides: { localized: true },
             }),
             MetaImageField({
               relationTo: 'media',
             }),
             MetaDescriptionField({
-              overrides: { localized: true, required: true },
+              overrides: { localized: true },
             }),
             PreviewField({
               hasGenerateFn: true,
@@ -504,6 +557,10 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     ],
     beforeChange: [
       ...(defaultCollection?.hooks?.beforeChange || []),
+
+      // SEO: заполняем пустые поля (работает и для импорта, и для API)
+      ({ data }) => fillEmptySeo({ data }),
+
       async ({ data, req }) => {
         if (!data?.basePrice) {
           data.priceInUAH = 0
