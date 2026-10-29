@@ -76,6 +76,7 @@ export interface Config {
     pages: Page;
     categories: Category;
     characteristics: Characteristic;
+    'google-categories': GoogleCategory;
     media: Media;
     feeds: Feed;
     'import-sources': ImportSource;
@@ -115,6 +116,7 @@ export interface Config {
     pages: PagesSelect<false> | PagesSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     characteristics: CharacteristicsSelect<false> | CharacteristicsSelect<true>;
+    'google-categories': GoogleCategoriesSelect<false> | GoogleCategoriesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     feeds: FeedsSelect<false> | FeedsSelect<true>;
     'import-sources': ImportSourcesSelect<false> | ImportSourcesSelect<true>;
@@ -367,6 +369,15 @@ export interface Product {
     | number
     | boolean
     | null;
+  /**
+   * Выберите категорию из списка. От неё зависят поля, которые Google ждёт для этого товара.
+   */
+  googleCategory?: (string | null) | GoogleCategory;
+  /**
+   * Для женской одежды обычно «Дорослі».
+   */
+  googleAgeGroup?: ('adult' | 'kids') | null;
+  googleCondition?: ('new' | 'used' | 'refurbished') | null;
   meta?: {
     title?: string | null;
     /**
@@ -1074,6 +1085,32 @@ export interface Variant {
   _status?: ('draft' | 'published') | null;
 }
 /**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "google-categories".
+ */
+export interface GoogleCategory {
+  id: string;
+  /**
+   * Наприклад: Плаття, Шуби.
+   */
+  name_uk: string;
+  name_ru?: string | null;
+  /**
+   * Номер из официального списка Google, например 2271 для платьев.
+   */
+  googleId: number;
+  /**
+   * Например: Apparel & Accessories > Clothing > Dresses
+   */
+  path: string;
+  /**
+   * Отметьте поля, которые нужно заполнить для этой категории.
+   */
+  requiredFields?: ('gender' | 'age_group' | 'color' | 'size' | 'material' | 'condition' | 'brand' | 'gtin')[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Імпорт товарів із файлів і фідів Google Merchant. Для кожного джерела можна зберегти окремий профіль.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -1285,6 +1322,10 @@ export interface Characteristic {
    */
   order?: number | null;
   /**
+   * Какому полю Google соответствует эта характеристика. Если не нужно в фид, оставьте пусто.
+   */
+  googleAttribute?: ('gender' | 'age_group' | 'color' | 'size' | 'material') | null;
+  /**
    * Для яких категорій ця характеристика. Підкатегорії успадковують її від батьківської.
    */
   categories?: (string | Category)[] | null;
@@ -1294,6 +1335,10 @@ export interface Characteristic {
   values: {
     label_uk: string;
     label_ru?: string | null;
+    /**
+     * Код для Google латиницей: female, male, unisex, adult, wool и т. д.
+     */
+    googleValue?: string | null;
     id?: string | null;
   }[];
   updatedAt: string;
@@ -1479,6 +1524,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'characteristics';
         value: string | Characteristic;
+      } | null)
+    | ({
+        relationTo: 'google-categories';
+        value: string | GoogleCategory;
       } | null)
     | ({
         relationTo: 'media';
@@ -1816,14 +1865,29 @@ export interface CharacteristicsSelect<T extends boolean = true> {
   name_uk?: T;
   name_ru?: T;
   order?: T;
+  googleAttribute?: T;
   categories?: T;
   values?:
     | T
     | {
         label_uk?: T;
         label_ru?: T;
+        googleValue?: T;
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "google-categories_select".
+ */
+export interface GoogleCategoriesSelect<T extends boolean = true> {
+  name_uk?: T;
+  name_ru?: T;
+  googleId?: T;
+  path?: T;
+  requiredFields?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -2236,6 +2300,9 @@ export interface ProductsSelect<T extends boolean = true> {
   priceInEUR?: T;
   relatedProducts?: T;
   attributes?: T;
+  googleCategory?: T;
+  googleAgeGroup?: T;
+  googleCondition?: T;
   meta?:
     | T
     | {
