@@ -39,7 +39,9 @@ export const Feeds: CollectionConfig = {
       admin: {
         position: 'sidebar',
         readOnly: true,
-        description: 'Скопіюйте це посилання в налаштування товарного каталогу.',
+        components: {
+          Field: '@/components/admin/CopyFeedURLField#CopyFeedURLField',
+        },
       },
       hooks: {
         beforeChange: [
