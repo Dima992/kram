@@ -1,6 +1,6 @@
 import type { Product, Variant } from '@/payload-types'
 import { getPublicSiteURL } from '@/utilities/getPublicSiteURL'
-import { generateProductFeed } from '@/utilities/productFeed'
+import { generateProductFeed, type FeedCharacteristic } from '@/utilities/productFeed'
 import configPromise from '@payload-config'
 import { NextResponse } from 'next/server'
 import { getPayload, Where } from 'payload'
@@ -76,6 +76,15 @@ export async function GET(
       return new NextResponse('Public site URL is not configured correctly', { status: 503 })
     }
 
+    // Характеристики с Google-атрибутами (пол, материал, цвет, размер)
+    const { docs: characteristics } = await payload.find({
+      collection: 'characteristics',
+      limit: 1000,
+      depth: 0,
+      pagination: false,
+      overrideAccess: true,
+    })
+
     const products: Product[] = []
     let page = 1
     let hasNextPage = true
@@ -99,7 +108,12 @@ export async function GET(
 
     const feedProducts = feed.onlyInStock ? products.filter(hasStock) : products
 
-    const xml = generateProductFeed(feed, feedProducts, baseURL)
+    const xml = generateProductFeed(
+      feed,
+      feedProducts,
+      baseURL,
+      characteristics as FeedCharacteristic[],
+    )
 
     return new NextResponse(xml, {
       headers: {
