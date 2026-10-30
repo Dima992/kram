@@ -332,6 +332,15 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
                 { label: 'Відновлене (refurbished)', value: 'refurbished' },
               ],
             },
+            {
+              name: 'googleStatus',
+              type: 'ui',
+              admin: {
+                components: {
+                  Field: '@/components/admin/GoogleField#GoogleField',
+                },
+              },
+            },
           ],
         },
         {
