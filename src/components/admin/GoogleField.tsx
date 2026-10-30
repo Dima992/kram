@@ -154,4 +154,38 @@ export const GoogleField: React.FC<{ path: string }> = ({ path }) => {
             fontSize: 14,
           }}
         >
-          <span style={{ color: '#ca8a04',
+          <span style={{ color: '#ca8a04', fontSize: 16 }}>●</span>
+          <span style={{ color: '#ca8a04', fontWeight: 500 }}>
+            {FIELD_LABELS[field] ?? field}
+          </span>
+        </div>
+      ))}
+
+      {/* Заполненные — зелёные */}
+      {done.map((field) => (
+        <div
+          key={field}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 12px',
+            borderRadius: 6,
+            background: 'rgba(22, 163, 74, 0.12)',
+            border: '1px solid rgba(22, 163, 74, 0.4)',
+            fontSize: 14,
+          }}
+        >
+          <span style={{ color: '#16a34a', fontSize: 16 }}>✓</span>
+          <span style={{ color: '#16a34a', fontWeight: 500 }}>
+            {FIELD_LABELS[field] ?? field}
+          </span>
+        </div>
+      ))}
+
+      {missing.length === 0 && (
+        <div style={{ fontSize: 13, color: '#16a34a' }}>Усі обов'язкові поля заповнені ✓</div>
+      )}
+    </div>
+  )
+}
