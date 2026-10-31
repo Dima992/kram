@@ -293,3 +293,67 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
                       style={{ width: 16, height: 16 }}
                     />
                     Це варіант (впливає на остаток і ціну)
+                  </label>
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      cursor: isVariant ? 'pointer' : 'not-allowed',
+                      opacity: isVariant ? 1 : 0.5,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={Boolean(setting.photos)}
+                      disabled={!isVariant}
+                      onChange={(e) => updateSetting(charId, { photos: e.target.checked })}
+                      style={{ width: 16, height: 16 }}
+                    />
+                    Фото потрібні
+                  </label>
+                </div>
+
+                {/* Значения галочками */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
+                  {(ch.values ?? []).map((v) => {
+                    const valueId = v.id ? String(v.id) : ''
+                    if (!valueId) return null
+                    return (
+                      <label
+                        key={valueId}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontSize: 14,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected.includes(valueId)}
+                          onChange={() => toggleValue(charId, valueId)}
+                          style={{ width: 16, height: 16 }}
+                        />
+                        {v.label_uk}
+                        {v.label_ru ? ` / ${v.label_ru}` : ''}
+                      </label>
+                    )
+                  })}
+                </div>
+
+                {isVariant && selected.length === 0 ? (
+                  <div style={{ fontSize: 12, marginTop: 8, color: AMBER_TEXT }}>
+                    Виберіть значення, щоб створити варіанти з цієї характеристики.
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
