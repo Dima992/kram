@@ -17,6 +17,7 @@ type Locale = 'uk' | 'ru'
 
 type Args = {
   params: Promise<{ category: string }>
+  searchParams: Promise<{ f?: string }>
 }
 
 type CategoryDoc = {
@@ -29,9 +30,39 @@ type CategoryDoc = {
   meta?: { title?: string | null; description?: string | null } | null
 }
 
+type CharacteristicValue = {
+  id?: string | null
+  label_uk?: string | null
+  label_ru?: string | null
+}
+
+type CharacteristicDoc = {
+  id: number | string
+  name_uk: string
+  name_ru?: string | null
+  categories?: unknown
+  values?: CharacteristicValue[] | null
+}
+
+type FilterGroup = { charId: string; valueIds: string[] }
+
 const labels = {
-  uk: { shop: 'Магазин', empty: 'У цій категорії поки немає товарів.', all: 'Показати всі' },
-  ru: { shop: 'Магазин', empty: 'В этой категории пока нет товаров.', all: 'Показать все' },
+  uk: {
+    shop: 'Магазин',
+    empty: 'У цій категорії поки немає товарів.',
+    all: 'Показати всі',
+    clear: 'Скинути фільтр',
+    found: 'Знайдено товарів: ',
+    noMatch: 'За цим фільтром товарів немає.',
+  },
+  ru: {
+    shop: 'Магазин',
+    empty: 'В этой категории пока нет товаров.',
+    all: 'Показать все',
+    clear: 'Сбросить фильтр',
+    found: 'Найдено товаров: ',
+    noMatch: 'По этому фильтру товаров нет.',
+  },
 }
 
 const getLocale = async (): Promise<Locale> => {
@@ -70,8 +101,59 @@ const breadcrumbChain = (current: CategoryDoc, byId: Map<string, CategoryDoc>) =
 const photoOf = (value: unknown): MediaType | null =>
   value && typeof value === 'object' ? (value as MediaType) : null
 
-export async function generateMetadata({ params }: Args) {
+// Выбранные значения фильтра из адреса: ?f=id1,id2
+const parseSelected = (raw: string | undefined): Set<string> =>
+  new Set(
+    (raw ?? '')
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean),
+  )
+
+const idsOfRelation = (relation: unknown): string[] =>
+  Array.isArray(relation)
+    ? relation.map((item) =>
+        typeof item === 'object' && item !== null
+          ? String((item as { id: unknown }).id)
+          : String(item),
+      )
+    : []
+
+const idOfValue = (value: unknown): string =>
+  typeof value === 'object' && value !== null
+    ? String((value as { id: unknown }).id)
+    : String(value)
+
+const attrsOf = (attributes: unknown): Record<string, unknown> =>
+  attributes && typeof attributes === 'object' && !Array.isArray(attributes)
+    ? (attributes as Record<string, unknown>)
+    : {}
+
+// Все id значений характеристик, которые реально стоят у товаров
+const usedValueIdsOf = (docs: { attributes?: unknown }[]): Set<string> => {
+  const used = new Set<string>()
+  for (const product of docs) {
+    for (const stored of Object.values(attrsOf(product.attributes))) {
+      if (Array.isArray(stored)) stored.forEach((value) => used.add(idOfValue(value)))
+    }
+  }
+  return used
+}
+
+// Товар подходит, если по каждой выбранной характеристике у него есть хотя бы одно выбранное значение
+const matchesFilter = (product: { attributes?: unknown }, groups: FilterGroup[]) => {
+  const attrs = attrsOf(product.attributes)
+  return groups.every((group) => {
+    const stored = Array.isArray(attrs[group.charId])
+      ? (attrs[group.charId] as unknown[]).map(idOfValue)
+      : []
+    return stored.some((id) => group.valueIds.includes(id))
+  })
+}
+
+export async function generateMetadata({ params, searchParams }: Args) {
   const { category: slug } = await params
+  const { f } = await searchParams
   const locale = await getLocale()
   const all = await loadCategories(locale)
   const current = all.find((category) => category.slug === slug)
@@ -81,17 +163,19 @@ export async function generateMetadata({ params }: Args) {
   const payload = await getPayload({ config: configPromise })
   const nonEmpty = await nonEmptyCategoryIds(payload, all)
   const isEmpty = !nonEmpty.has(String(current.id))
+  // Пустую категорию и страницу с фильтром не индексируем (чтобы не было дублей)
+  const noindex = isEmpty || Boolean(f)
 
   return {
     title: current.meta?.title || current.title,
     description: current.meta?.description || undefined,
-    // Пустую категорию не индексируем
-    robots: isEmpty ? { index: false, follow: true } : undefined,
+    robots: noindex ? { index: false, follow: true } : undefined,
   }
 }
 
-export default async function CategoryPage({ params }: Args) {
+export default async function CategoryPage({ params, searchParams }: Args) {
   const { category: slug } = await params
+  const { f } = await searchParams
   const locale = await getLocale()
   const all = await loadCategories(locale)
   const current = all.find((category) => category.slug === slug)
@@ -112,22 +196,87 @@ export default async function CategoryPage({ params }: Args) {
     baseCurrency: true,
     basePrice: true,
     priceInUAH: true,
+    attributes: true,
   } as const
 
-  // Свои товары категории (лежат прямо в ней)
-  const own = await payload.find({
+  const selected = parseSelected(f)
+  const filterActive = selected.size > 0
+
+  // Адрес с выбранными значениями фильтра
+  const toHref = (ids: Set<string>) =>
+    ids.size === 0
+      ? `/shop/${current.slug}`
+      : `/shop/${current.slug}?f=${encodeURIComponent(Array.from(ids).join(','))}`
+
+  // Характеристики, которые действуют на эту категорию (и на её родителей)
+  const chainIds = new Set(chain.map((category) => String(category.id)))
+  const { docs: characteristicDocs } = await payload.find({
+    collection: 'characteristics',
+    limit: 1000,
+    pagination: false,
+    sort: 'order',
+    depth: 0,
+  })
+  const filterChars = (characteristicDocs as CharacteristicDoc[]).filter((characteristic) =>
+    idsOfRelation(characteristic.categories).some((id) => chainIds.has(id)),
+  )
+
+  // Все товары категории со всеми подкатегориями: нужны для фильтра
+  const subtree = subtreeIds(String(current.id), all)
+  const candidates = await payload.find({
     collection: 'products',
     locale,
     draft: false,
     overrideAccess: false,
-    limit: 100,
+    pagination: false,
     sort: 'title',
     select: productSelect,
     where: {
-      and: [{ _status: { equals: 'published' } }, { categories: { in: [current.id] } }],
+      and: [{ _status: { equals: 'published' } }, { categories: { in: subtree } }],
     },
   })
-  const ownIds = own.docs.map((product) => product.id)
+
+  // Показываем только значения, которые есть у товаров этой категории
+  const usedIds = usedValueIdsOf(candidates.docs)
+  const visibleChars = filterChars
+    .map((characteristic) => ({
+      characteristic,
+      values: (characteristic.values ?? []).filter(
+        (value) => value.id && usedIds.has(String(value.id)),
+      ),
+    }))
+    .filter((item) => item.values.length > 0)
+
+  const groups: FilterGroup[] = visibleChars
+    .map(({ characteristic, values }) => ({
+      charId: String(characteristic.id),
+      valueIds: values
+        .filter((value) => selected.has(String(value.id)))
+        .map((value) => String(value.id)),
+    }))
+    .filter((group) => group.valueIds.length > 0)
+
+  const filtered = filterActive
+    ? candidates.docs.filter((product) => matchesFilter(product, groups))
+    : []
+
+  // Свои товары категории и блоки подкатегорий: только когда фильтр выключен
+  const ownResult = filterActive
+    ? null
+    : await payload.find({
+        collection: 'products',
+        locale,
+        draft: false,
+        overrideAccess: false,
+        limit: 100,
+        sort: 'title',
+        select: productSelect,
+        where: {
+          and: [{ _status: { equals: 'published' } }, { categories: { in: [current.id] } }],
+        },
+      })
+  const ownDocs = ownResult?.docs ?? []
+  const ownIds = ownDocs.map((product) => product.id)
 
   // Подкатегории, в которых есть товары
   const children = all.filter(
@@ -135,28 +284,30 @@ export default async function CategoryPage({ params }: Args) {
   )
 
   // Блоки подкатегорий: до 8 товаров, без повторов тех, что уже показаны выше
-  const blocks = await Promise.all(
-    children.map(async (child) => {
-      const ids = subtreeIds(String(child.id), all)
-      const result = await payload.find({
-        collection: 'products',
-        locale,
-        draft: false,
-        overrideAccess: false,
-        limit: 8,
-        sort: 'title',
-        select: productSelect,
-        where: {
-          and: [
-            { _status: { equals: 'published' } },
-            { categories: { in: ids } },
-            ...(ownIds.length ? [{ id: { not_in: ownIds } }] : []),
-          ],
-        },
-      })
-      return { child, products: result.docs }
-    }),
-  )
+  const blocks = filterActive
+    ? []
+    : await Promise.all(
+        children.map(async (child) => {
+          const ids = subtreeIds(String(child.id), all)
+          const result = await payload.find({
+            collection: 'products',
+            locale,
+            draft: false,
+            overrideAccess: false,
+            limit: 8,
+            sort: 'title',
+            select: productSelect,
+            where: {
+              and: [
+                { _status: { equals: 'published' } },
+                { categories: { in: ids } },
+                ...(ownIds.length ? [{ id: { not_in: ownIds } }] : []),
+              ],
+            },
+          })
+          return { child, products: result.docs }
+        }),
+      )
   const visibleBlocks = blocks.filter((block) => block.products.length > 0)
 
   const photo = photoOf(current.image)
@@ -228,43 +379,113 @@ export default async function CategoryPage({ params }: Args) {
         </ul>
       ) : null}
 
-      {/* 1. Товары самой категории */}
-      {own.docs.length > 0 ? (
-        <Grid className="mb-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {own.docs.map((product, index) => (
-            <ProductGridItem
-              key={product.id}
-              locale={locale}
-              priority={index === 0}
-              product={product}
-            />
+      {/* Фильтр по характеристикам: обычные ссылки, работают без JavaScript */}
+      {visibleChars.length > 0 ? (
+        <div className="mb-10 flex flex-col gap-6">
+          {visibleChars.map(({ characteristic, values }) => (
+            <div key={String(characteristic.id)}>
+              <p className="mb-2 text-sm font-medium">
+                {locale === 'ru' ? characteristic.name_ru || characteristic.name_uk : characteristic.name_uk}
+              </p>
+              <ul className="flex flex-wrap gap-2">
+                {values.map((value) => {
+                  const id = String(value.id)
+                  const isOn = selected.has(id)
+                  const next = new Set(selected)
+                  if (isOn) next.delete(id)
+                  else next.add(id)
+                  const text =
+                    locale === 'ru'
+                      ? value.label_ru || value.label_uk || ''
+                      : value.label_uk || ''
+                  return (
+                    <li key={id}>
+                      <Link
+                        href={toHref(next)}
+                        className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                          isOn
+                            ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
+                            : 'border-black/30 hover:border-black dark:border-white/30 dark:hover:border-white'
+                        }`}
+                      >
+                        {text}
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
           ))}
-        </Grid>
-      ) : visibleBlocks.length === 0 ? (
-        <p className="mb-4">{labels[locale].empty}</p>
+          {filterActive ? (
+            <Link href={toHref(new Set())} className="w-fit text-sm underline underline-offset-4">
+              {labels[locale].clear}
+            </Link>
+          ) : null}
+        </div>
       ) : null}
 
-      {/* 2. Блоки подкатегорий с товарами */}
-      {visibleBlocks.map(({ child, products }) => (
-        <section key={String(child.id)} className="mb-12">
-          <div className="mb-4 flex items-baseline justify-between gap-4">
-            <h2 className="text-2xl font-medium">{child.title}</h2>
-            <Link href={`/shop/${child.slug}`} className="text-sm underline underline-offset-4">
-              {labels[locale].all}
-            </Link>
-          </div>
-          <Grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((product) => (
-              <ProductGridItem
-                key={product.id}
-                locale={locale}
-                priority={false}
-                product={product}
-              />
-            ))}
-          </Grid>
-        </section>
-      ))}
+      {filterActive ? (
+        <>
+          <p className="mb-4 text-sm">
+            {labels[locale].found}
+            {filtered.length}
+          </p>
+          {filtered.length > 0 ? (
+            <Grid className="mb-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filtered.map((product, index) => (
+                <ProductGridItem
+                  key={product.id}
+                  locale={locale}
+                  priority={index === 0}
+                  product={product}
+                />
+              ))}
+            </Grid>
+          ) : (
+            <p className="mb-12">{labels[locale].noMatch}</p>
+          )}
+        </>
+      ) : (
+        <>
+          {/* 1. Товары самой категории */}
+          {ownDocs.length > 0 ? (
+            <Grid className="mb-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {ownDocs.map((product, index) => (
+                <ProductGridItem
+                  key={product.id}
+                  locale={locale}
+                  priority={index === 0}
+                  product={product}
+                />
+              ))}
+            </Grid>
+          ) : visibleBlocks.length === 0 ? (
+            <p className="mb-4">{labels[locale].empty}</p>
+          ) : null}
+
+          {/* 2. Блоки подкатегорий с товарами */}
+          {visibleBlocks.map(({ child, products }) => (
+            <section key={String(child.id)} className="mb-12">
+              <div className="mb-4 flex items-baseline justify-between gap-4">
+                <h2 className="text-2xl font-medium">{child.title}</h2>
+                <Link href={`/shop/${child.slug}`} className="text-sm underline underline-offset-4">
+                  {labels[locale].all}
+                </Link>
+              </div>
+              <Grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map((product) => (
+                  <ProductGridItem
+                    key={product.id}
+                    locale={locale}
+                    priority={false}
+                    product={product}
+                  />
+                ))}
+              </Grid>
+            </section>
+          ))}
+        </>
+      )}
     </div>
   )
 }
