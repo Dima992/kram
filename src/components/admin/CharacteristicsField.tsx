@@ -178,6 +178,7 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
         setMessage(data.error || 'Помилка створення варіантів')
       } else {
         setMessage(`Створено: ${data.created}. Вже були раніше: ${data.skipped}.`)
+        setTimeout(() => window.location.reload(), 1500)
       }
     } catch {
       setMessage('Немає зв’язку з сервером')
