@@ -23,8 +23,12 @@ type Cat = {
   parent?: unknown
 }
 
-// Сохранённые значения: { id характеристики: [id выбранных значений] }
+// Выбранные значения: { id характеристики: [id значений] }
 type Stored = Record<string, string[]>
+
+// Настройки характеристики в этом товаре: вариант и нужны ли фото
+type Setting = { isVariant?: boolean; photos?: boolean }
+type Settings = Record<string, Setting>
 
 const idOf = (v: unknown): string =>
   typeof v === 'object' && v !== null ? String((v as { id: unknown }).id) : String(v)
@@ -36,8 +40,15 @@ const parentIdOf = (c: Cat): string => {
   return String(p)
 }
 
+const AMBER_BORDER = 'rgba(234, 179, 8, 0.7)'
+const AMBER_BG = 'rgba(234, 179, 8, 0.10)'
+const AMBER_TEXT = '#ca8a04'
+
 export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
   const { value, setValue } = useField<Stored>({ path })
+  const { value: settingsValue, setValue: setSettings } = useField<Settings>({
+    path: 'variantSettings',
+  })
   const { value: categoriesValue } = useField<unknown[]>({ path: 'categories' })
 
   const [allCats, setAllCats] = useState<Cat[]>([])
@@ -78,6 +89,14 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
     [value],
   )
 
+  const settings: Settings = useMemo(
+    () =>
+      settingsValue && typeof settingsValue === 'object' && !Array.isArray(settingsValue)
+        ? (settingsValue as Settings)
+        : {},
+    [settingsValue],
+  )
+
   // Основная категория — первая выбранная; учитываем и её родителей
   const relevantCats = useMemo(() => {
     const ids = Array.isArray(categoriesValue) ? categoriesValue.map(idOf) : []
@@ -108,6 +127,14 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
     [chars, relevantCats],
   )
 
+  // Количество комбинаций: перемножаем выбранные значения у характеристик-вариантов
+  const variantCounts = visible
+    .filter((ch) => settings[String(ch.id)]?.isVariant)
+    .map((ch) => (stored[String(ch.id)] ?? []).length)
+  const readyCounts = variantCounts.filter((n) => n > 0)
+  const combinations = readyCounts.reduce((total, n) => total * n, 1)
+  const hasVariants = variantCounts.length > 0
+
   const toggleValue = (charId: string, valueId: string) => {
     const current = stored[charId] ?? []
     const next = current.includes(valueId)
@@ -117,6 +144,13 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
     const updated: Stored = { ...stored, [charId]: next }
     if (next.length === 0) delete updated[charId]
     setValue(updated)
+  }
+
+  const updateSetting = (charId: string, patch: Setting) => {
+    const next: Settings = { ...settings, [charId]: { ...settings[charId], ...patch } }
+    // Если вариант выключили, фото тоже не нужны
+    if (patch.isVariant === false) next[charId] = { isVariant: false, photos: false }
+    setSettings(next)
   }
 
   const toggleOpen = (charId: string) => {
@@ -150,28 +184,39 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {hasVariants ? (
+        <div style={{ fontSize: 13, marginBottom: 4, color: AMBER_TEXT, fontWeight: 600 }}>
+          {readyCounts.length === variantCounts.length
+            ? `Варіанти: ${readyCounts.join(' × ')} = ${combinations} комбінацій`
+            : 'Для варіантів виберіть значення у всіх позначених характеристиках'}
+        </div>
+      ) : null}
+
       {visible.map((ch) => {
         const charId = String(ch.id)
         const selected = stored[charId] ?? []
+        const setting = settings[charId] ?? {}
+        const isVariant = Boolean(setting.isVariant)
         const isOpen = open.has(charId)
 
         // Сводка строится из текущего выбора: только выбранные значения
-        const selectedLabels = (ch.values ?? [])
+        const summary = (ch.values ?? [])
           .filter((v) => v.id && selected.includes(String(v.id)))
           .map((v) => v.label_uk || v.label_ru || '')
           .filter(Boolean)
-        const summary = selectedLabels.join(', ')
+          .join(', ')
 
         return (
           <div
             key={charId}
             style={{
-              border: '1px solid var(--theme-elevation-150, #444)',
+              border: `1px solid ${isVariant ? AMBER_BORDER : 'var(--theme-elevation-150, #444)'}`,
+              background: isVariant ? AMBER_BG : 'transparent',
               borderRadius: 6,
               overflow: 'hidden',
             }}
           >
-            {/* Свёрнутая строка: название и выбранные значения */}
+            {/* Свёрнутая строка: название, выбранные значения и метки */}
             <button
               type="button"
               onClick={() => toggleOpen(charId)}
@@ -205,51 +250,46 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
               >
                 {summary || 'не вибрано'}
               </span>
+              {isVariant ? (
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: AMBER_TEXT,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Варіант · {selected.length}
+                </span>
+              ) : null}
+              {isVariant && setting.photos ? (
+                <span style={{ fontSize: 12, opacity: 0.8, whiteSpace: 'nowrap' }}>фото</span>
+              ) : null}
               <span style={{ fontSize: 12, opacity: 0.7 }}>{isOpen ? '▲' : '▼'}</span>
             </button>
 
-            {/* Раскрытый список: все значения галочками */}
             {isOpen ? (
               <div
                 style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: '6px 16px',
-                  padding: '8px 12px 12px',
                   borderTop: '1px solid var(--theme-elevation-150, #444)',
+                  padding: '8px 12px 12px',
                 }}
               >
-                {(ch.values ?? []).map((v) => {
-                  const valueId = v.id ? String(v.id) : ''
-                  if (!valueId) return null
-                  return (
-                    <label
-                      key={valueId}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        fontSize: 14,
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selected.includes(valueId)}
-                        onChange={() => toggleValue(charId, valueId)}
-                        style={{ width: 16, height: 16 }}
-                      />
-                      {v.label_uk}
-                      {v.label_ru ? ` / ${v.label_ru}` : ''}
-                    </label>
-                  )
-                })}
-              </div>
-            ) : null}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
+                {/* Настройки характеристики в этом товаре */}
+                <div
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '8px 24px',
+                    marginBottom: 10,
+                    fontSize: 14,
+                  }}
+                >
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={isVariant}
+                      onChange={(e) => updateSetting(charId, { isVariant: e.target.checked })}
+                      style={{ width: 16, height: 16 }}
+                    />
+                    Це варіант (впливає на остаток і ціну)

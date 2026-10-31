@@ -369,6 +369,15 @@ export interface Product {
     | number
     | boolean
     | null;
+  variantSettings?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   /**
    * Выберите категорию из списка. От неё зависят поля, которые Google ждёт для этого товара.
    */
@@ -1355,9 +1364,6 @@ export interface Feed {
    * Частина посилання після /api/feed/ (наприклад: google-all або tiktok-main).
    */
   slug: string;
-  /**
-   * Скопіюйте це посилання в налаштування товарного каталогу.
-   */
   feedURL?: string | null;
   platform: 'google' | 'meta' | 'tiktok';
   /**
@@ -2300,6 +2306,7 @@ export interface ProductsSelect<T extends boolean = true> {
   priceInEUR?: T;
   relatedProducts?: T;
   attributes?: T;
+  variantSettings?: T;
   googleCategory?: T;
   googleAgeGroup?: T;
   googleCondition?: T;

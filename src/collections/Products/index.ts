@@ -292,6 +292,13 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
                 },
               },
             },
+                        {
+              name: 'variantSettings',
+              type: 'json',
+              admin: {
+                hidden: true,
+              },
+            },
           ],
           label: 'Характеристики',
         },
