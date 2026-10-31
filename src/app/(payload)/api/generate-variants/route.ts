@@ -208,7 +208,7 @@ export async function POST(request: Request) {
         data: {
           product: productId,
           options: combo,
-          sku: `${baseSku}-${last}`,
+          sku: `${baseSku}-${String(last).padStart(2, '0')}`,
         } as any,
         ...opts,
       })
