@@ -22,20 +22,24 @@ const fillVariantPrices: CollectionBeforeChangeHook = async ({ data, originalDoc
   const current = data as Record<string, any>
   const original = (originalDoc || {}) as Record<string, any>
 
-  const basePrice: number | null | undefined = current.basePrice ?? original.basePrice
+  // Берём цену из формы. Если поле очищено (null или пусто), не подставляем старое значение
+  const rawPrice = 'basePrice' in current ? current.basePrice : original.basePrice
+  const basePrice = typeof rawPrice === 'number' && rawPrice > 0 ? rawPrice : 0
   const baseCurrency = (current.baseCurrency ?? original.baseCurrency ?? 'UAH') as Currency
 
-  if (typeof basePrice !== 'number' || basePrice <= 0) {
-    current.priceInUAH = null
-    current.priceInUSD = null
-    current.priceInEUR = null
+  // Цена 0 значит «берём цену товара»: записываем именно 0
+  if (basePrice === 0) {
+    current.basePrice = 0
+    current.priceInUAH = 0
+    current.priceInUSD = 0
+    current.priceInEUR = 0
     current.priceInUAHEnabled = false
     current.priceInUSDEnabled = false
     current.priceInEUREnabled = false
     return data
   }
 
-  // Курс берём из сохранённого хранилища (его ежедневно обновляет крон), а не напрямую из НБУ
+  // Курс берём из сохранённого хранилища (его ежедневно обновляет крон)
   const rates = await getStoredRates(req.payload)
   const rateOf = (currency: Currency) => (currency === 'UAH' ? 1 : rates[currency])
   const baseRate = rateOf(baseCurrency)
@@ -65,7 +69,7 @@ export const VariantsCollection: CollectionOverride = ({ defaultCollection }) =>
       label: 'Ціна варіанта',
       admin: {
         position: 'sidebar',
-        description: 'Необов’язково. Якщо порожньо, використовується ціна товару.',
+        description: 'Необов’язково. 0 або порожньо — використовується ціна товару.',
       },
     },
     {
