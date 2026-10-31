@@ -1327,6 +1327,10 @@ export interface Characteristic {
    */
   name_ru?: string | null;
   /**
+   * Например «Колір шуб». Показывается в карточке товара в скобках. Покупатель не видит.
+   */
+  adminNote?: string | null;
+  /**
    * Чем меньше число, тем выше характеристика в карточке товара (1, 2, 3…).
    */
   order?: number | null;
@@ -1335,7 +1339,11 @@ export interface Characteristic {
    */
   googleAttribute?: ('gender' | 'age_group' | 'color' | 'size' | 'material') | null;
   /**
-   * Для яких категорій ця характеристика. Підкатегорії успадковують її від батьківської.
+   * Если эта характеристика — вариант товара (цвет, размер, длина), выберите тип из списка. Если нет — оставьте пусто.
+   */
+  variantType?: (string | null) | VariantType;
+  /**
+   * Для яких категорій ця характеристика. Підкатегорії успадковують її від батьківської. Якщо не вибрано — характеристика діє на весь магазин.
    */
   categories?: (string | Category)[] | null;
   /**
@@ -1870,8 +1878,10 @@ export interface CategoriesSelect<T extends boolean = true> {
 export interface CharacteristicsSelect<T extends boolean = true> {
   name_uk?: T;
   name_ru?: T;
+  adminNote?: T;
   order?: T;
   googleAttribute?: T;
+  variantType?: T;
   categories?: T;
   values?:
     | T
