@@ -4,7 +4,7 @@ import type { Product, Variant } from '@/payload-types'
 import { AddToCart } from '@/components/Cart/AddToCart'
 import { StockIndicator } from '@/components/product/StockIndicator'
 import { RichText } from '@/components/RichText'
-import { useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
 import styles from './BuyGlow.module.css'
 import { VariantSelector } from './VariantSelector'
@@ -17,6 +17,11 @@ const getVariantPrice = (variant: Variant, product: Product): number | null => {
 
 // Цена на странице товара: число и «грн» после него
 const formatPrice = (amount: number) => `${amount.toLocaleString('uk-UA')} грн`
+
+const hintText = {
+  uk: 'Оберіть варіант, щоб додати в кошик.',
+  ru: 'Выберите вариант, чтобы добавить в корзину.',
+}
 
 function ProductPrice({ product }: { product: Product }) {
   const searchParams = useSearchParams()
@@ -50,6 +55,18 @@ function ProductPrice({ product }: { product: Product }) {
   const amount =
     typeof product.priceInUAH === 'number' && product.priceInUAH > 0 ? product.priceInUAH : null
   return amount !== null ? <>{formatPrice(amount)}</> : null
+}
+
+// Подсказка: показывается, пока вариант не выбран
+function VariantHint({ product }: { product: Product }) {
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const locale = pathname.startsWith('/ru') ? 'ru' : 'uk'
+  const hasVariants = Boolean(product.enableVariants && product.variants?.docs?.length)
+
+  if (!hasVariants || searchParams.get('variant')) return null
+
+  return <p className="text-sm text-neutral-600">{hintText[locale]}</p>
 }
 
 function QuantityControl({
@@ -95,7 +112,7 @@ export function ProductDescription({ product }: { product: Product }) {
         <h1 className="text-2xl font-medium">{product.title}</h1>
       </div>
 
-      {/* Варианты, цена, наличие, количество и кнопка: после фото */}
+      {/* Варианты, цена, наличие, подсказка, количество и кнопка: после фото */}
       <div className="order-3 flex flex-col gap-6 lg:order-none">
         {hasVariants && (
           <>
@@ -119,9 +136,16 @@ export function ProductDescription({ product }: { product: Product }) {
           </Suspense>
         </div>
 
+        {/* Подсказка, пока вариант не выбран */}
+        <Suspense fallback={null}>
+          <VariantHint product={product} />
+        </Suspense>
+
         <div id="buy-block" className="flex items-center gap-3">
           <QuantityControl quantity={quantity} onChange={setQuantity} />
-          <div className={`${styles.glow} min-w-0 flex-1 [&_button]:w-full [&_button]:border-[#0b7a78] [&_button]:bg-[#0b7a78] [&_button]:text-white [&_button:hover]:opacity-90`}>
+          <div
+            className={`${styles.glow} min-w-0 flex-1 [&_button]:w-full [&_button]:border-[#0b7a78] [&_button]:bg-[#0b7a78] [&_button]:text-white [&_button:hover]:opacity-90 [&_button:disabled]:cursor-not-allowed [&_button:disabled]:border-neutral-300 [&_button:disabled]:bg-neutral-300 [&_button:disabled]:text-neutral-500`}
+          >
             <Suspense fallback={null}>
               <AddToCart product={product} quantity={quantity} />
             </Suspense>
