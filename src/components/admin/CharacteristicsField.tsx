@@ -13,6 +13,7 @@ type Characteristic = {
   id: number | string
   name_uk?: string | null
   name_ru?: string | null
+  adminNote?: string | null
   order?: number | null
   categories?: unknown
   values?: Value[] | null
@@ -115,13 +116,13 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
     return set
   }, [categoriesValue, allCats])
 
-  // Характеристики основной категории и её родителей, по полю «Порядок»
+  // Характеристики: без категорий — для всего магазина; с категориями — если категория товара совпадает
   const visible = useMemo(
     () =>
       chars
         .filter((ch) => {
           const cats = Array.isArray(ch.categories) ? ch.categories.map(idOf) : []
-          return cats.some((id) => relevantCats.has(id))
+          return cats.length === 0 || cats.some((id) => relevantCats.has(id))
         })
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
     [chars, relevantCats],
@@ -237,6 +238,9 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
               <span style={{ width: 180, flexShrink: 0, fontWeight: 600, fontSize: 14 }}>
                 {ch.name_uk}
                 {ch.name_ru ? ` / ${ch.name_ru}` : ''}
+                {ch.adminNote ? (
+                  <span style={{ fontWeight: 400, opacity: 0.6 }}> ({ch.adminNote})</span>
+                ) : null}
               </span>
               <span
                 style={{

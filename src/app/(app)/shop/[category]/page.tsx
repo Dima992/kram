@@ -208,7 +208,8 @@ export default async function CategoryPage({ params, searchParams }: Args) {
       ? `/shop/${current.slug}`
       : `/shop/${current.slug}?f=${encodeURIComponent(Array.from(ids).join(','))}`
 
-  // Характеристики, которые действуют на эту категорию (и на её родителей)
+  // Характеристики, которые действуют на эту категорию (и на её родителей).
+  // Без категорий — действуют на весь магазин.
   const chainIds = new Set(chain.map((category) => String(category.id)))
   const { docs: characteristicDocs } = await payload.find({
     collection: 'characteristics',
@@ -217,9 +218,10 @@ export default async function CategoryPage({ params, searchParams }: Args) {
     sort: 'order',
     depth: 0,
   })
-  const filterChars = (characteristicDocs as CharacteristicDoc[]).filter((characteristic) =>
-    idsOfRelation(characteristic.categories).some((id) => chainIds.has(id)),
-  )
+  const filterChars = (characteristicDocs as CharacteristicDoc[]).filter((characteristic) => {
+    const cats = idsOfRelation(characteristic.categories)
+    return cats.length === 0 || cats.some((id) => chainIds.has(id))
+  })
 
   // Все товары категории со всеми подкатегориями: нужны для фильтра
   const subtree = subtreeIds(String(current.id), all)

@@ -14,7 +14,7 @@ export const Characteristics: CollectionConfig = {
   admin: {
     useAsTitle: 'name_uk',
     group: 'Content',
-    defaultColumns: ['order', 'name_uk', 'name_ru', 'categories', 'googleAttribute'],
+    defaultColumns: ['adminNote', 'order', 'name_uk', 'name_ru', 'categories', 'googleAttribute'],
   },
   defaultSort: 'order',
   hooks: {
@@ -61,6 +61,17 @@ export const Characteristics: CollectionConfig = {
       ],
     },
     {
+      // Внутреннее название для админки (покупатель его не видит)
+      name: 'adminNote',
+      type: 'text',
+      label: 'Коментар для адмінки',
+      admin: {
+        position: 'sidebar',
+        description:
+          'Например «Колір шуб». Показывается в карточке товара в скобках. Покупатель не видит.',
+      },
+    },
+    {
       name: 'order',
       type: 'number',
       defaultValue: 0,
@@ -95,7 +106,8 @@ export const Characteristics: CollectionConfig = {
       label: 'Категорії',
       admin: {
         position: 'sidebar',
-        description: 'Для яких категорій ця характеристика. Підкатегорії успадковують її від батьківської.',
+        description:
+          'Для яких категорій ця характеристика. Підкатегорії успадковують її від батьківської. Якщо не вибрано — характеристика діє на весь магазин.',
       },
     },
     {
