@@ -99,18 +99,6 @@ export const Characteristics: CollectionConfig = {
       },
     },
     {
-      // Тип варианта из раздела «Варианты» (например, Color). Пусто — характеристика не для вариантов
-      name: 'variantType',
-      type: 'relationship',
-      relationTo: 'variantTypes',
-      label: 'Тип варианта',
-      admin: {
-        position: 'sidebar',
-        description:
-          'Если эта характеристика — вариант товара (цвет, размер, длина), выберите тип из списка. Если нет — оставьте пусто.',
-      },
-    },
-    {
       name: 'categories',
       type: 'relationship',
       relationTo: 'categories',

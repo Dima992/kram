@@ -1,4 +1,4 @@
-import { getNBURates } from '@/lib/nbu'
+import { getStoredRates } from '@/utilities/exchangeRates'
 import type { CollectionOverride } from '@payloadcms/plugin-ecommerce/types'
 import type { CollectionBeforeChangeHook } from 'payload'
 
@@ -16,7 +16,7 @@ function hidePluginPriceFields(fields: any[]): any[] {
   })
 }
 
-const fillVariantPrices: CollectionBeforeChangeHook = async ({ data, originalDoc }) => {
+const fillVariantPrices: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
   if (!data) return data
 
   const current = data as Record<string, any>
@@ -35,11 +35,12 @@ const fillVariantPrices: CollectionBeforeChangeHook = async ({ data, originalDoc
     return data
   }
 
-  const rates = await getNBURates()
+  // Курс берём из сохранённого хранилища (его ежедневно обновляет крон), а не напрямую из НБУ
+  const rates = await getStoredRates(req.payload)
   const rateOf = (currency: Currency) => (currency === 'UAH' ? 1 : rates[currency])
   const baseRate = rateOf(baseCurrency)
   if (!baseRate || !rates.USD || !rates.EUR) {
-    throw new Error('Курс НБУ недоступен, цену варианта не сохранено')
+    throw new Error('Курс валют недоступен, цену варианта не сохранено')
   }
 
   const priceInUAH = Math.ceil(basePrice * baseRate)
