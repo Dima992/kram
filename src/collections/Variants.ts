@@ -82,6 +82,14 @@ export const VariantsCollection: CollectionOverride = ({ defaultCollection }) =>
         position: 'sidebar',
       },
     },
+    {
+      name: 'sku',
+      type: 'text',
+      label: 'Артикул варианта',
+      admin: {
+        position: 'sidebar',
+      },
+    },
   ],
   hooks: {
     ...defaultCollection.hooks,

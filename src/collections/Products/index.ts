@@ -49,7 +49,8 @@ const extractText = (node: unknown): string => {
 // Заполняет пустые SEO-поля при сохранении товара.
 // Работает для любого товара: созданного вручную, импортом или через API.
 const fillEmptySeo = ({ data }: { data: any }) => {
-  if (!data) return data
+ // Если товар сохраняют частично (без названия), не трогаем SEO
+  if (!data || data.title === undefined) return data
 
   const title = typeof data.title === 'string' ? data.title.trim() : ''
   const meta = { ...(data.meta ?? {}) }
@@ -627,6 +628,8 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       ({ data }) => fillEmptySeo({ data }),
 
       async ({ data, req }) => {
+                // Если цену не передали (например, при создании вариантов), не пересчитываем
+        if (data?.basePrice === undefined) return data
         if (!data?.basePrice) {
           data.priceInUAH = 0
           return data

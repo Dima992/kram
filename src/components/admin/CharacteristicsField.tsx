@@ -1,6 +1,6 @@
 'use client'
 
-import { useField } from '@payloadcms/ui'
+import { useDocumentInfo, useField, useFormModified } from '@payloadcms/ui'
 import React, { useEffect, useMemo, useState } from 'react'
 
 type Value = {
@@ -27,8 +27,8 @@ type Cat = {
 // Выбранные значения: { id характеристики: [id значений] }
 type Stored = Record<string, string[]>
 
-// Настройки характеристики в этом товаре: вариант и нужны ли фото
-type Setting = { isVariant?: boolean; photos?: boolean }
+// Настройки в этом товаре: нужны ли фото (вариант определяется автоматически)
+type Setting = { photos?: boolean }
 type Settings = Record<string, Setting>
 
 const idOf = (v: unknown): string =>
@@ -51,12 +51,18 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
     path: 'variantSettings',
   })
   const { value: categoriesValue } = useField<unknown[]>({ path: 'categories' })
+  const { value: enabledValue } = useField<boolean>({ path: 'enableVariants' })
+  const { id: docId } = useDocumentInfo()
+  // true, если в форме есть несохранённые изменения
+  const modified = useFormModified()
+  const productId = docId ? String(docId) : ''
 
   const [allCats, setAllCats] = useState<Cat[]>([])
   const [chars, setChars] = useState<Characteristic[]>([])
   const [loaded, setLoaded] = useState(false)
-  // Какие характеристики раскрыты (по умолчанию все свёрнуты)
   const [open, setOpen] = useState<Set<string>>(new Set())
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState('')
 
   // Загружаем категории и характеристики
   useEffect(() => {
@@ -128,13 +134,10 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
     [chars, relevantCats],
   )
 
-  // Количество комбинаций: перемножаем выбранные значения у характеристик-вариантов
-  const variantCounts = visible
-    .filter((ch) => settings[String(ch.id)]?.isVariant)
-    .map((ch) => (stored[String(ch.id)] ?? []).length)
-  const readyCounts = variantCounts.filter((n) => n > 0)
-  const combinations = readyCounts.reduce((total, n) => total * n, 1)
-  const hasVariants = variantCounts.length > 0
+  // Вариант = характеристика, где выбрано больше одного значения (считается автоматически)
+  const variantChars = visible.filter((ch) => (stored[String(ch.id)] ?? []).length > 1)
+  const counts = variantChars.map((ch) => (stored[String(ch.id)] ?? []).length)
+  const combinations = counts.reduce((total, n) => total * n, 1)
 
   const toggleValue = (charId: string, valueId: string) => {
     const current = stored[charId] ?? []
@@ -147,11 +150,8 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
     setValue(updated)
   }
 
-  const updateSetting = (charId: string, patch: Setting) => {
-    const next: Settings = { ...settings, [charId]: { ...settings[charId], ...patch } }
-    // Если вариант выключили, фото тоже не нужны
-    if (patch.isVariant === false) next[charId] = { isVariant: false, photos: false }
-    setSettings(next)
+  const updatePhotos = (charId: string, photos: boolean) => {
+    setSettings({ ...settings, [charId]: { ...settings[charId], photos } })
   }
 
   const toggleOpen = (charId: string) => {
@@ -161,6 +161,29 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
       else next.add(charId)
       return next
     })
+  }
+
+  const generate = async () => {
+    setBusy(true)
+    setMessage('')
+    try {
+      const res = await fetch('/api/generate-variants', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setMessage(data.error || 'Помилка створення варіантів')
+      } else {
+        setMessage(`Створено: ${data.created}. Вже були раніше: ${data.skipped}.`)
+      }
+    } catch {
+      setMessage('Немає зв’язку з сервером')
+    } finally {
+      setBusy(false)
+    }
   }
 
   if (!loaded) {
@@ -183,21 +206,48 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
     )
   }
 
+  const canGenerate = !busy && !modified && Boolean(productId) && variantChars.length > 0
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {hasVariants ? (
-        <div style={{ fontSize: 13, marginBottom: 4, color: AMBER_TEXT, fontWeight: 600 }}>
-          {readyCounts.length === variantCounts.length
-            ? `Варіанти: ${readyCounts.join(' × ')} = ${combinations} комбінацій`
-            : 'Для варіантів виберіть значення у всіх позначених характеристиках'}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ fontSize: 13, color: AMBER_TEXT, fontWeight: 600 }}>
+          {variantChars.length === 0
+            ? 'Щоб створити варіанти, виберіть більше одного значення хоча б в одній характеристиці'
+            : `Варіанти: ${counts.join(' × ')} = ${combinations} комбінацій`}
+        </div>
+        <button
+          type="button"
+          onClick={generate}
+          disabled={!canGenerate}
+          style={{
+            padding: '6px 14px',
+            borderRadius: 6,
+            border: `1px solid ${AMBER_BORDER}`,
+            background: canGenerate ? AMBER_BG : 'transparent',
+            color: 'inherit',
+            cursor: canGenerate ? 'pointer' : 'not-allowed',
+            opacity: canGenerate ? 1 : 0.5,
+            fontSize: 13,
+          }}
+        >
+          {busy ? 'Створюю…' : 'Згенерувати варіанти'}
+        </button>
+      </div>
+
+      {modified ? (
+        <div style={{ fontSize: 12, opacity: 0.7 }}>
+          Спочатку збережіть товар, потім натисніть кнопку.
         </div>
       ) : null}
+
+      {message ? <div style={{ fontSize: 13 }}>{message}</div> : null}
 
       {visible.map((ch) => {
         const charId = String(ch.id)
         const selected = stored[charId] ?? []
         const setting = settings[charId] ?? {}
-        const isVariant = Boolean(setting.isVariant)
+        const isVariant = selected.length > 1
         const isOpen = open.has(charId)
 
         // Сводка строится из текущего выбора: только выбранные значения
@@ -217,7 +267,6 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
               overflow: 'hidden',
             }}
           >
-            {/* Свёрнутая строка: название, выбранные значения и метки */}
             <button
               type="button"
               onClick={() => toggleOpen(charId)}
@@ -255,14 +304,7 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
                 {summary || 'не вибрано'}
               </span>
               {isVariant ? (
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: AMBER_TEXT,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
+                <span style={{ fontSize: 12, fontWeight: 600, color: AMBER_TEXT, whiteSpace: 'nowrap' }}>
                   Варіант · {selected.length}
                 </span>
               ) : null}
@@ -279,46 +321,27 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
                   padding: '8px 12px 12px',
                 }}
               >
-                {/* Настройки характеристики в этом товаре */}
-                <div
+                <label
                   style={{
                     display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: '8px 24px',
-                    marginBottom: 10,
+                    alignItems: 'center',
+                    gap: 6,
                     fontSize: 14,
+                    marginBottom: 10,
+                    cursor: isVariant ? 'pointer' : 'not-allowed',
+                    opacity: isVariant ? 1 : 0.5,
                   }}
                 >
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={isVariant}
-                      onChange={(e) => updateSetting(charId, { isVariant: e.target.checked })}
-                      style={{ width: 16, height: 16 }}
-                    />
-                    Це варіант (впливає на остаток і ціну)
-                  </label>
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      cursor: isVariant ? 'pointer' : 'not-allowed',
-                      opacity: isVariant ? 1 : 0.5,
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={Boolean(setting.photos)}
-                      disabled={!isVariant}
-                      onChange={(e) => updateSetting(charId, { photos: e.target.checked })}
-                      style={{ width: 16, height: 16 }}
-                    />
-                    Фото потрібні
-                  </label>
-                </div>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(setting.photos)}
+                    disabled={!isVariant}
+                    onChange={(e) => updatePhotos(charId, e.target.checked)}
+                    style={{ width: 16, height: 16 }}
+                  />
+                  Фото потрібні (блок фото для кожного значення)
+                </label>
 
-                {/* Значения галочками */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px' }}>
                   {(ch.values ?? []).map((v) => {
                     const valueId = v.id ? String(v.id) : ''
@@ -348,9 +371,9 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
                   })}
                 </div>
 
-                {isVariant && selected.length === 0 ? (
-                  <div style={{ fontSize: 12, marginTop: 8, color: AMBER_TEXT }}>
-                    Виберіть значення, щоб створити варіанти з цієї характеристики.
+                {selected.length === 1 && enabledValue ? (
+                  <div style={{ fontSize: 12, marginTop: 8, opacity: 0.7 }}>
+                    Якщо за цією характеристикою вже створені варіанти, їх можна видалити в розділі «Варіанти».
                   </div>
                 ) : null}
               </div>
