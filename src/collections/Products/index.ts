@@ -292,7 +292,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
                 },
               },
             },
-                        {
+            {
               name: 'variantSettings',
               type: 'json',
               admin: {
@@ -508,6 +508,16 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       label: 'MPN / артикул виробника',
       admin: {
         position: 'sidebar',
+      },
+    },
+        {
+      name: 'sku',
+      type: 'text',
+      label: 'Артикул (SKU)',
+      admin: {
+        position: 'sidebar',
+        description:
+          'Базовый артикул товара, например SH-001. От него получают номера варианты (SH-001-1, SH-001-2).',
       },
     },
     {
