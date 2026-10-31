@@ -107,20 +107,49 @@ export function VariantSelector({ product }: { product: Product }) {
                   })
                 }}
                 className={clsx(
-                  'min-w-[52px] rounded-md border px-4 py-2 text-sm font-medium transition-colors',
+                  'relative min-w-[52px] overflow-hidden rounded-md border px-4 py-2 text-sm font-medium transition-colors',
                   {
                     // Выбрано: тёмно-бирюзовый, как кнопка «Купить», белый текст
                     'border-[#0b7a78] bg-[#0b7a78] text-white shadow-sm': isActive,
                     // Есть в наличии, но не выбрано: белый фон, тёмный текст, рамка
                     'border-neutral-300 bg-white text-neutral-900 hover:border-[#0b7a78] hover:text-[#0b7a78]':
                       isAvailableForSale && !isActive,
-                    // Нет в наличии: серый фон, зачёркнутый текст, курсор «запрещено»
-                    'cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400 line-through':
+                    // Нет в наличии: серый фон, серый текст, курсор «запрещено»
+                    'cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400':
                       !isAvailableForSale,
                   },
                 )}
               >
                 {option.label}
+
+                {/* Красный крест поверх кнопки, если нет в наличии */}
+                {!isAvailableForSale && (
+                  <svg
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 h-full w-full"
+                    preserveAspectRatio="none"
+                    viewBox="0 0 100 40"
+                  >
+                    <line
+                      x1="0"
+                      y1="0"
+                      x2="100"
+                      y2="40"
+                      stroke="#dc2626"
+                      strokeWidth="2"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    <line
+                      x1="100"
+                      y1="0"
+                      x2="0"
+                      y2="40"
+                      stroke="#dc2626"
+                      strokeWidth="2"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </svg>
+                )}
               </button>
             )
           })}

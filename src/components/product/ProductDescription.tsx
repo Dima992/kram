@@ -2,7 +2,6 @@
 import type { Product, Variant } from '@/payload-types'
 
 import { AddToCart } from '@/components/Cart/AddToCart'
-import { Price } from '@/components/Price'
 import { StockIndicator } from '@/components/product/StockIndicator'
 import { RichText } from '@/components/RichText'
 import { useSearchParams } from 'next/navigation'
@@ -16,6 +15,9 @@ const getVariantPrice = (variant: Variant, product: Product): number | null => {
   return null
 }
 
+// Цена на странице товара: число и «грн» после него
+const formatPrice = (amount: number) => `${amount.toLocaleString('uk-UA')} грн`
+
 function ProductPrice({ product }: { product: Product }) {
   const searchParams = useSearchParams()
   const variants = (product.variants?.docs ?? []).filter(
@@ -27,7 +29,7 @@ function ProductPrice({ product }: { product: Product }) {
   if (hasVariants && selectedVariantID) {
     const selectedVariant = variants.find((variant) => String(variant.id) === selectedVariantID)
     const amount = selectedVariant ? getVariantPrice(selectedVariant, product) : null
-    return amount !== null ? <Price amount={amount} /> : null
+    return amount !== null ? <>{formatPrice(amount)}</> : null
   }
 
   if (hasVariants) {
@@ -39,15 +41,15 @@ function ProductPrice({ product }: { product: Product }) {
     const hasDifferentPrices = new Set(prices).size > 1
     return (
       <>
-        {hasDifferentPrices && <span className="mr-2 normal-case">від</span>}
-        <Price amount={lowest} />
+        {hasDifferentPrices && <span className="mr-2 text-base font-normal">від</span>}
+        {formatPrice(lowest)}
       </>
     )
   }
 
   const amount =
     typeof product.priceInUAH === 'number' && product.priceInUAH > 0 ? product.priceInUAH : null
-  return amount !== null ? <Price amount={amount} /> : null
+  return amount !== null ? <>{formatPrice(amount)}</> : null
 }
 
 function QuantityControl({
@@ -104,8 +106,8 @@ export function ProductDescription({ product }: { product: Product }) {
           </>
         )}
 
-        {/* Цена: крупно и акцентным цветом, прямо над кнопкой «Купить» */}
-        <div className="font-mono text-[28px] font-bold uppercase leading-none text-[#0b7a78]">
+        {/* Цена: число и «грн», без фона, акцентным цветом над кнопкой «Купить» */}
+        <div className="bg-transparent text-[28px] font-bold leading-none text-[#0b7a78]">
           <Suspense fallback={null}>
             <ProductPrice product={product} />
           </Suspense>
