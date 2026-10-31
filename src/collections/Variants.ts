@@ -16,19 +16,49 @@ function hidePluginPriceFields(fields: any[]): any[] {
   })
 }
 
+// Достаём id из связи (бывает либо id, либо объект с id)
+const idOf = (value: unknown): string | null => {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'object') {
+    const id = (value as { id?: unknown }).id
+    return id === undefined || id === null ? null : String(id)
+  }
+  return String(value)
+}
+
 const fillVariantPrices: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
   if (!data) return data
 
   const current = data as Record<string, any>
   const original = (originalDoc || {}) as Record<string, any>
 
-  // Берём цену из формы. Если поле очищено (null или пусто), не подставляем старое значение
+  // Своя цена варианта. Пустая или 0 означает «берём цену товара»
   const rawPrice = 'basePrice' in current ? current.basePrice : original.basePrice
-  const basePrice = typeof rawPrice === 'number' && rawPrice > 0 ? rawPrice : 0
-  const baseCurrency = (current.baseCurrency ?? original.baseCurrency ?? 'UAH') as Currency
+  const ownPrice = typeof rawPrice === 'number' && rawPrice > 0 ? rawPrice : 0
+  const ownCurrency = (current.baseCurrency ?? original.baseCurrency ?? 'UAH') as Currency
 
-  // Цена 0 значит «берём цену товара»: записываем именно 0
-  if (basePrice === 0) {
+  let amount = ownPrice
+  let currency: Currency = ownCurrency
+
+  if (ownPrice === 0) {
+    const productId = idOf(current.product ?? original.product)
+    if (productId) {
+      const product: any = await req.payload.findByID({
+        collection: 'products',
+        id: productId,
+        depth: 0,
+        req,
+      })
+      // Цена товара уже в гривнах (её считает хук товара)
+      if (typeof product?.priceInUAH === 'number' && product.priceInUAH > 0) {
+        amount = product.priceInUAH
+        currency = 'UAH'
+      }
+    }
+  }
+
+  // Цены нет ни у варианта, ни у товара: строка без цены
+  if (amount === 0) {
     current.basePrice = 0
     current.priceInUAH = 0
     current.priceInUSD = 0
@@ -41,13 +71,13 @@ const fillVariantPrices: CollectionBeforeChangeHook = async ({ data, originalDoc
 
   // Курс берём из сохранённого хранилища (его ежедневно обновляет крон)
   const rates = await getStoredRates(req.payload)
-  const rateOf = (currency: Currency) => (currency === 'UAH' ? 1 : rates[currency])
-  const baseRate = rateOf(baseCurrency)
+  const rateOf = (c: Currency) => (c === 'UAH' ? 1 : rates[c])
+  const baseRate = rateOf(currency)
   if (!baseRate || !rates.USD || !rates.EUR) {
     throw new Error('Курс валют недоступен, цену варианта не сохранено')
   }
 
-  const priceInUAH = Math.ceil(basePrice * baseRate)
+  const priceInUAH = Math.ceil(amount * baseRate)
 
   current.priceInUAH = priceInUAH
   current.priceInUSD = Math.round((priceInUAH / rates.USD) * 100) / 100
