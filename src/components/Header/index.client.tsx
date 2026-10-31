@@ -4,6 +4,7 @@ import { OpenCartButton } from '@/components/Cart/OpenCart'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { CMSLink } from '@/components/Link'
 import { Media } from '@/components/Media'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import Link from 'next/link'
 import { Suspense } from 'react'
 
@@ -63,6 +64,7 @@ export function HeaderClient({ header, logo }: Props) {
 
           <div className="flex items-center justify-end md:w-1/3 gap-4">
             <LanguageSwitcher />
+            <ThemeToggle />
             <Suspense fallback={<OpenCartButton />}>
               <Cart />
             </Suspense>
