@@ -203,13 +203,13 @@ export async function POST(request: Request) {
   try {
     for (const combo of toCreate) {
       last += 1
-      await payload.create({
+    await payload.create({
         collection: 'variants',
         data: {
           product: productId,
           options: combo,
           sku: `${baseSku}-${last}`,
-        },
+        } as any,
         ...opts,
       })
       created += 1
