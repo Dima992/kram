@@ -1,7 +1,6 @@
 import { Banner } from '@payloadcms/ui'
 import React from 'react'
 
-import { SeedButton } from './SeedButton'
 import './index.scss'
 
 const baseClass = 'before-dashboard'
@@ -14,13 +13,6 @@ export const BeforeDashboard: React.FC = () => {
       </Banner>
       Що робити далі:
       <ul className={`${baseClass}__instructions`}>
-        <li>
-          <SeedButton />
-          {' з кількома товарами та сторінками, щоб швидко запустити новий проєкт, а потім '}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <a href="/">відвідайте ваш сайт</a>
-          {' щоб переглянути результат.'}
-        </li>
         <li>
           {'Перейдіть до '}
           <a
