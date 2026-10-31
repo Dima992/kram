@@ -88,17 +88,12 @@ export function ProductDescription({ product }: { product: Product }) {
 
   return (
     <>
-      {/* Название и цена: на телефоне первыми */}
-      <div className="order-1 flex flex-col gap-2 lg:order-none lg:flex-row lg:items-center lg:justify-between">
+      {/* Только название: цена переехала к кнопке покупки */}
+      <div className="order-1 lg:order-none">
         <h1 className="text-2xl font-medium">{product.title}</h1>
-        <div className="font-mono uppercase">
-          <Suspense fallback={null}>
-            <ProductPrice product={product} />
-          </Suspense>
-        </div>
       </div>
 
-      {/* Варианты, наличие, количество и кнопка: после фото */}
+      {/* Варианты, цена, наличие, количество и кнопка: после фото */}
       <div className="order-3 flex flex-col gap-6 lg:order-none">
         {hasVariants && (
           <>
@@ -108,14 +103,23 @@ export function ProductDescription({ product }: { product: Product }) {
             <hr />
           </>
         )}
+
+        {/* Цена: крупно и акцентным цветом, прямо над кнопкой «Купить» */}
+        <div className="font-mono text-[28px] font-bold uppercase leading-none text-[#0b7a78]">
+          <Suspense fallback={null}>
+            <ProductPrice product={product} />
+          </Suspense>
+        </div>
+
         <div className="flex items-center justify-between">
           <Suspense fallback={null}>
             <StockIndicator product={product} />
           </Suspense>
         </div>
+
         <div id="buy-block" className="flex items-center gap-3">
           <QuantityControl quantity={quantity} onChange={setQuantity} />
-        <div className={`${styles.glow} min-w-0 flex-1 [&_button]:w-full [&_button]:border-[#0b7a78] [&_button]:bg-[#0b7a78] [&_button]:text-white [&_button:hover]:opacity-90`}>
+          <div className={`${styles.glow} min-w-0 flex-1 [&_button]:w-full [&_button]:border-[#0b7a78] [&_button]:bg-[#0b7a78] [&_button]:text-white [&_button:hover]:opacity-90`}>
             <Suspense fallback={null}>
               <AddToCart product={product} quantity={quantity} />
             </Suspense>
