@@ -28,12 +28,12 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     ? {
         pinch: 'Щипок пальцами — зум',
         wheel: 'Колесо мыши — зум, фото можно тянуть',
-        video: '+ видео',
+        video: '▶ + ВИДЕО',
       }
     : {
         pinch: 'Щипок пальцями — збільшення',
         wheel: 'Колесо миші — збільшення, фото можна тягнути',
-        video: '+ відео',
+        video: '▶ + ВІДЕО',
       }
 
   const [current, setCurrent] = useState(0)
@@ -53,7 +53,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
   const total = gallery.length
   const currentItem = gallery[current]
 
-  // Есть ли в товаре видео: тогда на главном фото показываем плашку «+ відео»
+  // Есть ли в товаре видео: тогда на главном фото показываем плашку
   const hasVideo = gallery.some((item) => item.mediaType === 'youtube' && item.youtubeUrl)
 
   // Текущий слайд: либо фото, либо видео YouTube
@@ -264,9 +264,9 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
           </button>
         )}
 
-        {/* Плашка «+ відео» на фото, если в товаре есть видео */}
+        {/* Крупная красная плашка «▶ + ВИДЕО» на главном фото, если в товаре есть видео */}
         {!currentVideo && hasVideo && (
-          <span className="pointer-events-none absolute bottom-3 left-3 z-[5] rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white">
+          <span className="pointer-events-none absolute bottom-4 left-4 z-[5] rounded-full bg-white px-4 py-2 text-base font-bold tracking-wide text-red-600 shadow-lg ring-2 ring-red-600">
             {t.video}
           </span>
         )}
