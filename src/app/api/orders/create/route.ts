@@ -260,6 +260,7 @@ export async function POST(req: Request) {
           quantity: line.quantity,
         })),
         totalAmount,
+        amount: totalAmount,
       },
     })
 
