@@ -4,7 +4,6 @@ import type { Product } from '@/payload-types'
 
 import { GridTileImage } from '@/components/Grid/tile'
 import { Media } from '@/components/Media'
-import { YouTubePlayer } from '@/components/YouTubePlayer'
 import { Carousel, CarouselApi, CarouselContent, CarouselItem } from '@/components/ui/carousel'
 import { getYouTubeId } from '@/utilities/youtube'
 import { ChevronLeft, ChevronRight, Play, X } from 'lucide-react'
@@ -29,18 +28,16 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     ? {
         pinch: 'Щипок пальцами — зум',
         wheel: 'Колесо мыши — зум, фото можно тянуть',
-        video: '▶ + ВИДЕО',
         openVideo: 'Открыть видео',
       }
     : {
         pinch: 'Щипок пальцями — збільшення',
         wheel: 'Колесо миші — збільшення, фото можна тягнути',
-        video: '▶ + ВІДЕО',
         openVideo: 'Відкрити відео',
       }
 
   const [current, setCurrent] = useState(0)
-  // Номер слайда, на котором пользователь нажал «play» (плеер открыт только там)
+  // Номер слайда, на котором пользователь нажал ▶ (плеер открыт только там)
   const [playingIndex, setPlayingIndex] = useState<number | null>(null)
   const [api, setApi] = useState<CarouselApi>()
   const [open, setOpen] = useState(false)
@@ -58,10 +55,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
   const total = gallery.length
   const currentItem = gallery[current]
 
-  // Есть ли в товаре видео: тогда на главном фото показываем плашку
-  const hasVideo = gallery.some((item) => item.mediaType === 'youtube' && item.youtubeUrl)
-
-  // Первое обычное фото товара: по его формату делаем превью видео
+  // Первое обычное фото товара: по нему делаем превью видео
   const coverItem = gallery.find(
     (item) => item.mediaType !== 'youtube' && typeof item.image === 'object' && item.image,
   )
@@ -115,6 +109,11 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     resetZoom()
   }
 
+  // При смене слайда плеер закрывается: при возврате видно превью, а не плеер
+  useEffect(() => {
+    setPlayingIndex(null)
+  }, [current])
+
   // Выбор варианта: переходим к фото, привязанному к варианту
   useEffect(() => {
     const values = Array.from(searchParams.values())
@@ -133,10 +132,14 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       })
       if (index !== -1) {
         setCurrent(index)
-        api.scrollTo(index, true)
       }
     }
   }, [searchParams, api, gallery])
+
+  // Ряд миниатюр всегда прокручивается так, чтобы выбранная миниатюра была на виду
+  useEffect(() => {
+    if (api) api.scrollTo(current)
+  }, [current, api])
 
   // Клавиши ← → и Esc, блокировка прокрутки страницы под окном
   useEffect(() => {
@@ -248,11 +251,11 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     }
   }
 
-  // Превью видео: тот же формат, что и у фото товара (берём первое фото как обложку)
+  // Обложка видео: та же рамка, что у фото (первое фото товара или кадр YouTube)
   const renderVideoPreview = () => (
     <button
       type="button"
-      className="relative block w-full"
+      className="absolute inset-0 block h-full w-full"
       onClick={() => setPlayingIndex(current)}
       aria-label={t.openVideo}
     >
@@ -260,15 +263,15 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
         <Media
           priority={current === 0}
           resource={coverImage}
-          className="w-full"
-          imgClassName="w-full rounded-lg"
+          fill
+          imgClassName="h-full w-full object-cover"
           size="(min-width: 1024px) 50vw, 100vw"
         />
       ) : (
         <img
           src={`https://i.ytimg.com/vi/${currentVideoId}/hqdefault.jpg`}
           alt=""
-          className="block w-full rounded-lg"
+          className="absolute inset-0 h-full w-full object-cover"
           loading="eager"
         />
       )}
@@ -280,23 +283,34 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     </button>
   )
 
+  // Плеер YouTube прямо в рамке: заполняет её целиком, размер не меняется
+  const renderPlayer = () => (
+    <iframe
+      className="absolute inset-0 h-full w-full"
+      src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&playsinline=1&rel=0`}
+      title="Відео"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+      allowFullScreen
+      referrerPolicy="strict-origin-when-cross-origin"
+    />
+  )
+
   return (
     <div>
+      {/* Одна рамка 4:5 для всех слайдов: фото, превью видео и плеер не меняют размер */}
       <div
-        className="relative mb-8 w-full overflow-hidden"
+        className="relative mb-8 aspect-[4/5] w-full overflow-hidden rounded-lg bg-neutral-100"
         onTouchStart={onCardTouchStart}
         onTouchEnd={onCardTouchEnd}
       >
         {currentVideo ? (
-          isPlaying || !currentVideoId ? (
-            <YouTubePlayer url={currentVideo} title="Відео" />
-          ) : (
-            renderVideoPreview()
-          )
+          currentVideoId ? (
+            isPlaying ? renderPlayer() : renderVideoPreview()
+          ) : null
         ) : (
           <button
             type="button"
-            className="block w-full"
+            className="absolute inset-0 block h-full w-full"
             onClick={() => {
               if (currentImage) setOpen(true)
             }}
@@ -306,19 +320,12 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
               <Media
                 priority={current === 0}
                 resource={currentImage}
-                className="w-full"
-                imgClassName="w-full rounded-lg"
+                fill
+                imgClassName="h-full w-full object-cover"
                 size="(min-width: 1024px) 50vw, 100vw"
               />
             ) : null}
           </button>
-        )}
-
-        {/* Плашка «▶ + ВІДЕО» на фото, если в товаре есть видео */}
-        {!currentVideo && hasVideo && (
-          <span className="pointer-events-none absolute bottom-4 left-4 z-[5] rounded-lg border-2 border-neutral-900 bg-white px-5 py-3 text-xl font-extrabold tracking-wide text-red-600 shadow-xl">
-            {t.video}
-          </span>
         )}
 
         {current > 0 && (
@@ -344,6 +351,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
         )}
       </div>
 
+      {/* Ряд миниатюр: выбранная всегда видна */}
       <Carousel setApi={setApi} className="w-full" opts={{ align: 'start', loop: false }}>
         <CarouselContent>
           {gallery.map((item, i) => {
