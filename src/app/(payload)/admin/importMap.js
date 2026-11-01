@@ -36,6 +36,7 @@ import { SupplierImportDashboard as SupplierImportDashboard_761db51eba2666fe6b71
 import { VariantOptionsSelector as VariantOptionsSelector_b91672ccd6e8b071c11142ab941fedfb } from '@payloadcms/plugin-ecommerce/rsc'
 import { PriceCell as PriceCell_e27bf7b8cc50640dcdd584767b8eac3c } from '@payloadcms/plugin-ecommerce/client'
 import { PriceInput as PriceInput_b91672ccd6e8b071c11142ab941fedfb } from '@payloadcms/plugin-ecommerce/rsc'
+import { GalleryRowLabel as GalleryRowLabel_5cf1cb0f7e7cf5eb55870b11725b14fb } from '@/components/admin/GalleryRowLabel'
 import { CharacteristicsField as CharacteristicsField_7f434a1f98b114ed70ea967f8ac926a9 } from '@/components/admin/CharacteristicsField'
 import { GoogleField as GoogleField_96f6b76d9d836c1627b85e8ae317ecd7 } from '@/components/admin/GoogleField'
 import { CategoryTreeField as CategoryTreeField_082c042dc049e2e98f8bacfb84a5503e } from '@/components/admin/CategoryTreeField'
@@ -86,6 +87,7 @@ export const importMap = {
   "@payloadcms/plugin-ecommerce/rsc#VariantOptionsSelector": VariantOptionsSelector_b91672ccd6e8b071c11142ab941fedfb,
   "@payloadcms/plugin-ecommerce/client#PriceCell": PriceCell_e27bf7b8cc50640dcdd584767b8eac3c,
   "@payloadcms/plugin-ecommerce/rsc#PriceInput": PriceInput_b91672ccd6e8b071c11142ab941fedfb,
+  "@/components/admin/GalleryRowLabel#GalleryRowLabel": GalleryRowLabel_5cf1cb0f7e7cf5eb55870b11725b14fb,
   "@/components/admin/CharacteristicsField#CharacteristicsField": CharacteristicsField_7f434a1f98b114ed70ea967f8ac926a9,
   "@/components/admin/GoogleField#GoogleField": GoogleField_96f6b76d9d836c1627b85e8ae317ecd7,
   "@/components/admin/CategoryTreeField#CategoryTreeField": CategoryTreeField_082c042dc049e2e98f8bacfb84a5503e,
