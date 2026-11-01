@@ -159,6 +159,11 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
               name: 'gallery',
               type: 'array',
               minRows: 1,
+              admin: {
+                components: {
+                  RowLabel: '@/components/admin/GalleryRowLabel#GalleryRowLabel',
+                },
+              },
               fields: [
                 {
                   name: 'mediaType',
