@@ -20,6 +20,10 @@ type Pt = { x: number; y: number }
 const MIN_ZOOM = 1
 const MAX_ZOOM = 4
 
+// Общие настройки плеера: полный экран разрешён (кнопка YouTube будет доступна)
+const PLAYER_ALLOW =
+  'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen'
+
 export const Gallery: React.FC<Props> = ({ gallery }) => {
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -37,8 +41,8 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       }
 
   const [current, setCurrent] = useState(0)
-  // Номер слайда, на котором пользователь нажал ▶ в карточке
-  const [playingIndex, setPlayingIndex] = useState<number | null>(null)
+  // Запущен ли плеер на текущем слайде (по нажатию ▶). Сбрасывается при смене слайда
+  const [playing, setPlaying] = useState(false)
   const [api, setApi] = useState<CarouselApi>()
   // Большой просмотр открыт (для фото и для видео)
   const [open, setOpen] = useState(false)
@@ -55,14 +59,13 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
   const total = gallery.length
   const currentItem = gallery[current]
 
-  // Первое обычное фото товара: по нему делаем превью видео, если нет кадра
+  // Первое обычное фото товара: запасная обложка, если нет кадра YouTube
   const coverItem = gallery.find(
     (item) => item.mediaType !== 'youtube' && typeof item.image === 'object' && item.image,
   )
   const coverImage =
     coverItem && typeof coverItem.image === 'object' && coverItem.image ? coverItem.image : undefined
 
-  // Текущий слайд: либо фото, либо видео YouTube
   const currentImage =
     currentItem && typeof currentItem.image === 'object' && currentItem.image
       ? currentItem.image
@@ -70,9 +73,8 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
   const currentVideo =
     currentItem?.mediaType === 'youtube' && currentItem.youtubeUrl ? currentItem.youtubeUrl : undefined
   const currentVideoId = currentVideo ? getYouTubeId(currentVideo) : null
-  const isPlaying = playingIndex === current
 
-  // Фото нельзя сдвинуть дальше его собственного края: край не уходит за край экрана
+  // Фото нельзя сдвинуть дальше его собственного края
   const clampPos = (p: Pt, z: number): Pt => {
     const el = imgRef.current
     const w = el ? el.offsetWidth : window.innerWidth
@@ -109,9 +111,9 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     resetZoom()
   }
 
-  // При смене слайда плеер в карточке закрывается
+  // При смене слайда плеер выключается: на видео всегда сначала обложка с ▶
   useEffect(() => {
-    setPlayingIndex(null)
+    setPlaying(false)
   }, [current])
 
   // Выбор варианта: переходим к фото, привязанному к варианту
@@ -169,7 +171,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     if (dx > 40) goPrev()
   }
 
-  // Колесо мыши: зум в точку под курсором, как на картах
+  // Колесо мыши: зум в точку под курсором
   const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
     const cx = e.clientX - (rect.left + rect.width / 2)
@@ -246,20 +248,29 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     }
   }
 
-  // Превью видео в карточке: кадр из самого видео, та же рамка, что у фото
-  const renderVideoPreview = () => (
+  // Обложка видео: кадр из YouTube (или первое фото товара), с кнопкой ▶
+  const renderCover = (cropToFrame: boolean) => (
     <button
       type="button"
-      className="absolute inset-0 block h-full w-full"
-      onClick={() => setPlayingIndex(current)}
+      className={cropToFrame ? 'absolute inset-0 block h-full w-full' : 'relative block w-full'}
+      onClick={() => setPlaying(true)}
       aria-label={t.openVideo}
     >
-      <img
-        src={`https://i.ytimg.com/vi/${currentVideoId}/hqdefault.jpg`}
-        alt=""
-        className="absolute inset-0 h-full w-full object-cover"
-        loading="eager"
-      />
+      {cropToFrame ? (
+        <img
+          src={`https://i.ytimg.com/vi/${currentVideoId}/hqdefault.jpg`}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          loading="eager"
+        />
+      ) : (
+        <img
+          src={`https://i.ytimg.com/vi/${currentVideoId}/hqdefault.jpg`}
+          alt=""
+          className="block h-full w-full object-cover"
+          loading="eager"
+        />
+      )}
       <span className="absolute inset-0 flex items-center justify-center">
         <span className="flex size-16 items-center justify-center rounded-full bg-black/70 text-white shadow-lg">
           <Play className="size-7 fill-white text-white" />
@@ -268,13 +279,14 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     </button>
   )
 
-  // Плеер YouTube в карточке: заполняет рамку целиком
-  const renderPlayer = () => (
+  // Плеер YouTube: полный экран разрешён (кнопка на плеере работает)
+  const renderPlayer = (autoplay: boolean) => (
     <iframe
       className="absolute inset-0 h-full w-full"
-      src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&playsinline=1&rel=0`}
+      src={`https://www.youtube.com/embed/${currentVideoId}?${autoplay ? 'autoplay=1&' : ''}playsinline=1&rel=0`}
       title="Відео"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allow={PLAYER_ALLOW}
+      allowFullScreen
       referrerPolicy="strict-origin-when-cross-origin"
     />
   )
@@ -289,7 +301,11 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       >
         {currentVideo ? (
           currentVideoId ? (
-            isPlaying ? renderPlayer() : renderVideoPreview()
+            playing && !open ? (
+              renderPlayer(true)
+            ) : (
+              renderCover(true)
+            )
           ) : null
         ) : (
           <button
@@ -369,21 +385,13 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       {open && (
         <div className="fixed inset-0 z-[100] bg-black/90">
           {currentVideo ? (
-            // Видео в большом просмотре: плеер по центру, сразу с воспроизведением
             <div className="flex h-full w-full items-center justify-center p-4">
               {currentVideoId ? (
                 <div
                   className="relative aspect-video overflow-hidden rounded-lg bg-black"
                   style={{ width: 'min(95vw, 160vh)' }}
                 >
-                  <iframe
-                    className="absolute inset-0 h-full w-full"
-                    src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&playsinline=1&rel=0`}
-                    title="Відео"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-                    allowFullScreen
-                    referrerPolicy="strict-origin-when-cross-origin"
-                  />
+                  {playing ? renderPlayer(true) : renderCover(true)}
                 </div>
               ) : null}
             </div>
