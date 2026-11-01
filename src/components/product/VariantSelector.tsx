@@ -4,8 +4,60 @@ import type { Product } from '@/payload-types'
 
 import { createUrl } from '@/utilities/createUrl'
 import clsx from 'clsx'
+import Image from 'next/image'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import React from 'react'
+
+type MediaLike = { url?: string | null; alt?: string | null }
+type PhotoSettings = Record<string, { isVariant?: boolean; photos?: boolean }>
+
+// Достаёт id из связи: бывает либо сам id, либо объект с id
+const idOf = (value: unknown): string | null => {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'object') {
+    const id = (value as { id?: unknown }).id
+    return id === undefined || id === null ? null : String(id)
+  }
+  return String(value)
+}
+
+// Фото для значения: первое фото галереи, привязанное к этому значению
+const photoForOption = (product: Product, optionID: string): MediaLike | null => {
+  const item = (product.gallery ?? []).find(
+    (g) => g && idOf(g.variantOption) === optionID && typeof g.image === 'object' && g.image,
+  )
+  if (!item || typeof item.image !== 'object' || !item.image) return null
+  const media = item.image as MediaLike
+  return media.url ? media : null
+}
+
+// Красный крест поверх кнопки, если вариант нет в наличии
+const OutOfStockCross = () => (
+  <svg
+    aria-hidden="true"
+    className="pointer-events-none absolute inset-0 h-full w-full"
+    preserveAspectRatio="none"
+    viewBox="0 0 100 100"
+  >
+    <line
+      x1="0"
+      y1="0"
+      x2="100"
+      y2="100"
+      stroke="#dc2626"
+      strokeWidth="2"
+      vectorEffect="non-scaling-stroke"
+    />
+    <line
+      x1="100"
+      y1="0"
+      x2="0"
+      y2="100"
+      stroke="#dc2626"
+      strokeWidth="2"
+      vectorEffect="non-scaling-stroke"
+    />
+  </svg>
+)
 
 export function VariantSelector({ product }: { product: Product }) {
   const router = useRouter()
@@ -19,142 +71,150 @@ export function VariantSelector({ product }: { product: Product }) {
     return null
   }
 
-  return variantTypes?.map((type) => {
-    if (!type || typeof type !== 'object') {
-      return <React.Fragment key={Math.random()} />
-    }
+  // Настройки «Фото потрібні» по характеристикам (ключ: id характеристики)
+  const settings =
+    (product as unknown as { variantSettings?: PhotoSettings | null }).variantSettings ?? {}
 
-    const options = type.options?.docs
+  return (
+    <>
+      {variantTypes?.map((type) => {
+        if (!type || typeof type !== 'object') return null
 
-    if (!options || !Array.isArray(options) || !options.length) {
-      return <React.Fragment key={type.id} />
-    }
+        const options = type.options?.docs
+        if (!options || !Array.isArray(options) || !options.length) return null
 
-    return (
-      <dl className="" key={type.id}>
-        <dt className="mb-3 text-sm font-medium text-neutral-900">{type.label}</dt>
-        <dd className="flex flex-wrap gap-2">
-          {options.map((option) => {
-            if (!option || typeof option !== 'object') {
-              return <React.Fragment key={Math.random()} />
-            }
+        // Имя типа = char-<id характеристики>: по нему находим настройку фото
+        const charId = type.name?.startsWith('char-') ? type.name.slice(5) : ''
+        const withPhotos = Boolean(settings[charId]?.photos)
 
-            const optionID = option.id
-            const optionKeyLowerCase = type.name
+        return (
+          <dl key={type.id}>
+            <dt className="mb-3 text-sm font-medium text-neutral-900">{type.label}</dt>
+            <dd className="flex flex-wrap gap-2">
+              {options.map((option) => {
+                if (!option || typeof option !== 'object') return null
 
-            // Берём текущие параметры из адреса, чтобы не потерять другие выборы
-            const optionSearchParams = new URLSearchParams(searchParams.toString())
+                const optionID = String(option.id)
+                const label = option.label ?? ''
 
-            // Убираем вариант и картинку, чтобы цикл работал правильно
-            optionSearchParams.delete('variant')
-            optionSearchParams.delete('image')
+                // Берём текущие параметры из адреса, чтобы не потерять другие выборы
+                const optionSearchParams = new URLSearchParams(searchParams.toString())
+                optionSearchParams.delete('variant')
+                optionSearchParams.delete('image')
+                optionSearchParams.set(type.name, optionID)
 
-            // Подставляем текущую опцию: так видно, как изменится адрес при клике
-            optionSearchParams.set(optionKeyLowerCase, String(optionID))
+                const currentOptions = Array.from(optionSearchParams.values())
 
-            const currentOptions = Array.from(optionSearchParams.values())
+                let isAvailableForSale = true
 
-            let isAvailableForSale = true
-
-            // Ищем подходящий вариант
-            if (variants) {
-              const matchingVariant = variants
-                .filter((variant) => typeof variant === 'object')
-                .find((variant) => {
-                  if (!variant.options || !Array.isArray(variant.options)) return false
-
-                  // Все опции варианта должны совпадать с текущими параметрами адреса
-                  return variant.options.every((variantOption) => {
-                    if (typeof variantOption !== 'object')
-                      return currentOptions.includes(String(variantOption))
-
-                    return currentOptions.includes(String(variantOption.id))
+                // Ищем подходящий вариант
+                const matchingVariant = variants
+                  ?.filter((variant) => typeof variant === 'object')
+                  .find((variant) => {
+                    if (!variant.options || !Array.isArray(variant.options)) return false
+                    return variant.options.every((variantOption) => {
+                      if (typeof variantOption !== 'object')
+                        return currentOptions.includes(String(variantOption))
+                      return currentOptions.includes(String(variantOption.id))
+                    })
                   })
-                })
 
-              if (matchingVariant) {
-                // Нашли вариант: записываем его id в адрес
-                optionSearchParams.set('variant', String(matchingVariant.id))
-
-                isAvailableForSale = Boolean(
-                  matchingVariant.inventory && matchingVariant.inventory > 0,
-                )
-              }
-            }
-
-            const optionUrl = createUrl(pathname, optionSearchParams)
-
-            // Кнопка выбрана, если её значение в адресе и товар есть в наличии
-            const isActive =
-              Boolean(isAvailableForSale) &&
-              searchParams.get(optionKeyLowerCase) === String(optionID)
-
-            return (
-              <button
-                type="button"
-                key={option.id}
-                aria-pressed={isActive}
-                aria-disabled={!isAvailableForSale}
-                disabled={!isAvailableForSale}
-                title={
-                  isAvailableForSale
-                    ? option.label ?? ''
-                    : `${option.label ?? ''} — немає в наявності`
+                if (matchingVariant) {
+                  optionSearchParams.set('variant', String(matchingVariant.id))
+                  isAvailableForSale = Boolean(
+                    matchingVariant.inventory && matchingVariant.inventory > 0,
+                  )
                 }
-                onClick={() => {
-                  router.replace(`${optionUrl}`, {
-                    scroll: false,
-                  })
-                }}
-                className={clsx(
-                  'relative min-w-[52px] overflow-hidden rounded-md border px-4 py-2 text-sm font-medium transition-colors',
-                  {
-                    // Выбрано: тёмно-бирюзовый, как кнопка «Купить», белый текст
-                    'border-[#0b7a78] bg-[#0b7a78] text-white shadow-sm': isActive,
-                    // Есть в наличии, но не выбрано: белый фон, тёмный текст, рамка
-                    'border-neutral-300 bg-white text-neutral-900 hover:border-[#0b7a78] hover:text-[#0b7a78]':
-                      isAvailableForSale && !isActive,
-                    // Нет в наличии: серый фон, серый текст, курсор «запрещено»
-                    'cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400':
-                      !isAvailableForSale,
-                  },
-                )}
-              >
-                {option.label}
 
-                {/* Красный крест поверх кнопки, если нет в наличии */}
-                {!isAvailableForSale && (
-                  <svg
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 h-full w-full"
-                    preserveAspectRatio="none"
-                    viewBox="0 0 100 40"
+                const optionUrl = createUrl(pathname, optionSearchParams)
+                const isActive =
+                  isAvailableForSale && searchParams.get(type.name) === optionID
+
+                const onSelect = () => {
+                  router.replace(`${optionUrl}`, { scroll: false })
+                }
+
+                const photo = withPhotos ? photoForOption(product, optionID) : null
+
+                // Значение с фото: миниатюра и подпись под ней
+                if (photo?.url) {
+                  return (
+                    <button
+                      type="button"
+                      key={optionID}
+                      aria-pressed={isActive}
+                      disabled={!isAvailableForSale}
+                      title={isAvailableForSale ? label : `${label} — немає в наявності`}
+                      onClick={onSelect}
+                      className={clsx('flex w-16 flex-col items-center gap-1 text-xs', {
+                        'cursor-not-allowed': !isAvailableForSale,
+                      })}
+                    >
+                      <span
+                        className={clsx(
+                          'relative block size-16 overflow-hidden rounded-md border-2 transition-colors',
+                          {
+                            'border-[#0b7a78]': isActive,
+                            'border-neutral-300 hover:border-[#0b7a78]':
+                              isAvailableForSale && !isActive,
+                            'border-neutral-200': !isAvailableForSale,
+                          },
+                        )}
+                      >
+                        <Image
+                          src={photo.url}
+                          alt={photo.alt || label}
+                          fill
+                          sizes="64px"
+                          className={clsx('object-cover', {
+                            'opacity-40 grayscale': !isAvailableForSale,
+                          })}
+                        />
+                        {!isAvailableForSale && <OutOfStockCross />}
+                      </span>
+                      <span
+                        className={clsx('text-center leading-tight', {
+                          'font-semibold text-[#0b7a78]': isActive,
+                          'text-neutral-900': isAvailableForSale && !isActive,
+                          'text-neutral-400 line-through': !isAvailableForSale,
+                        })}
+                      >
+                        {label}
+                      </span>
+                    </button>
+                  )
+                }
+
+                // Значение без фото: обычная текстовая кнопка
+                return (
+                  <button
+                    type="button"
+                    key={optionID}
+                    aria-pressed={isActive}
+                    aria-disabled={!isAvailableForSale}
+                    disabled={!isAvailableForSale}
+                    title={isAvailableForSale ? label : `${label} — немає в наявності`}
+                    onClick={onSelect}
+                    className={clsx(
+                      'relative min-w-[52px] overflow-hidden rounded-md border px-4 py-2 text-sm font-medium transition-colors',
+                      {
+                        'border-[#0b7a78] bg-[#0b7a78] text-white shadow-sm': isActive,
+                        'border-neutral-300 bg-white text-neutral-900 hover:border-[#0b7a78] hover:text-[#0b7a78]':
+                          isAvailableForSale && !isActive,
+                        'cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400':
+                          !isAvailableForSale,
+                      },
+                    )}
                   >
-                    <line
-                      x1="0"
-                      y1="0"
-                      x2="100"
-                      y2="40"
-                      stroke="#dc2626"
-                      strokeWidth="2"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                    <line
-                      x1="100"
-                      y1="0"
-                      x2="0"
-                      y2="40"
-                      stroke="#dc2626"
-                      strokeWidth="2"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  </svg>
-                )}
-              </button>
-            )
-          })}
-        </dd>
-      </dl>
-    )
-  })
+                    {label}
+                    {!isAvailableForSale && <OutOfStockCross />}
+                  </button>
+                )
+              })}
+            </dd>
+          </dl>
+        )
+      })}
+    </>
+  )
 }

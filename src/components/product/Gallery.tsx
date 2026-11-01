@@ -25,8 +25,16 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
   const pathname = usePathname()
   const isRu = pathname === '/ru' || pathname.startsWith('/ru/')
   const t = isRu
-    ? { pinch: 'Щипок пальцами — зум', wheel: 'Колесо мыши — зум, фото можно тянуть' }
-    : { pinch: 'Щипок пальцями — збільшення', wheel: 'Колесо миші — збільшення, фото можна тягнути' }
+    ? {
+        pinch: 'Щипок пальцами — зум',
+        wheel: 'Колесо мыши — зум, фото можно тянуть',
+        video: '+ видео',
+      }
+    : {
+        pinch: 'Щипок пальцями — збільшення',
+        wheel: 'Колесо миші — збільшення, фото можна тягнути',
+        video: '+ відео',
+      }
 
   const [current, setCurrent] = useState(0)
   const [api, setApi] = useState<CarouselApi>()
@@ -44,6 +52,9 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
 
   const total = gallery.length
   const currentItem = gallery[current]
+
+  // Есть ли в товаре видео: тогда на главном фото показываем плашку «+ відео»
+  const hasVideo = gallery.some((item) => item.mediaType === 'youtube' && item.youtubeUrl)
 
   // Текущий слайд: либо фото, либо видео YouTube
   const currentImage =
@@ -253,6 +264,13 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
           </button>
         )}
 
+        {/* Плашка «+ відео» на фото, если в товаре есть видео */}
+        {!currentVideo && hasVideo && (
+          <span className="pointer-events-none absolute bottom-3 left-3 z-[5] rounded-full bg-black/70 px-3 py-1 text-xs font-medium text-white">
+            {t.video}
+          </span>
+        )}
+
         {current > 0 && (
           <button
             type="button"
@@ -291,6 +309,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
                 key={`${item.id ?? i}`}
                 onClick={() => setCurrent(i)}
               >
+                {/* Миниатюра всегда квадратная: и фото, и видео */}
                 <div className="relative aspect-square w-full overflow-hidden rounded-md">
                   <GridTileImage
                     active={i === current}
