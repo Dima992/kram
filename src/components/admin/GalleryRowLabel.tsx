@@ -3,25 +3,18 @@
 import { useRowLabel } from '@payloadcms/ui'
 import React from 'react'
 
-// Подпись строки галереи: «Чорний · фото 2», «Загальне · фото 1», «Відео»
+// Подпись строки галереи: название выбранного варианта («Чорний»), «Відео» или «Загальне»
 export const GalleryRowLabel: React.FC = () => {
-  const { data, rowNumber } = useRowLabel<{
+  const { data } = useRowLabel<{
     mediaType?: string
     variantOption?: unknown
   }>()
 
   if (data?.mediaType === 'youtube') return <span>Відео</span>
 
-  const opt = data?.variantOption
+  const opt = data?.variantOption as { label?: unknown; title?: unknown } | string | null | undefined
   const name =
-    typeof opt === 'object' && opt !== null
-      ? String((opt as { label?: unknown; title?: unknown }).label ?? (opt as { title?: unknown }).title ?? '')
-      : ''
+    typeof opt === 'object' && opt !== null ? String(opt.label ?? opt.title ?? '') : ''
 
-  const label = name || 'Загальне'
-  return (
-    <span>
-      {label} · фото {(rowNumber ?? 0) + 1}
-    </span>
-  )
+  return <span>{name || 'Загальне'}</span>
 }
