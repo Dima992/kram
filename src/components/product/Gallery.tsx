@@ -72,6 +72,10 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
   const currentVideoId = currentVideo ? getYouTubeId(currentVideo) : null
   const isPlaying = playingIndex === current
 
+  // Большое окно показываем только для фото. На видео оно не нужно и не должно «висеть» в фоне
+  const hasPhoto = Boolean(currentImage)
+  const viewerOpen = open && hasPhoto
+
   // Фото нельзя сдвинуть дальше его собственного края: край не уходит за край экрана
   const clampPos = (p: Pt, z: number): Pt => {
     const el = imgRef.current
@@ -109,6 +113,11 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     resetZoom()
   }
 
+  // Если пришли на видео, большое окно закрываем: страница снова прокручивается
+  useEffect(() => {
+    if (!hasPhoto) setOpen(false)
+  }, [hasPhoto])
+
   // При смене слайда плеер закрывается: при возврате видно превью, а не плеер
   useEffect(() => {
     setPlayingIndex(null)
@@ -141,9 +150,9 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     if (api) api.scrollTo(current)
   }, [current, api])
 
-  // Клавиши ← → и Esc, блокировка прокрутки страницы под окном
+  // Клавиши ← → и Esc, блокировка прокрутки страницы — только пока окно реально открыто
   useEffect(() => {
-    if (!open) return
+    if (!viewerOpen) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close()
       if (e.key === 'ArrowLeft') goPrev()
@@ -155,7 +164,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       window.removeEventListener('keydown', onKey)
       document.body.style.overflow = ''
     }
-  }, [open, total])
+  }, [viewerOpen, total])
 
   // Свайп на обычной карточке фото
   const onCardTouchStart = (e: React.TouchEvent) => {
@@ -289,8 +298,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       className="absolute inset-0 h-full w-full"
       src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&playsinline=1&rel=0`}
       title="Відео"
-      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-      allowFullScreen
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
       referrerPolicy="strict-origin-when-cross-origin"
     />
   )
@@ -382,8 +390,8 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
         </CarouselContent>
       </Carousel>
 
-      {/* Большое окно фото (для видео не нужно, оно открывается на месте) */}
-      {open && currentImage && (
+      {/* Большое окно фото: только для фото и только пока оно открыто */}
+      {viewerOpen && (
         <div className="fixed inset-0 z-[100] bg-black/90">
           <div
             className="flex h-full w-full touch-none select-none items-center justify-center overflow-hidden"
