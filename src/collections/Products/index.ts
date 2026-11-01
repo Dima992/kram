@@ -49,7 +49,7 @@ const extractText = (node: unknown): string => {
 // Заполняет пустые SEO-поля при сохранении товара.
 // Работает для любого товара: созданного вручную, импортом или через API.
 const fillEmptySeo = ({ data }: { data: any }) => {
- // Если товар сохраняют частично (без названия), не трогаем SEO
+  // Если товар сохраняют частично (без названия), не трогаем SEO
   if (!data || data.title === undefined) return data
 
   const title = typeof data.title === 'string' ? data.title.trim() : ''
@@ -76,6 +76,36 @@ const fillEmptySeo = ({ data }: { data: any }) => {
   }
 
   data.meta = meta
+  return data
+}
+
+// Сохраняет название выбранного варианта в каждую строку галереи.
+// Подпись строки в админке берёт это поле, поэтому не нужно загружать вариант отдельно.
+const fillVariantLabels = async ({ data, req }: { data: any; req: any }) => {
+  if (!data || !Array.isArray(data.gallery)) return data
+
+  for (const row of data.gallery as any[]) {
+    const optionId =
+      row?.variantOption && typeof row.variantOption === 'object'
+        ? row.variantOption.id
+        : row?.variantOption
+
+    row.variantLabel = ''
+    if (!optionId) continue
+
+    try {
+      const option: any = await req.payload.findByID({
+        collection: 'variantOptions',
+        id: optionId,
+        depth: 0,
+        req,
+      })
+      row.variantLabel = option?.label ?? ''
+    } catch {
+      // Вариант не нашли: подпись будет «Загальне»
+    }
+  }
+
   return data
 }
 
@@ -229,6 +259,15 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
                         in: [],
                       },
                     }
+                  },
+                },
+                {
+                  // Название варианта, заполняется автоматически при сохранении (для подписей в админке)
+                  name: 'variantLabel',
+                  type: 'text',
+                  admin: {
+                    hidden: true,
+                    readOnly: true,
                   },
                 },
               ],
@@ -516,7 +555,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
         position: 'sidebar',
       },
     },
-        {
+    {
       name: 'sku',
       type: 'text',
       label: 'Артикул (SKU)',
@@ -632,8 +671,11 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       // SEO: заполняем пустые поля (работает и для импорта, и для API)
       ({ data }) => fillEmptySeo({ data }),
 
+      // Название варианта в каждую строку галереи (для подписей в админке)
+      ({ data, req }) => fillVariantLabels({ data, req }),
+
       async ({ data, req }) => {
-                // Если цену не передали (например, при создании вариантов), не пересчитываем
+        // Если цену не передали (например, при создании вариантов), не пересчитываем
         if (data?.basePrice === undefined) return data
         if (!data?.basePrice) {
           data.priceInUAH = 0
