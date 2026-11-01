@@ -6,7 +6,8 @@ import { GridTileImage } from '@/components/Grid/tile'
 import { Media } from '@/components/Media'
 import { YouTubePlayer } from '@/components/YouTubePlayer'
 import { Carousel, CarouselApi, CarouselContent, CarouselItem } from '@/components/ui/carousel'
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { getYouTubeId } from '@/utilities/youtube'
+import { ChevronLeft, ChevronRight, Play, X } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { DefaultDocumentIDType } from 'payload'
 import React, { useEffect, useRef, useState } from 'react'
@@ -29,14 +30,18 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
         pinch: 'Щипок пальцами — зум',
         wheel: 'Колесо мыши — зум, фото можно тянуть',
         video: '▶ + ВИДЕО',
+        openVideo: 'Открыть видео',
       }
     : {
         pinch: 'Щипок пальцями — збільшення',
         wheel: 'Колесо миші — збільшення, фото можна тягнути',
         video: '▶ + ВІДЕО',
+        openVideo: 'Відкрити відео',
       }
 
   const [current, setCurrent] = useState(0)
+  // Номер слайда, на котором пользователь нажал «play» (плеер открыт только там)
+  const [playingIndex, setPlayingIndex] = useState<number | null>(null)
   const [api, setApi] = useState<CarouselApi>()
   const [open, setOpen] = useState(false)
   const [zoom, setZoom] = useState(1)
@@ -63,6 +68,8 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       : undefined
   const currentVideo =
     currentItem?.mediaType === 'youtube' && currentItem.youtubeUrl ? currentItem.youtubeUrl : undefined
+  const currentVideoId = currentVideo ? getYouTubeId(currentVideo) : null
+  const isPlaying = playingIndex === current
 
   // Фото нельзя сдвинуть дальше его собственного края: край не уходит за край экрана
   const clampPos = (p: Pt, z: number): Pt => {
@@ -234,6 +241,28 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     }
   }
 
+  // Большая кнопка-превью: и для фото, и для видео одинакового размера
+  const renderVideoPreview = () => (
+    <button
+      type="button"
+      className="relative block aspect-[4/5] w-full overflow-hidden rounded-lg bg-black"
+      onClick={() => setPlayingIndex(current)}
+      aria-label={t.openVideo}
+    >
+      <img
+        src={`https://i.ytimg.com/vi/${currentVideoId}/hqdefault.jpg`}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
+        loading="eager"
+      />
+      <span className="absolute inset-0 flex items-center justify-center">
+        <span className="flex size-16 items-center justify-center rounded-full bg-black/70 text-white shadow-lg">
+          <Play className="size-7 fill-white text-white" />
+        </span>
+      </span>
+    </button>
+  )
+
   return (
     <div>
       <div
@@ -242,7 +271,11 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
         onTouchEnd={onCardTouchEnd}
       >
         {currentVideo ? (
-          <YouTubePlayer url={currentVideo} title="Відео" />
+          isPlaying || !currentVideoId ? (
+            <YouTubePlayer url={currentVideo} title="Відео" />
+          ) : (
+            renderVideoPreview()
+          )
         ) : (
           <button
             type="button"
@@ -264,9 +297,9 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
           </button>
         )}
 
-        {/* Крупная красная плашка «▶ + ВИДЕО» на главном фото, если в товаре есть видео */}
+        {/* Плашка «▶ + ВІДЕО» на фото, если в товаре есть видео */}
         {!currentVideo && hasVideo && (
-          <span className="pointer-events-none absolute bottom-4 left-4 z-[5] rounded-full bg-white px-4 py-2 text-base font-bold tracking-wide text-red-600 shadow-lg ring-2 ring-red-600">
+          <span className="pointer-events-none absolute bottom-4 left-4 z-[5] rounded-lg border-2 border-neutral-900 bg-white px-5 py-3 text-xl font-extrabold tracking-wide text-red-600 shadow-xl">
             {t.video}
           </span>
         )}
@@ -276,7 +309,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
             type="button"
             onClick={goPrev}
             aria-label="Предыдущее фото"
-            className="absolute top-1/2 left-2 -translate-y-1/2 rounded-full bg-background/80 p-2 shadow hover:bg-background"
+            className="absolute top-1/2 left-2 z-[6] -translate-y-1/2 rounded-full bg-background/80 p-2 shadow hover:bg-background"
           >
             <ChevronLeft className="size-5" />
           </button>
@@ -287,7 +320,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
             type="button"
             onClick={goNext}
             aria-label="Следующее фото"
-            className="absolute top-1/2 right-2 -translate-y-1/2 rounded-full bg-background/80 p-2 shadow hover:bg-background"
+            className="absolute top-1/2 right-2 z-[6] -translate-y-1/2 rounded-full bg-background/80 p-2 shadow hover:bg-background"
           >
             <ChevronRight className="size-5" />
           </button>
