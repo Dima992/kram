@@ -37,14 +37,14 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       }
 
   const [current, setCurrent] = useState(0)
-  // Номер слайда, на котором пользователь нажал ▶ (плеер открыт только там)
+  // Номер слайда, на котором пользователь нажал ▶ в карточке
   const [playingIndex, setPlayingIndex] = useState<number | null>(null)
   const [api, setApi] = useState<CarouselApi>()
+  // Большой просмотр открыт (для фото и для видео)
   const [open, setOpen] = useState(false)
   const [zoom, setZoom] = useState(1)
   const [pos, setPos] = useState<Pt>({ x: 0, y: 0 })
 
-  // Контейнер самого фото: по его размеру считаем, докуда можно сдвигать
   const imgRef = useRef<HTMLDivElement>(null)
   const pointers = useRef(new Map<number, Pt>())
   const drag = useRef<{ x: number; y: number; baseX: number; baseY: number } | null>(null)
@@ -55,6 +55,13 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
   const total = gallery.length
   const currentItem = gallery[current]
 
+  // Первое обычное фото товара: по нему делаем превью видео, если нет кадра
+  const coverItem = gallery.find(
+    (item) => item.mediaType !== 'youtube' && typeof item.image === 'object' && item.image,
+  )
+  const coverImage =
+    coverItem && typeof coverItem.image === 'object' && coverItem.image ? coverItem.image : undefined
+
   // Текущий слайд: либо фото, либо видео YouTube
   const currentImage =
     currentItem && typeof currentItem.image === 'object' && currentItem.image
@@ -64,10 +71,6 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     currentItem?.mediaType === 'youtube' && currentItem.youtubeUrl ? currentItem.youtubeUrl : undefined
   const currentVideoId = currentVideo ? getYouTubeId(currentVideo) : null
   const isPlaying = playingIndex === current
-
-  // Большое окно показываем только для фото и только пока оно открыто
-  const hasPhoto = Boolean(currentImage)
-  const viewerOpen = open && hasPhoto
 
   // Фото нельзя сдвинуть дальше его собственного края: край не уходит за край экрана
   const clampPos = (p: Pt, z: number): Pt => {
@@ -106,12 +109,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     resetZoom()
   }
 
-  // Если пришли на видео, большое окно закрываем: страница снова прокручивается
-  useEffect(() => {
-    if (!hasPhoto) setOpen(false)
-  }, [hasPhoto])
-
-  // При смене слайда плеер закрывается: при возврате видно превью, а не плеер
+  // При смене слайда плеер в карточке закрывается
   useEffect(() => {
     setPlayingIndex(null)
   }, [current])
@@ -143,9 +141,9 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     if (api) api.scrollTo(current)
   }, [current, api])
 
-  // Клавиши ← → и Esc, блокировка прокрутки страницы — только пока окно реально открыто
+  // Клавиши ← → и Esc, блокировка прокрутки — только пока большой просмотр открыт
   useEffect(() => {
-    if (!viewerOpen) return
+    if (!open) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close()
       if (e.key === 'ArrowLeft') goPrev()
@@ -157,9 +155,9 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       window.removeEventListener('keydown', onKey)
       document.body.style.overflow = ''
     }
-  }, [viewerOpen, total])
+  }, [open, total])
 
-  // Свайп на обычной карточке фото
+  // Свайп на обычной карточке
   const onCardTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX
   }
@@ -174,7 +172,6 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
   // Колесо мыши: зум в точку под курсором, как на картах
   const onWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect()
-    // Положение курсора относительно центра окна
     const cx = e.clientX - (rect.left + rect.width / 2)
     const cy = e.clientY - (rect.top + rect.height / 2)
 
@@ -182,13 +179,12 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     const z2 = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom + (e.deltaY < 0 ? 0.25 : -0.25)))
     if (z2 === z1) return
 
-    // Сдвигаем фото так, чтобы точка под курсором осталась на месте
     const k = z2 / z1
     setZoom(z2)
     setPos(clampPos({ x: cx - (cx - pos.x) * k, y: cy - (cy - pos.y) * k }, z2))
   }
 
-  // Большое окно: щипок (телефон), перетаскивание, свайп
+  // Большой просмотр фото: щипок, перетаскивание, свайп
   const onStageDown = (e: React.PointerEvent<HTMLDivElement>) => {
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -209,7 +205,6 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     p.x = e.clientX
     p.y = e.clientY
 
-    // Два пальца: щипок меняет зум
     if (pointers.current.size === 2 && pinch.current) {
       const [a, b] = Array.from(pointers.current.values())
       const dist = Math.hypot(a.x - b.x, a.y - b.y)
@@ -218,7 +213,6 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       return
     }
 
-    // Один палец или мышь: перетаскивание при зуме
     const d = drag.current
     if (!d) return
     const dx = e.clientX - d.x
@@ -239,7 +233,6 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
 
     if (wasSingle && drag.current) {
       const dx = e.clientX - drag.current.x
-      // Свайп влево и вправо при обычном размере
       if (zoom === 1 && Math.abs(dx) > 50 && movedRef.current) {
         if (dx < 0) goNext()
         else goPrev()
@@ -253,7 +246,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     }
   }
 
-  // Превью видео: кадр из самого видео (YouTube), в той же рамке, что и фото
+  // Превью видео в карточке: кадр из самого видео, та же рамка, что у фото
   const renderVideoPreview = () => (
     <button
       type="button"
@@ -275,7 +268,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     </button>
   )
 
-  // Плеер YouTube прямо в рамке: заполняет её целиком, размер не меняется
+  // Плеер YouTube в карточке: заполняет рамку целиком
   const renderPlayer = () => (
     <iframe
       className="absolute inset-0 h-full w-full"
@@ -288,7 +281,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
 
   return (
     <div>
-      {/* Одна рамка 4:5 для всех слайдов: фото, превью видео и плеер не меняют размер */}
+      {/* Одна рамка 4:5 для всех слайдов: фото и видео не меняют размер */}
       <div
         className="relative mb-8 aspect-[4/5] w-full overflow-hidden rounded-lg bg-neutral-100"
         onTouchStart={onCardTouchStart}
@@ -358,7 +351,6 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
                 key={`${item.id ?? i}`}
                 onClick={() => setCurrent(i)}
               >
-                {/* Миниатюра всегда квадратная: и фото, и видео */}
                 <div className="relative aspect-square w-full overflow-hidden rounded-md">
                   <GridTileImage
                     active={i === current}
@@ -373,34 +365,57 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
         </CarouselContent>
       </Carousel>
 
-      {/* Большое окно фото: только для фото и только пока оно открыто */}
-      {viewerOpen && (
+      {/* Большой просмотр: и фото, и видео. Стрелки и закрытие работают для обоих */}
+      {open && (
         <div className="fixed inset-0 z-[100] bg-black/90">
-          <div
-            className="flex h-full w-full touch-none select-none items-center justify-center overflow-hidden"
-            onPointerDown={onStageDown}
-            onPointerMove={onStageMove}
-            onPointerUp={onStageUp}
-            onPointerCancel={onStageUp}
-            onWheel={onWheel}
-            onDragStart={(e) => e.preventDefault()}
-          >
-            <div
-              ref={imgRef}
-              className={zoom > 1 ? 'cursor-grab' : 'cursor-default'}
-              style={{
-                transform: `translate(${pos.x}px, ${pos.y}px) scale(${zoom})`,
-                transition: pointers.current.size > 0 ? 'none' : 'transform 0.2s ease',
-              }}
-            >
-              <Media
-                resource={currentImage}
-                className="w-auto"
-                imgClassName="max-h-[90vh] max-w-[95vw] w-auto object-contain"
-                size="100vw"
-              />
+          {currentVideo ? (
+            // Видео в большом просмотре: плеер по центру, сразу с воспроизведением
+            <div className="flex h-full w-full items-center justify-center p-4">
+              {currentVideoId ? (
+                <div
+                  className="relative aspect-video overflow-hidden rounded-lg bg-black"
+                  style={{ width: 'min(95vw, 160vh)' }}
+                >
+                  <iframe
+                    className="absolute inset-0 h-full w-full"
+                    src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&playsinline=1&rel=0`}
+                    title="Відео"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+                    allowFullScreen
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                </div>
+              ) : null}
             </div>
-          </div>
+          ) : (
+            <div
+              className="flex h-full w-full touch-none select-none items-center justify-center overflow-hidden"
+              onPointerDown={onStageDown}
+              onPointerMove={onStageMove}
+              onPointerUp={onStageUp}
+              onPointerCancel={onStageUp}
+              onWheel={onWheel}
+              onDragStart={(e) => e.preventDefault()}
+            >
+              <div
+                ref={imgRef}
+                className={zoom > 1 ? 'cursor-grab' : 'cursor-default'}
+                style={{
+                  transform: `translate(${pos.x}px, ${pos.y}px) scale(${zoom})`,
+                  transition: pointers.current.size > 0 ? 'none' : 'transform 0.2s ease',
+                }}
+              >
+                {currentImage ? (
+                  <Media
+                    resource={currentImage}
+                    className="w-auto"
+                    imgClassName="max-h-[90vh] max-w-[95vw] w-auto object-contain"
+                    size="100vw"
+                  />
+                ) : null}
+              </div>
+            </div>
+          )}
 
           <button
             type="button"
@@ -437,28 +452,30 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
             </button>
           )}
 
-          {/* Внизу: на ПК кнопки зума и подсказка, на телефоне только подсказка */}
-          <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded bg-black px-3 py-1 text-sm text-white">
-            <button
-              type="button"
-              aria-label="Уменьшить"
-              onClick={() => zoomTo(zoom - 0.5)}
-              className="hidden size-8 rounded hover:bg-white/20 md:block"
-            >
-              −
-            </button>
-            <span className="hidden w-12 text-center md:inline">{Math.round(zoom * 100)}%</span>
-            <button
-              type="button"
-              aria-label="Увеличить"
-              onClick={() => zoomTo(zoom + 0.5)}
-              className="hidden size-8 rounded hover:bg-white/20 md:block"
-            >
-              +
-            </button>
-            <span className="md:hidden">{t.pinch}</span>
-            <span className="hidden md:inline">{t.wheel}</span>
-          </div>
+          {/* Подсказка зума только для фото */}
+          {!currentVideo && (
+            <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded bg-black px-3 py-1 text-sm text-white">
+              <button
+                type="button"
+                aria-label="Уменьшить"
+                onClick={() => zoomTo(zoom - 0.5)}
+                className="hidden size-8 rounded hover:bg-white/20 md:block"
+              >
+                −
+              </button>
+              <span className="hidden w-12 text-center md:inline">{Math.round(zoom * 100)}%</span>
+              <button
+                type="button"
+                aria-label="Увеличить"
+                onClick={() => zoomTo(zoom + 0.5)}
+                className="hidden size-8 rounded hover:bg-white/20 md:block"
+              >
+                +
+              </button>
+              <span className="md:hidden">{t.pinch}</span>
+              <span className="hidden md:inline">{t.wheel}</span>
+            </div>
+          )}
         </div>
       )}
     </div>
