@@ -55,13 +55,6 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
   const total = gallery.length
   const currentItem = gallery[current]
 
-  // Первое обычное фото товара: по нему делаем превью видео
-  const coverItem = gallery.find(
-    (item) => item.mediaType !== 'youtube' && typeof item.image === 'object' && item.image,
-  )
-  const coverImage =
-    coverItem && typeof coverItem.image === 'object' && coverItem.image ? coverItem.image : undefined
-
   // Текущий слайд: либо фото, либо видео YouTube
   const currentImage =
     currentItem && typeof currentItem.image === 'object' && currentItem.image
@@ -72,7 +65,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
   const currentVideoId = currentVideo ? getYouTubeId(currentVideo) : null
   const isPlaying = playingIndex === current
 
-  // Большое окно показываем только для фото. На видео оно не нужно и не должно «висеть» в фоне
+  // Большое окно показываем только для фото и только пока оно открыто
   const hasPhoto = Boolean(currentImage)
   const viewerOpen = open && hasPhoto
 
@@ -260,7 +253,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     }
   }
 
-  // Обложка видео: та же рамка, что у фото (первое фото товара или кадр YouTube)
+  // Превью видео: кадр из самого видео (YouTube), в той же рамке, что и фото
   const renderVideoPreview = () => (
     <button
       type="button"
@@ -268,22 +261,12 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       onClick={() => setPlayingIndex(current)}
       aria-label={t.openVideo}
     >
-      {coverImage ? (
-        <Media
-          priority={current === 0}
-          resource={coverImage}
-          fill
-          imgClassName="h-full w-full object-cover"
-          size="(min-width: 1024px) 50vw, 100vw"
-        />
-      ) : (
-        <img
-          src={`https://i.ytimg.com/vi/${currentVideoId}/hqdefault.jpg`}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-          loading="eager"
-        />
-      )}
+      <img
+        src={`https://i.ytimg.com/vi/${currentVideoId}/hqdefault.jpg`}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
+        loading="eager"
+      />
       <span className="absolute inset-0 flex items-center justify-center">
         <span className="flex size-16 items-center justify-center rounded-full bg-black/70 text-white shadow-lg">
           <Play className="size-7 fill-white text-white" />
