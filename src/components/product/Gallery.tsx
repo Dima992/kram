@@ -61,6 +61,13 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
   // Есть ли в товаре видео: тогда на главном фото показываем плашку
   const hasVideo = gallery.some((item) => item.mediaType === 'youtube' && item.youtubeUrl)
 
+  // Первое обычное фото товара: по его формату делаем превью видео
+  const coverItem = gallery.find(
+    (item) => item.mediaType !== 'youtube' && typeof item.image === 'object' && item.image,
+  )
+  const coverImage =
+    coverItem && typeof coverItem.image === 'object' && coverItem.image ? coverItem.image : undefined
+
   // Текущий слайд: либо фото, либо видео YouTube
   const currentImage =
     currentItem && typeof currentItem.image === 'object' && currentItem.image
@@ -241,20 +248,30 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
     }
   }
 
-  // Большая кнопка-превью: и для фото, и для видео одинакового размера
+  // Превью видео: тот же формат, что и у фото товара (берём первое фото как обложку)
   const renderVideoPreview = () => (
     <button
       type="button"
-      className="relative block aspect-[4/5] w-full overflow-hidden rounded-lg bg-black"
+      className="relative block w-full"
       onClick={() => setPlayingIndex(current)}
       aria-label={t.openVideo}
     >
-      <img
-        src={`https://i.ytimg.com/vi/${currentVideoId}/hqdefault.jpg`}
-        alt=""
-        className="absolute inset-0 h-full w-full object-cover"
-        loading="eager"
-      />
+      {coverImage ? (
+        <Media
+          priority={current === 0}
+          resource={coverImage}
+          className="w-full"
+          imgClassName="w-full rounded-lg"
+          size="(min-width: 1024px) 50vw, 100vw"
+        />
+      ) : (
+        <img
+          src={`https://i.ytimg.com/vi/${currentVideoId}/hqdefault.jpg`}
+          alt=""
+          className="block w-full rounded-lg"
+          loading="eager"
+        />
+      )}
       <span className="absolute inset-0 flex items-center justify-center">
         <span className="flex size-16 items-center justify-center rounded-full bg-black/70 text-white shadow-lg">
           <Play className="size-7 fill-white text-white" />
