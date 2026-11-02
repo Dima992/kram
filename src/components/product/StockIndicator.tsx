@@ -11,11 +11,29 @@ const text = {
   uk: {
     inStock: 'В наявності',
     outOfStock: 'Немає в наявності',
+    backorder: 'Під замовлення',
   },
   ru: {
     inStock: 'В наличии',
     outOfStock: 'Нет в наличии',
+    backorder: 'Под заказ',
   },
+}
+
+// Правильная форма слова «день» по числу
+function daysWord(count: number, locale: 'uk' | 'ru'): string {
+  const lastTwo = count % 100
+  const last = count % 10
+
+  if (locale === 'uk') {
+    if (last === 1 && lastTwo !== 11) return 'день'
+    if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) return 'дні'
+    return 'днів'
+  }
+
+  if (last === 1 && lastTwo !== 11) return 'день'
+  if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) return 'дня'
+  return 'дней'
 }
 
 export const StockIndicator: React.FC<Props> = ({ product }) => {
@@ -43,20 +61,36 @@ export const StockIndicator: React.FC<Props> = ({ product }) => {
     return undefined
   }, [product.enableVariants, searchParams, variants])
 
-  const isInStock = useMemo(() => {
-    if (product.enableVariants) {
-      return Boolean(selectedVariant && (selectedVariant.inventory ?? 0) > 0)
-    }
-    return (product.inventory ?? 0) > 0
-  }, [product.enableVariants, selectedVariant, product.inventory])
+  const label = useMemo<string | null>(() => {
+    const t = text[locale]
+    const status = product.stockStatus ?? 'inStock'
 
-  if (product.enableVariants && !selectedVariant) {
-    return null
-  }
+    // Под заказ: срок показываем, если он заполнен
+    if (status === 'backorder') {
+      const days = product.backorderDays
+      return typeof days === 'number' && days > 0
+        ? `${t.backorder} · ${days} ${daysWord(days, locale)}`
+        : t.backorder
+    }
+
+    if (product.enableVariants) {
+      // Вариант не выбран: показываем только «Немає», если товар так помечен
+      if (!selectedVariant) {
+        return status === 'outOfStock' ? t.outOfStock : null
+      }
+      // Вариант выбран: решает его остаток (0 = нет в наличии)
+      return (selectedVariant.inventory ?? 0) > 0 ? t.inStock : t.outOfStock
+    }
+
+    // Товар без вариантов: решает статус товара
+    return status === 'outOfStock' ? t.outOfStock : t.inStock
+  }, [locale, product.stockStatus, product.backorderDays, product.enableVariants, selectedVariant])
+
+  if (!label) return null
 
   return (
     <div className="uppercase font-mono text-sm font-medium text-gray-500">
-      <p>{isInStock ? text[locale].inStock : text[locale].outOfStock}</p>
+      <p>{label}</p>
     </div>
   )
 }
