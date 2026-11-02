@@ -71,9 +71,11 @@ function VariantHint({ product }: { product: Product }) {
 
 function QuantityControl({
   quantity,
+  max,
   onChange,
 }: {
   quantity: number
+  max: number
   onChange: (value: number) => void
 }) {
   return (
@@ -91,8 +93,8 @@ function QuantityControl({
       <button
         type="button"
         className="h-full w-10 disabled:opacity-40"
-        onClick={() => onChange(Math.min(10, quantity + 1))}
-        disabled={quantity >= 10}
+        onClick={() => onChange(Math.min(max, quantity + 1))}
+        disabled={quantity >= max}
         aria-label="Больше"
       >
         +
@@ -101,9 +103,26 @@ function QuantityControl({
   )
 }
 
-export function ProductDescription({ product }: { product: Product }) {
+// Внутренняя часть: здесь читается выбранный вариант из адреса
+function ProductDescriptionContent({ product }: { product: Product }) {
+  const searchParams = useSearchParams()
   const hasVariants = Boolean(product.enableVariants && product.variants?.docs?.length)
   const [quantity, setQuantity] = useState(1)
+
+  const variants = (product.variants?.docs ?? []).filter(
+    (variant): variant is Variant => typeof variant === 'object' && variant !== null,
+  )
+  const selectedVariant = hasVariants
+    ? variants.find((variant) => String(variant.id) === searchParams.get('variant'))
+    : undefined
+
+  // Лимит: остаток выбранного варианта; у товара без вариантов ограничения нет
+  const maxQuantity = selectedVariant
+    ? Math.max(1, selectedVariant.inventory ?? 0)
+    : Number.POSITIVE_INFINITY
+
+  // Если выбрали вариант с меньшим остатком, количество уменьшаем автоматически
+  const effectiveQuantity = Math.min(quantity, maxQuantity)
 
   return (
     <>
@@ -142,12 +161,16 @@ export function ProductDescription({ product }: { product: Product }) {
         </Suspense>
 
         <div id="buy-block" className="flex items-center gap-3">
-          <QuantityControl quantity={quantity} onChange={setQuantity} />
+          <QuantityControl
+            quantity={effectiveQuantity}
+            max={maxQuantity}
+            onChange={(value) => setQuantity(Math.min(value, maxQuantity))}
+          />
           <div
             className={`${styles.glow} min-w-0 flex-1 [&_button]:w-full [&_button]:border-[#0b7a78] [&_button]:bg-[#0b7a78] [&_button]:text-white [&_button:hover]:opacity-90 [&_button:disabled]:cursor-not-allowed [&_button:disabled]:border-neutral-300 [&_button:disabled]:bg-neutral-300 [&_button:disabled]:text-neutral-500`}
           >
             <Suspense fallback={null}>
-              <AddToCart product={product} quantity={quantity} />
+              <AddToCart product={product} quantity={effectiveQuantity} />
             </Suspense>
           </div>
         </div>
@@ -160,5 +183,14 @@ export function ProductDescription({ product }: { product: Product }) {
         </div>
       ) : null}
     </>
+  )
+}
+
+// Внешняя часть: оборачивает всё в Suspense, как и остальные части страницы
+export function ProductDescription({ product }: { product: Product }) {
+  return (
+    <Suspense fallback={null}>
+      <ProductDescriptionContent product={product} />
+    </Suspense>
   )
 }
