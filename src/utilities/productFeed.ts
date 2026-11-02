@@ -163,7 +163,12 @@ function renderProduct(
   const description = richTextToPlainText(product.description) || title
   const brand = product.brand?.trim() || feed.defaultBrand?.trim()
   const hasIdentifiers = Boolean(product.gtin?.trim() || product.mpn?.trim())
-  const availability = isProductInStock(product) ? 'in_stock' : 'out_of_stock'
+  const availability =
+    product.stockStatus === 'backorder'
+      ? 'backorder'
+      : product.stockStatus === 'outOfStock'
+        ? 'out_of_stock'
+        : 'in_stock'
 
   // Категория Google (номер из списка Google, например 2271)
   const googleCategory = product.googleCategory as unknown
