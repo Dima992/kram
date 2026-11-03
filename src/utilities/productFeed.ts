@@ -23,7 +23,7 @@ type FeedCategory = {
   parent?: string | FeedCategory | null
 }
 
-type VariantRow = Variant & { priceInUAH?: number | null }
+type VariantRow = Variant & { priceInUAH?: number | null; sku?: string | null }
 
 type FeedItem = {
   id: string
@@ -125,13 +125,21 @@ function galleryOptionID(entry: unknown): string | null {
   return idOf(value)
 }
 
-// Фото варианта: первое фото галереи, привязанное к одному из его значений (цвет)
+// Фото варианта: только у характеристик, где включено «Фото потрібні»
 function getVariantImageURL(
   product: Product,
   optionIDs: string[],
+  lookup: FeedOptionLookup,
   baseURL: string,
 ): string | undefined {
+  const settings =
+    (product as unknown as { variantSettings?: Record<string, { photos?: boolean }> | null })
+      .variantSettings ?? {}
+
   for (const optionID of optionIDs) {
+    const info = lookup[optionID]
+    if (!info || !settings[info.characteristicID]?.photos) continue
+
     const entry = (product.gallery ?? []).find(
       (item) =>
         item &&
@@ -329,9 +337,9 @@ function buildItems(
     return [
       {
         ...common,
-        // Фото цвета варианта, если его нет, — главное фото товара
-        imageURL: getVariantImageURL(product, optionIDs, baseURL) ?? imageURL,
-        id: (variant as { sku?: string | null }).sku?.trim() || `${product.id}-${variant.id}`,
+        // Фото варианта, если его нет, — главное фото товара
+        imageURL: getVariantImageURL(product, optionIDs, lookup, baseURL) ?? imageURL,
+        id: variant.sku?.trim() || `${product.id}-${variant.id}`,
         groupID: String(product.id),
         title: labels.length ? `${title}, ${labels.join(', ')}` : title,
         link: `${productURL}?variant=${encodeURIComponent(String(variant.id))}`,
