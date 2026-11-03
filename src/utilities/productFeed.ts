@@ -214,7 +214,8 @@ function variantLabels(variant: VariantRow, lookup: FeedOptionLookup): string[] 
     .filter((label): label is string => Boolean(label))
 }
 
-// Google-значения цвета и размера варианта: подпись сопоставляем со значением характеристики
+// Google-значения цвета и размера варианта: берём только Google-значение характеристики.
+// Если Google-значения нет, тег в фид не добавляем
 function getVariantAttributes(
   variant: VariantRow,
   lookup: FeedOptionLookup,
@@ -236,8 +237,8 @@ function getVariantAttributes(
         normalize(item.label_uk ?? '') === wanted || normalize(item.label_ru ?? '') === wanted,
     )
 
-    // Если Google-значение не заполнено, в фид уйдёт подпись варианта
-    result[attribute] = value?.googleValue?.trim() || info.label.trim()
+    const googleValue = value?.googleValue?.trim()
+    if (googleValue) result[attribute] = googleValue
   }
 
   return result
@@ -268,7 +269,8 @@ function buildItems(
 
   const localePrefix = feed.language === 'uk' ? '' : `/${feed.language}`
   const productURL = `${baseURL}${localePrefix}/products/${encodeURIComponent(slug)}`
-  const description = richTextToPlainText(product.description) || title
+  const description = richTextToPlainText(product.description)
+  if (!description) return []
   const brand = product.brand?.trim() || feed.defaultBrand?.trim() || undefined
   const gtin = product.gtin?.trim() || undefined
   const mpn = product.mpn?.trim() || undefined
