@@ -1,18 +1,48 @@
 import type { Feed, Product, Variant } from '@/payload-types'
 
-// Характеристика товара, нужна для Google-полей (пол, материал, цвет, размер)
 export type FeedCharacteristic = {
   id: string
   googleAttribute?: string | null
-  values?: { id?: string | null; googleValue?: string | null }[] | null
+  values?:
+    | {
+        id?: string | null
+        label_uk?: string | null
+        label_ru?: string | null
+        googleValue?: string | null
+      }[]
+    | null
 }
 
-// Категория товара (родитель загружается через depth)
+// Значение варианта (например «Білий»): его подпись и номер характеристики
+export type FeedOptionLookup = Record<string, { label: string; characteristicID: string }>
+
 type FeedCategory = {
   id: string
   title?: string | null
   pathTitle?: string | null
   parent?: string | FeedCategory | null
+}
+
+type VariantRow = Variant & { priceInUAH?: number | null }
+
+type FeedItem = {
+  id: string
+  groupID?: string
+  title: string
+  description: string
+  link: string
+  imageURL?: string
+  availability: 'in_stock' | 'backorder' | 'out_of_stock'
+  price: number
+  condition: string
+  brand?: string
+  gtin?: string
+  mpn?: string
+  googleCategoryID?: string
+  productType?: string
+  attributes: Record<string, string>
+  ageGroup: string
+  hasIdentifiers: boolean
 }
 
 const xmlEscape = (value: string) =>
@@ -38,6 +68,11 @@ const xmlEscape = (value: string) =>
 const idOf = (value: unknown): string =>
   typeof value === 'object' && value !== null ? String((value as { id: unknown }).id) : String(value)
 
+const normalize = (value: string) => value.trim().toLowerCase()
+
+const hasPrice = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0
+
 function richTextToPlainText(value: unknown): string {
   if (!value || typeof value !== 'object') return ''
 
@@ -60,30 +95,55 @@ function richTextToPlainText(value: unknown): string {
   return texts.join(' ').replace(/\s+/g, ' ').trim()
 }
 
-function getImageURL(product: Product, baseURL: string): string | undefined {
-  const image = product.gallery?.find((item) => typeof item.image === 'object')?.image
-  if (!image || typeof image === 'string') return undefined
+// Полный адрес картинки из загруженного файла (или пусто, если адреса нет)
+function mediaURL(image: unknown, baseURL: string): string | undefined {
+  if (!image || typeof image !== 'object') return undefined
+  const media = image as { url?: string | null; filename?: string | null }
 
-  if (image.url) return new URL(image.url, baseURL).toString()
+  if (media.url) return new URL(media.url, baseURL).toString()
 
-  if (image.filename && process.env.NEXT_PUBLIC_S3_HOSTNAME) {
+  if (media.filename && process.env.NEXT_PUBLIC_S3_HOSTNAME) {
     const host = process.env.NEXT_PUBLIC_S3_HOSTNAME.replace(/\/+$/, '')
-    return `${host}/${encodeURIComponent(image.filename)}`
+    return `${host}/${encodeURIComponent(media.filename)}`
   }
 
   return undefined
 }
 
-function isProductInStock(product: Product): boolean {
-  const variants = (product.variants?.docs ?? []).filter(
-    (variant): variant is Variant => typeof variant === 'object' && variant !== null,
+// Главное фото товара: первое фото галереи
+function getImageURL(product: Product, baseURL: string): string | undefined {
+  const item = (product.gallery ?? []).find(
+    (entry) => entry && entry.image && typeof entry.image === 'object',
   )
+  return mediaURL(item?.image, baseURL)
+}
 
-  if (variants.length > 0) {
-    return variants.some((variant) => typeof variant.inventory === 'number' && variant.inventory > 0)
+// Значение варианта, привязанное к строке галереи (например «Білий»)
+function galleryOptionID(entry: unknown): string | null {
+  const value = (entry as { variantOption?: unknown })?.variantOption
+  if (value === null || value === undefined || value === '') return null
+  return idOf(value)
+}
+
+// Фото варианта: первое фото галереи, привязанное к одному из его значений (цвет)
+function getVariantImageURL(
+  product: Product,
+  optionIDs: string[],
+  baseURL: string,
+): string | undefined {
+  for (const optionID of optionIDs) {
+    const entry = (product.gallery ?? []).find(
+      (item) =>
+        item &&
+        item.mediaType !== 'youtube' &&
+        item.image &&
+        typeof item.image === 'object' &&
+        galleryOptionID(item) === optionID,
+    )
+    const url = mediaURL(entry?.image, baseURL)
+    if (url) return url
   }
-
-  return (product.inventory ?? 0) > 0
+  return undefined
 }
 
 // Самая глубокая категория товара: у «Шуб» глубина больше, чем у «Жіночий одяг»
@@ -108,7 +168,7 @@ function pickDeepestCategory(product: Product): FeedCategory | undefined {
   }, undefined)
 }
 
-// Google-значения характеристик товара: например { gender: 'female', material: 'wool' }
+// Google-значения характеристик, выбранных у самого товара (пол, материал)
 function getGoogleAttributes(
   product: Product,
   characteristics: FeedCharacteristic[],
@@ -136,39 +196,75 @@ function getGoogleAttributes(
   return result
 }
 
-function renderProduct(
+const optionIDsOf = (variant: VariantRow): string[] =>
+  (Array.isArray(variant.options) ? (variant.options as unknown[]) : []).map(idOf)
+
+// Подписи значений варианта, например ['Білий', 'M']
+function variantLabels(variant: VariantRow, lookup: FeedOptionLookup): string[] {
+  return optionIDsOf(variant)
+    .map((optionID) => lookup[optionID]?.label.trim())
+    .filter((label): label is string => Boolean(label))
+}
+
+// Google-значения цвета и размера варианта: подпись сопоставляем со значением характеристики
+function getVariantAttributes(
+  variant: VariantRow,
+  lookup: FeedOptionLookup,
+  characteristics: FeedCharacteristic[],
+): Record<string, string> {
+  const result: Record<string, string> = {}
+
+  for (const optionID of optionIDsOf(variant)) {
+    const info = lookup[optionID]
+    if (!info || !info.label.trim()) continue
+
+    const characteristic = characteristics.find((item) => String(item.id) === info.characteristicID)
+    const attribute = characteristic?.googleAttribute
+    if (!characteristic || !attribute) continue
+
+    const wanted = normalize(info.label)
+    const value = (characteristic.values ?? []).find(
+      (item) =>
+        normalize(item.label_uk ?? '') === wanted || normalize(item.label_ru ?? '') === wanted,
+    )
+
+    // Если Google-значение не заполнено, в фид уйдёт подпись варианта
+    result[attribute] = value?.googleValue?.trim() || info.label.trim()
+  }
+
+  return result
+}
+
+const productAvailability = (status?: string | null): FeedItem['availability'] =>
+  status === 'backorder' ? 'backorder' : status === 'outOfStock' ? 'out_of_stock' : 'in_stock'
+
+// Остаток варианта 0 — нет в наличии. Иначе статус товара
+const variantAvailability = (variant: VariantRow, productStatus?: string | null) => {
+  const inventory = typeof variant.inventory === 'number' ? variant.inventory : 0
+  if (inventory <= 0) return 'out_of_stock' as const
+  return productAvailability(productStatus)
+}
+
+// Строки фида для одного товара: одна строка без вариантов или по строке на вариант
+function buildItems(
   product: Product,
   feed: Feed,
   baseURL: string,
   characteristics: FeedCharacteristic[],
-): string | undefined {
+  lookup: FeedOptionLookup,
+): FeedItem[] {
   const title = product.title?.trim()
   const slug = product.slug?.trim()
-  const price = product.priceInUAH
   const imageURL = getImageURL(product, baseURL)
-
-  if (
-    !title ||
-    !slug ||
-    !imageURL ||
-    typeof price !== 'number' ||
-    !Number.isFinite(price) ||
-    price <= 0
-  ) {
-    return undefined
-  }
+  if (!title || !slug || !imageURL) return []
 
   const localePrefix = feed.language === 'uk' ? '' : `/${feed.language}`
   const productURL = `${baseURL}${localePrefix}/products/${encodeURIComponent(slug)}`
   const description = richTextToPlainText(product.description) || title
-  const brand = product.brand?.trim() || feed.defaultBrand?.trim()
-  const hasIdentifiers = Boolean(product.gtin?.trim() || product.mpn?.trim())
-  const availability =
-    product.stockStatus === 'backorder'
-      ? 'backorder'
-      : product.stockStatus === 'outOfStock'
-        ? 'out_of_stock'
-        : 'in_stock'
+  const brand = product.brand?.trim() || feed.defaultBrand?.trim() || undefined
+  const gtin = product.gtin?.trim() || undefined
+  const mpn = product.mpn?.trim() || undefined
+  const hasIdentifiers = Boolean(gtin || mpn)
 
   // Категория Google (номер из списка Google, например 2271)
   const googleCategory = product.googleCategory as unknown
@@ -180,49 +276,108 @@ function renderProduct(
       ? String((googleCategory as { googleId: number }).googleId)
       : undefined
 
-  // Категория для product_type: полный путь самой глубокой категории
   const deepest = pickDeepestCategory(product)
-  const productType = deepest?.pathTitle?.trim() || deepest?.title?.trim()
+  const productType = deepest?.pathTitle?.trim() || deepest?.title?.trim() || undefined
 
-  // Google-атрибуты из характеристик товара
-  const attributes = getGoogleAttributes(product, characteristics)
   const ageGroup = product.googleAgeGroup || 'adult'
   const condition = product.googleCondition || 'new'
+  const productAttributes = getGoogleAttributes(product, characteristics)
 
-  return `    <item>
-      <g:id>${xmlEscape(String(product.id))}</g:id>
-      <g:title>${xmlEscape(title)}</g:title>
-      <g:description>${xmlEscape(description)}</g:description>
-      <g:link>${xmlEscape(productURL)}</g:link>
-      ${imageURL ? `<g:image_link>${xmlEscape(imageURL)}</g:image_link>` : ''}
-      <g:availability>${availability}</g:availability>
-      <g:price>${price.toFixed(2)} UAH</g:price>
-      <g:condition>${xmlEscape(condition)}</g:condition>
-      ${brand ? `<g:brand>${xmlEscape(brand)}</g:brand>` : ''}
-      ${product.gtin ? `<g:gtin>${xmlEscape(product.gtin.trim())}</g:gtin>` : ''}
-      ${product.mpn ? `<g:mpn>${xmlEscape(product.mpn.trim())}</g:mpn>` : ''}
-      ${googleCategoryID ? `<g:google_product_category>${googleCategoryID}</g:google_product_category>` : ''}
-      ${productType ? `<g:product_type>${xmlEscape(productType)}</g:product_type>` : ''}
-      ${attributes.gender ? `<g:gender>${xmlEscape(attributes.gender)}</g:gender>` : ''}
-      <g:age_group>${xmlEscape(ageGroup)}</g:age_group>
-      ${attributes.color ? `<g:color>${xmlEscape(attributes.color)}</g:color>` : ''}
-      ${attributes.size ? `<g:size>${xmlEscape(attributes.size)}</g:size>` : ''}
-      ${attributes.material ? `<g:material>${xmlEscape(attributes.material)}</g:material>` : ''}
-      <g:identifier_exists>${hasIdentifiers ? 'true' : 'false'}</g:identifier_exists>
+  const common = {
+    description,
+    imageURL,
+    brand,
+    gtin,
+    mpn,
+    hasIdentifiers,
+    googleCategoryID,
+    productType,
+    ageGroup,
+    condition,
+  }
+
+  const variants = (product.variants?.docs ?? []).filter(
+    (variant): variant is VariantRow => typeof variant === 'object' && variant !== null,
+  )
+
+  // Товар без вариантов: одна строка, как раньше
+  if (variants.length === 0) {
+    if (!hasPrice(product.priceInUAH)) return []
+
+    return [
+      {
+        ...common,
+        id: String(product.id),
+        title,
+        link: productURL,
+        price: product.priceInUAH,
+        availability: productAvailability(product.stockStatus),
+        attributes: productAttributes,
+      },
+    ]
+  }
+
+  // Товар с вариантами: строка на каждый вариант
+  return variants.flatMap((variant) => {
+    // Своя цена варианта, иначе цена товара
+    const price = hasPrice(variant.priceInUAH) ? variant.priceInUAH : product.priceInUAH
+    if (!hasPrice(price)) return []
+
+    const optionIDs = optionIDsOf(variant)
+    const labels = variantLabels(variant, lookup)
+
+    return [
+      {
+        ...common,
+        // Фото цвета варианта, если его нет, — главное фото товара
+        imageURL: getVariantImageURL(product, optionIDs, baseURL) ?? imageURL,
+        id: variant.sku?.trim() || `${product.id}-${variant.id}`,
+        groupID: String(product.id),
+        title: labels.length ? `${title}, ${labels.join(', ')}` : title,
+        link: `${productURL}?variant=${encodeURIComponent(String(variant.id))}`,
+        price,
+        availability: variantAvailability(variant, product.stockStatus),
+        attributes: { ...productAttributes, ...getVariantAttributes(variant, lookup, characteristics) },
+      },
+    ]
+  })
+}
+
+const renderItem = (item: FeedItem): string => `    <item>
+      <g:id>${xmlEscape(item.id)}</g:id>
+      ${item.groupID ? `<g:item_group_id>${xmlEscape(item.groupID)}</g:item_group_id>` : ''}
+      <g:title>${xmlEscape(item.title)}</g:title>
+      <g:description>${xmlEscape(item.description)}</g:description>
+      <g:link>${xmlEscape(item.link)}</g:link>
+      ${item.imageURL ? `<g:image_link>${xmlEscape(item.imageURL)}</g:image_link>` : ''}
+      <g:availability>${item.availability}</g:availability>
+      <g:price>${item.price.toFixed(2)} UAH</g:price>
+      <g:condition>${xmlEscape(item.condition)}</g:condition>
+      ${item.brand ? `<g:brand>${xmlEscape(item.brand)}</g:brand>` : ''}
+      ${item.gtin ? `<g:gtin>${xmlEscape(item.gtin)}</g:gtin>` : ''}
+      ${item.mpn ? `<g:mpn>${xmlEscape(item.mpn)}</g:mpn>` : ''}
+      ${item.googleCategoryID ? `<g:google_product_category>${item.googleCategoryID}</g:google_product_category>` : ''}
+      ${item.productType ? `<g:product_type>${xmlEscape(item.productType)}</g:product_type>` : ''}
+      ${item.attributes.gender ? `<g:gender>${xmlEscape(item.attributes.gender)}</g:gender>` : ''}
+      <g:age_group>${xmlEscape(item.ageGroup)}</g:age_group>
+      ${item.attributes.color ? `<g:color>${xmlEscape(item.attributes.color)}</g:color>` : ''}
+      ${item.attributes.size ? `<g:size>${xmlEscape(item.attributes.size)}</g:size>` : ''}
+      ${item.attributes.material ? `<g:material>${xmlEscape(item.attributes.material)}</g:material>` : ''}
+      <g:identifier_exists>${item.hasIdentifiers ? 'true' : 'false'}</g:identifier_exists>
     </item>
 `
-}
 
 export function generateProductFeed(
   feed: Feed,
   products: Product[],
   baseURL: string,
   characteristics: FeedCharacteristic[] = [],
+  lookup: FeedOptionLookup = {},
 ): string {
   const items = products
     .filter((product) => !product.excludeFromFeed)
-    .map((product) => renderProduct(product, feed, baseURL, characteristics))
-    .filter((item): item is string => Boolean(item))
+    .flatMap((product) => buildItems(product, feed, baseURL, characteristics, lookup))
+    .filter((item) => !(feed.onlyInStock && item.availability === 'out_of_stock'))
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
@@ -230,6 +385,6 @@ export function generateProductFeed(
     <title>${xmlEscape(feed.title)}</title>
     <link>${xmlEscape(baseURL)}</link>
     <description>${xmlEscape(`Product feed for ${feed.platform.toUpperCase()}`)}</description>
-${items.join('')}  </channel>
+${items.map(renderItem).join('')}  </channel>
 </rss>`
 }
