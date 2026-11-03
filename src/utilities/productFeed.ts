@@ -331,7 +331,7 @@ function buildItems(
         ...common,
         // Фото цвета варианта, если его нет, — главное фото товара
         imageURL: getVariantImageURL(product, optionIDs, baseURL) ?? imageURL,
-        id: variant.sku?.trim() || `${product.id}-${variant.id}`,
+        id: (variant as { sku?: string | null }).sku?.trim() || `${product.id}-${variant.id}`,
         groupID: String(product.id),
         title: labels.length ? `${title}, ${labels.join(', ')}` : title,
         link: `${productURL}?variant=${encodeURIComponent(String(variant.id))}`,
