@@ -1,6 +1,10 @@
 import type { Product, Variant } from '@/payload-types'
 import { getPublicSiteURL } from '@/utilities/getPublicSiteURL'
-import { generateProductFeed, type FeedCharacteristic } from '@/utilities/productFeed'
+import {
+  generateProductFeed,
+  type FeedCharacteristic,
+  type FeedOptionLookup,
+} from '@/utilities/productFeed'
 import configPromise from '@payload-config'
 import { NextResponse } from 'next/server'
 import { getPayload, Where } from 'payload'
@@ -85,6 +89,44 @@ export async function GET(
       overrideAccess: true,
     })
 
+    // Названия типов вариантов (имя типа = char-<id характеристики>)
+    const { docs: variantTypeDocs } = await payload.find({
+      collection: 'variantTypes',
+      limit: 1000,
+      depth: 0,
+      pagination: false,
+      overrideAccess: true,
+    })
+    const typeNameByID: Record<string, string> = {}
+    for (const type of variantTypeDocs) {
+      typeNameByID[String(type.id)] = type.name ?? ''
+    }
+
+    // Значения вариантов: подпись и к какой характеристике относятся
+    const { docs: optionDocs } = await payload.find({
+      collection: 'variantOptions',
+      limit: 5000,
+      depth: 0,
+      pagination: false,
+      overrideAccess: true,
+    })
+
+    const optionLookup: FeedOptionLookup = {}
+    for (const option of optionDocs) {
+      const rawType = option.variantType as unknown
+      const typeID =
+        rawType && typeof rawType === 'object'
+          ? String((rawType as { id: unknown }).id)
+          : String(rawType ?? '')
+      const typeName = typeNameByID[typeID] ?? ''
+      if (!typeName.startsWith('char-')) continue
+
+      optionLookup[String(option.id)] = {
+        label: option.label ?? '',
+        characteristicID: typeName.slice(5),
+      }
+    }
+
     const products: Product[] = []
     let page = 1
     let hasNextPage = true
@@ -113,6 +155,7 @@ export async function GET(
       feedProducts,
       baseURL,
       characteristics as FeedCharacteristic[],
+      optionLookup,
     )
 
     return new NextResponse(xml, {
