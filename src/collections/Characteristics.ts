@@ -3,6 +3,14 @@ import type { CollectionConfig } from 'payload'
 
 import { adminOnly } from '@/access/adminOnly'
 
+// Тег Google: только маленькие латинские буквы, цифры и подчёркивание (например color, weight)
+const validateGoogleTag = (value: unknown) => {
+  if (value === null || value === undefined || value === '') return true
+  return typeof value === 'string' && /^[a-z][a-z0-9_]*$/.test(value)
+    ? true
+    : 'Только маленькие латинские буквы, цифры и _ (например color, weight). Без пробелов.'
+}
+
 export const Characteristics: CollectionConfig = {
   slug: 'characteristics',
   access: {
@@ -82,20 +90,15 @@ export const Characteristics: CollectionConfig = {
       },
     },
     {
-      // Какое поле Google соответствует этой характеристике
+      // Тег Google, который получит значение этой характеристики (пишете вручную)
       name: 'googleAttribute',
-      type: 'select',
-      label: 'Google-атрибут',
-      options: [
-        { label: 'Пол (gender)', value: 'gender' },
-        { label: 'Возрастная группа (age_group)', value: 'age_group' },
-        { label: 'Цвет (color)', value: 'color' },
-        { label: 'Размер (size)', value: 'size' },
-        { label: 'Материал (material)', value: 'material' },
-      ],
+      type: 'text',
+      label: 'Google-тег',
+      validate: validateGoogleTag,
       admin: {
         position: 'sidebar',
-        description: 'Какому полю Google соответствует эта характеристика. Если не нужно в фид, оставьте пусто.',
+        description:
+          'Название тега Google маленькими латинскими буквами, например gender, color, size, material, weight. Если в фид не нужно, оставьте пусто.',
       },
     },
     {

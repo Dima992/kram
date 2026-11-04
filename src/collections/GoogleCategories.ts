@@ -2,6 +2,13 @@ import type { CollectionConfig } from 'payload'
 
 import { adminOnly } from '@/access/adminOnly'
 
+// Тег Google: только маленькие латинские буквы, цифры и подчёркивание
+const validateGoogleTags = (value: unknown) => {
+  if (!Array.isArray(value)) return true
+  const ok = value.every((tag) => typeof tag === 'string' && /^[a-z][a-z0-9_]*$/.test(tag))
+  return ok ? true : 'Только маленькие латинские буквы, цифры и _ (например color, weight). Без пробелов.'
+}
+
 export const GoogleCategories: CollectionConfig = {
   slug: 'google-categories',
   access: {
@@ -53,23 +60,15 @@ export const GoogleCategories: CollectionConfig = {
       },
     },
     {
-      // Поля, которые подсвечиваются жёлтым, если не заполнены
+      // Теги Google, которые обязательны для этой категории (вписываете вручную)
       name: 'requiredFields',
-      type: 'select',
+      type: 'text',
       hasMany: true,
-      label: 'Поля, які підсвічувати (обов\'язкові для Google)',
-      options: [
-        { label: 'Пол (gender)', value: 'gender' },
-        { label: 'Возрастная группа (age_group)', value: 'age_group' },
-        { label: 'Цвет (color)', value: 'color' },
-        { label: 'Размер (size)', value: 'size' },
-        { label: 'Материал (material)', value: 'material' },
-        { label: 'Состояние (condition)', value: 'condition' },
-        { label: 'Бренд (brand)', value: 'brand' },
-        { label: 'Штрихкод или артикул (gtin / mpn)', value: 'gtin' },
-      ],
+      label: "Поля, які підсвічувати (обов'язкові для Google)",
+      validate: validateGoogleTags,
       admin: {
-        description: 'Отметьте поля, которые нужно заполнить для этой категории.',
+        description:
+          'Теги Google маленькими латинскими буквами, по одному в строке: gender, color, size, material. Должны совпадать с Google-тегом в характеристиках.',
       },
     },
   ],
