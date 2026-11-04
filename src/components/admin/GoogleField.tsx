@@ -11,8 +11,14 @@ type GoogleCategory = {
 
 type Characteristic = {
   id: number | string
+  name_uk?: string | null
+  adminNote?: string | null
   googleAttribute?: string | null
-  values?: { id?: string | null }[] | null
+}
+
+type VariantType = {
+  id: number | string
+  name?: string | null
 }
 
 type Stored = Record<string, string[]>
@@ -20,21 +26,10 @@ type Stored = Record<string, string[]>
 const idOf = (v: unknown): string =>
   typeof v === 'object' && v !== null ? String((v as { id: unknown }).id) : String(v)
 
-// Человекочитаемые названия Google-полей
-const FIELD_LABELS: Record<string, string> = {
-  gender: 'Пол (gender)',
-  age_group: 'Вікова група (age_group)',
-  color: 'Колір (color)',
-  size: 'Розмір (size)',
-  material: 'Матеріал (material)',
-  condition: 'Стан (condition)',
-  brand: 'Бренд (brand)',
-  gtin: 'Штрихкод / артикул (gtin / mpn)',
-}
-
-export const GoogleField: React.FC<{ path: string }> = ({ path }) => {
+export const GoogleField: React.FC<{ path: string }> = () => {
   const { value: categoryValue } = useField<unknown>({ path: 'googleCategory' })
   const { value: attributesValue } = useField<Stored>({ path: 'attributes' })
+  const { value: variantTypesValue } = useField<unknown[]>({ path: 'variantTypes' })
   const { value: conditionValue } = useField<string>({ path: 'googleCondition' })
   const { value: ageGroupValue } = useField<string>({ path: 'googleAgeGroup' })
   const { value: brandValue } = useField<string>({ path: 'brand' })
@@ -43,6 +38,7 @@ export const GoogleField: React.FC<{ path: string }> = ({ path }) => {
 
   const [category, setCategory] = useState<GoogleCategory | null>(null)
   const [chars, setChars] = useState<Characteristic[]>([])
+  const [variantTypes, setVariantTypes] = useState<VariantType[]>([])
   const [loaded, setLoaded] = useState(false)
 
   const categoryId = categoryValue ? idOf(categoryValue) : null
@@ -50,7 +46,6 @@ export const GoogleField: React.FC<{ path: string }> = ({ path }) => {
   useEffect(() => {
     if (!categoryId) {
       setCategory(null)
-      setChars([])
       setLoaded(true)
       return
     }
@@ -60,26 +55,30 @@ export const GoogleField: React.FC<{ path: string }> = ({ path }) => {
       fetch(`/api/google-categories/${categoryId}?depth=0`, {
         credentials: 'include',
       }).then((r) => r.json()),
-      fetch('/api/characteristics?limit=1000&depth=1&pagination=false', {
+      fetch('/api/characteristics?limit=1000&depth=0&pagination=false', {
+        credentials: 'include',
+      }).then((r) => r.json()),
+      fetch('/api/variantTypes?limit=1000&depth=0&pagination=false', {
         credentials: 'include',
       }).then((r) => r.json()),
     ])
-      .then(([cat, charsData]) => {
-        if (!cancelled) {
-          setCategory(cat)
-          setChars(charsData.docs ?? [])
-          setLoaded(true)
-        }
+      .then(([cat, charsData, typesData]) => {
+        if (cancelled) return
+        setCategory(cat)
+        setChars(charsData.docs ?? [])
+        setVariantTypes(typesData.docs ?? [])
+        setLoaded(true)
       })
       .catch(() => {
         if (!cancelled) setLoaded(true)
       })
+
     return () => {
       cancelled = true
     }
   }, [categoryId])
 
-  // Какие Google-атрибуты уже закрыты
+  // Какие Google-теги уже заполнены
   const covered = useMemo(() => {
     const result = new Set<string>()
     const stored: Stored =
@@ -87,23 +86,51 @@ export const GoogleField: React.FC<{ path: string }> = ({ path }) => {
         ? (attributesValue as Stored)
         : {}
 
-    // Из характеристик товара
+    // Характеристики, выбранные в самом товаре
     for (const ch of chars) {
       if (!ch.googleAttribute) continue
-      const charId = String(ch.id)
-      if ((stored[charId] ?? []).length > 0) {
+      if ((stored[String(ch.id)] ?? []).length > 0) {
         result.add(ch.googleAttribute)
       }
     }
 
-    // Из полей прямо на вкладке Google
+    // Характеристики-варианты (цвет, размер): их значения заполняются в вариантах
+    const selectedTypeIDs = (Array.isArray(variantTypesValue) ? variantTypesValue : [])
+      .filter((v) => v !== null && v !== undefined)
+      .map(idOf)
+    for (const typeID of selectedTypeIDs) {
+      const type = variantTypes.find((t) => String(t.id) === typeID)
+      const name = type?.name ?? ''
+      if (!name.startsWith('char-')) continue
+      const ch = chars.find((c) => String(c.id) === name.slice(5))
+      if (ch?.googleAttribute) result.add(ch.googleAttribute)
+    }
+
+    // Поля самого товара
     if (conditionValue) result.add('condition')
     if (ageGroupValue) result.add('age_group')
     if (brandValue) result.add('brand')
     if (gtinValue || mpnValue) result.add('gtin')
 
     return result
-  }, [chars, attributesValue, conditionValue, ageGroupValue, brandValue, gtinValue, mpnValue])
+  }, [
+    chars,
+    variantTypes,
+    variantTypesValue,
+    attributesValue,
+    conditionValue,
+    ageGroupValue,
+    brandValue,
+    gtinValue,
+    mpnValue,
+  ])
+
+  // Название для показа берём из характеристики, а не из списка в коде
+  const labelFor = (tag: string): string => {
+    const ch = chars.find((c) => c.googleAttribute === tag)
+    const name = ch?.adminNote?.trim() || ch?.name_uk?.trim()
+    return name ? `${name} (${tag})` : tag
+  }
 
   if (!loaded) {
     return <div style={{ fontSize: 13, opacity: 0.6 }}>Завантаження…</div>
@@ -117,7 +144,7 @@ export const GoogleField: React.FC<{ path: string }> = ({ path }) => {
     )
   }
 
-  // Берём список обязательных полей из записи Google-категории в админке
+  // Список обязательных полей берём из записи Google-категории в админке
   const required: string[] = Array.isArray(category.requiredFields)
     ? category.requiredFields
     : []
@@ -139,7 +166,6 @@ export const GoogleField: React.FC<{ path: string }> = ({ path }) => {
         Обов'язкові поля для Google ({category.name_uk}):
       </div>
 
-      {/* Незаполненные — жёлтые */}
       {missing.map((field) => (
         <div
           key={field}
@@ -155,13 +181,10 @@ export const GoogleField: React.FC<{ path: string }> = ({ path }) => {
           }}
         >
           <span style={{ color: '#ca8a04', fontSize: 16 }}>●</span>
-          <span style={{ color: '#ca8a04', fontWeight: 500 }}>
-            {FIELD_LABELS[field] ?? field}
-          </span>
+          <span style={{ color: '#ca8a04', fontWeight: 500 }}>{labelFor(field)}</span>
         </div>
       ))}
 
-      {/* Заполненные — зелёные */}
       {done.map((field) => (
         <div
           key={field}
@@ -177,9 +200,7 @@ export const GoogleField: React.FC<{ path: string }> = ({ path }) => {
           }}
         >
           <span style={{ color: '#16a34a', fontSize: 16 }}>✓</span>
-          <span style={{ color: '#16a34a', fontWeight: 500 }}>
-            {FIELD_LABELS[field] ?? field}
-          </span>
+          <span style={{ color: '#16a34a', fontWeight: 500 }}>{labelFor(field)}</span>
         </div>
       ))}
 
