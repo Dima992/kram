@@ -158,13 +158,7 @@ export async function GET(
       optionLookup,
     )
 
-    // ВРЕМЕННАЯ диагностика: одна строка в начале фида. Удалим после проверки
-    const xmlWithDebug = xml.replace(
-      '<?xml version="1.0" encoding="UTF-8"?>',
-      `<?xml version="1.0" encoding="UTF-8"?>\n<!-- DEBUG types=${variantTypeDocs.length} options=${optionDocs.length} mapped=${Object.keys(optionLookup).length} -->`,
-    )
-
-    return new NextResponse(xmlWithDebug, {
+    return new NextResponse(xml, {
       headers: {
         'Content-Type': 'application/xml; charset=utf-8',
         'Cache-Control': 'public, max-age=0, must-revalidate',
