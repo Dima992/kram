@@ -102,7 +102,7 @@ export async function GET(
       typeNameByID[String(type.id)] = type.name ?? ''
     }
 
-    // Значения вариантов: подпись и к какой характеристике относятся
+    // Значения вариантов: подпись, характеристика и ID значения характеристики
     const { docs: optionDocs } = await payload.find({
       collection: 'variantOptions',
       limit: 5000,
@@ -121,9 +121,13 @@ export async function GET(
       const typeName = typeNameByID[typeID] ?? ''
       if (!typeName.startsWith('char-')) continue
 
+      // Код значения «v-<ID значения характеристики>» ставит кнопка генерации вариантов
+      const code = String((option as { value?: string | null }).value ?? '')
+
       optionLookup[String(option.id)] = {
         label: option.label ?? '',
         characteristicID: typeName.slice(5),
+        valueID: code.startsWith('v-') ? code.slice(2) : '',
       }
     }
 

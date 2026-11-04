@@ -13,8 +13,11 @@ export type FeedCharacteristic = {
     | null
 }
 
-// Значение варианта (например «Білий»): его подпись и номер характеристики
-export type FeedOptionLookup = Record<string, { label: string; characteristicID: string }>
+// Значение варианта: подпись, характеристика и ID значения характеристики (связь по ID)
+export type FeedOptionLookup = Record<
+  string,
+  { label: string; characteristicID: string; valueID: string }
+>
 
 type FeedCategory = {
   id: string
@@ -70,8 +73,6 @@ const xmlEscape = (value: string) =>
 
 const idOf = (value: unknown): string =>
   typeof value === 'object' && value !== null ? String((value as { id: unknown }).id) : String(value)
-
-const normalize = (value: string) => value.trim().toLowerCase()
 
 const hasPrice = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0
@@ -217,7 +218,8 @@ function variantLabels(variant: VariantRow, lookup: FeedOptionLookup): string[] 
     .filter((label): label is string => Boolean(label))
 }
 
-// Google-значения характеристик варианта: берём только Google-значение, без подписи
+// Google-значения характеристик варианта: связь по ID значения, без сравнения текста.
+// Варианты без связи (созданы вручную) в фид Google-атрибуты не получают
 function getVariantAttributes(
   variant: VariantRow,
   lookup: FeedOptionLookup,
@@ -227,18 +229,13 @@ function getVariantAttributes(
 
   for (const optionID of optionIDsOf(variant)) {
     const info = lookup[optionID]
-    if (!info || !info.label.trim()) continue
+    if (!info || !info.valueID) continue
 
     const characteristic = characteristics.find((item) => String(item.id) === info.characteristicID)
     const attribute = characteristic?.googleAttribute
     if (!characteristic || !attribute || !TAG_PATTERN.test(attribute)) continue
 
-    const wanted = normalize(info.label)
-    const value = (characteristic.values ?? []).find(
-      (item) =>
-        normalize(item.label_uk ?? '') === wanted || normalize(item.label_ru ?? '') === wanted,
-    )
-
+    const value = (characteristic.values ?? []).find((item) => String(item.id) === info.valueID)
     const googleValue = value?.googleValue?.trim()
     if (googleValue) result[attribute] = googleValue
   }
