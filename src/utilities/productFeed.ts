@@ -180,10 +180,12 @@ function pickDeepestCategory(product: Product): FeedCategory | undefined {
   }, undefined)
 }
 
-// Google-значения характеристик, выбранных у самого товара (используются, только если вариантов нет)
+// Google-значения характеристик, выбранных у самого товара.
+// skipCharIDs — характеристики, которые уже заданы вариантом (их пропускаем)
 function getGoogleAttributes(
   product: Product,
   characteristics: FeedCharacteristic[],
+  skipCharIDs: Set<string> = new Set(),
 ): Record<string, string> {
   const stored = (product.attributes ?? {}) as Record<string, unknown>
   const result: Record<string, string> = {}
@@ -191,6 +193,7 @@ function getGoogleAttributes(
   for (const characteristic of characteristics) {
     const attribute = characteristic.googleAttribute
     if (!attribute || !TAG_PATTERN.test(attribute) || result[attribute]) continue
+    if (skipCharIDs.has(String(characteristic.id))) continue
 
     const selectedRaw = stored[String(characteristic.id)]
     const selectedIDs = Array.isArray(selectedRaw) ? selectedRaw.map(idOf) : []
@@ -290,7 +293,6 @@ function buildItems(
 
   const ageGroup = product.googleAgeGroup || 'adult'
   const condition = product.googleCondition || 'new'
-  const productAttributes = getGoogleAttributes(product, characteristics)
 
   const common = {
     description,
@@ -309,7 +311,7 @@ function buildItems(
     (variant): variant is VariantRow => typeof variant === 'object' && variant !== null,
   )
 
-  // Товар без вариантов: одна строка
+  // Товар без вариантов: одна строка, все характеристики товара
   if (variants.length === 0) {
     if (!hasPrice(product.priceInUAH)) return []
 
@@ -321,7 +323,7 @@ function buildItems(
         link: productURL,
         price: product.priceInUAH,
         availability: productAvailability(product.stockStatus),
-        attributes: productAttributes,
+        attributes: getGoogleAttributes(product, characteristics),
       },
     ]
   }
@@ -335,6 +337,13 @@ function buildItems(
     const optionIDs = optionIDsOf(variant)
     const labels = variantLabels(variant, lookup)
 
+    // Характеристики, которые заданы вариантом (цвет, размер): из товара их не берём
+    const variantCharIDs = new Set(
+      optionIDs
+        .map((optionID) => lookup[optionID]?.characteristicID)
+        .filter((id): id is string => Boolean(id)),
+    )
+
     return [
       {
         ...common,
@@ -346,8 +355,11 @@ function buildItems(
         link: `${productURL}?variant=${encodeURIComponent(String(variant.id))}`,
         price,
         availability: variantAvailability(variant, product.stockStatus),
-        // У варианта свои значения; значения товара не подмешиваем
-        attributes: getVariantAttributes(variant, lookup, characteristics),
+        // Пол и материал — из товара; цвет и размер — из варианта
+        attributes: {
+          ...getGoogleAttributes(product, characteristics, variantCharIDs),
+          ...getVariantAttributes(variant, lookup, characteristics),
+        },
       },
     ]
   })
