@@ -45,6 +45,9 @@ type FeedItem = {
   hasIdentifiers: boolean
 }
 
+// Имя тега Google: только латиница, цифры и подчёркивание (например color, weight)
+const TAG_PATTERN = /^[a-z][a-z0-9_]*$/
+
 const xmlEscape = (value: string) =>
   value
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, '')
@@ -176,7 +179,7 @@ function pickDeepestCategory(product: Product): FeedCategory | undefined {
   }, undefined)
 }
 
-// Google-значения характеристик, выбранных у самого товара (пол, материал)
+// Google-значения характеристик, выбранных у самого товара (используются, только если вариантов нет)
 function getGoogleAttributes(
   product: Product,
   characteristics: FeedCharacteristic[],
@@ -186,7 +189,7 @@ function getGoogleAttributes(
 
   for (const characteristic of characteristics) {
     const attribute = characteristic.googleAttribute
-    if (!attribute || result[attribute]) continue
+    if (!attribute || !TAG_PATTERN.test(attribute) || result[attribute]) continue
 
     const selectedRaw = stored[String(characteristic.id)]
     const selectedIDs = Array.isArray(selectedRaw) ? selectedRaw.map(idOf) : []
@@ -214,8 +217,7 @@ function variantLabels(variant: VariantRow, lookup: FeedOptionLookup): string[] 
     .filter((label): label is string => Boolean(label))
 }
 
-// Google-значения цвета и размера варианта: берём только Google-значение характеристики.
-// Если Google-значения нет, тег в фид не добавляем
+// Google-значения характеристик варианта: берём только Google-значение, без подписи
 function getVariantAttributes(
   variant: VariantRow,
   lookup: FeedOptionLookup,
@@ -229,7 +231,7 @@ function getVariantAttributes(
 
     const characteristic = characteristics.find((item) => String(item.id) === info.characteristicID)
     const attribute = characteristic?.googleAttribute
-    if (!characteristic || !attribute) continue
+    if (!characteristic || !attribute || !TAG_PATTERN.test(attribute)) continue
 
     const wanted = normalize(info.label)
     const value = (characteristic.values ?? []).find(
@@ -310,7 +312,7 @@ function buildItems(
     (variant): variant is VariantRow => typeof variant === 'object' && variant !== null,
   )
 
-  // Товар без вариантов: одна строка, как раньше
+  // Товар без вариантов: одна строка
   if (variants.length === 0) {
     if (!hasPrice(product.priceInUAH)) return []
 
@@ -347,11 +349,20 @@ function buildItems(
         link: `${productURL}?variant=${encodeURIComponent(String(variant.id))}`,
         price,
         availability: variantAvailability(variant, product.stockStatus),
-        attributes: { ...productAttributes, ...getVariantAttributes(variant, lookup, characteristics) },
+        // У варианта свои значения; значения товара не подмешиваем
+        attributes: getVariantAttributes(variant, lookup, characteristics),
       },
     ]
   })
 }
+
+// Все теги из характеристик: выводим любой тег с заполненным значением.
+// age_group выводим отдельно (из карточки товара)
+const renderAttributes = (attributes: Record<string, string>): string =>
+  Object.entries(attributes)
+    .filter(([tag, value]) => TAG_PATTERN.test(tag) && tag !== 'age_group' && value)
+    .map(([tag, value]) => `      <g:${tag}>${xmlEscape(value)}</g:${tag}>\n`)
+    .join('')
 
 const renderItem = (item: FeedItem): string => `    <item>
       <g:id>${xmlEscape(item.id)}</g:id>
@@ -368,12 +379,8 @@ const renderItem = (item: FeedItem): string => `    <item>
       ${item.mpn ? `<g:mpn>${xmlEscape(item.mpn)}</g:mpn>` : ''}
       ${item.googleCategoryID ? `<g:google_product_category>${item.googleCategoryID}</g:google_product_category>` : ''}
       ${item.productType ? `<g:product_type>${xmlEscape(item.productType)}</g:product_type>` : ''}
-      ${item.attributes.gender ? `<g:gender>${xmlEscape(item.attributes.gender)}</g:gender>` : ''}
       <g:age_group>${xmlEscape(item.ageGroup)}</g:age_group>
-      ${item.attributes.color ? `<g:color>${xmlEscape(item.attributes.color)}</g:color>` : ''}
-      ${item.attributes.size ? `<g:size>${xmlEscape(item.attributes.size)}</g:size>` : ''}
-      ${item.attributes.material ? `<g:material>${xmlEscape(item.attributes.material)}</g:material>` : ''}
-      <g:identifier_exists>${item.hasIdentifiers ? 'true' : 'false'}</g:identifier_exists>
+${renderAttributes(item.attributes)}      <g:identifier_exists>${item.hasIdentifiers ? 'true' : 'false'}</g:identifier_exists>
     </item>
 `
 
