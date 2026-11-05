@@ -28,6 +28,66 @@ const SITE_NAME = 'Крамниця'
 const TITLE_MAX = 60
 const DESCRIPTION_MAX = 155
 
+// Защита: значение или тип варианта нельзя удалить, пока он используется
+const guardOptionDelete = async ({ req, id }: { req: any; id: unknown }) => {
+  const optionID = String(id)
+
+  const inVariants = await req.payload.find({
+    collection: 'variants',
+    where: { options: { in: [optionID] } },
+    limit: 3,
+    depth: 0,
+    pagination: false,
+    draft: true,
+  })
+  if (inVariants.docs.length > 0) {
+    const skus = inVariants.docs.map((v: any) => v.sku || `ID ${v.id}`).join(', ')
+    throw new Error(`Не можна видалити: значення використовується у варіантах (${skus}).`)
+  }
+
+  const inGallery = await req.payload.find({
+    collection: 'products',
+    where: { 'gallery.variantOption': { equals: optionID } },
+    limit: 3,
+    depth: 0,
+    pagination: false,
+    draft: true,
+  })
+  if (inGallery.docs.length > 0) {
+    const titles = inGallery.docs.map((p: any) => p.title).join(', ')
+    throw new Error(`Не можна видалити: значення привʼязане до фото у товарах (${titles}).`)
+  }
+}
+
+const guardTypeDelete = async ({ req, id }: { req: any; id: unknown }) => {
+  const typeID = String(id)
+
+  const options = await req.payload.find({
+    collection: 'variantOptions',
+    where: { variantType: { equals: typeID } },
+    limit: 1,
+    depth: 0,
+    pagination: false,
+    draft: true,
+  })
+  if (options.docs.length > 0) {
+    throw new Error('Не можна видалити тип: спочатку видаліть або перенесіть його значення.')
+  }
+
+  const products = await req.payload.find({
+    collection: 'products',
+    where: { variantTypes: { contains: typeID } },
+    limit: 3,
+    depth: 0,
+    pagination: false,
+    draft: true,
+  })
+  if (products.docs.length > 0) {
+    const titles = products.docs.map((p: any) => p.title).join(', ')
+    throw new Error(`Не можна видалити тип: він використовується у товарах (${titles}).`)
+  }
+}
+
 const getSiteStripeAdapter = async (payload: Payload) => {
   const settings = await payload.findGlobal({
     slug: 'site-settings',
@@ -267,6 +327,20 @@ export const plugins: Plugin[] = [
       productsCollectionOverride: ProductsCollection,
       variants: {
         variantsCollectionOverride: VariantsCollection,
+        variantOptionsCollectionOverride: ({ defaultCollection }: any) => ({
+          ...defaultCollection,
+          hooks: {
+            ...defaultCollection.hooks,
+            beforeDelete: [...(defaultCollection.hooks?.beforeDelete ?? []), guardOptionDelete],
+          },
+        }),
+        variantTypesCollectionOverride: ({ defaultCollection }: any) => ({
+          ...defaultCollection,
+          hooks: {
+            ...defaultCollection.hooks,
+            beforeDelete: [...(defaultCollection.hooks?.beforeDelete ?? []), guardTypeDelete],
+          },
+        }),
       },
     },
   }),
