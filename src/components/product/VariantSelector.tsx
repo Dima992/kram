@@ -1,6 +1,6 @@
 'use client'
 
-import type { Product } from '@/payload-types'
+import type { Product, Variant } from '@/payload-types'
 
 import { createUrl } from '@/utilities/createUrl'
 import clsx from 'clsx'
@@ -63,9 +63,13 @@ export function VariantSelector({ product }: { product: Product }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const variants = product.variants?.docs
+
+  // Отбрасываем пустые строки вариантов (null): typeof null тоже 'object', поэтому проверяем явно
+  const variants = (product.variants?.docs ?? []).filter(
+    (variant): variant is Variant => typeof variant === 'object' && variant !== null,
+  )
   const variantTypes = product.variantTypes
-  const hasVariants = Boolean(product.enableVariants && variants?.length && variantTypes?.length)
+  const hasVariants = Boolean(product.enableVariants && variants.length && variantTypes?.length)
 
   if (!hasVariants) {
     return null
@@ -107,17 +111,15 @@ export function VariantSelector({ product }: { product: Product }) {
 
                 let isAvailableForSale = true
 
-                // Ищем подходящий вариант
-                const matchingVariant = variants
-                  ?.filter((variant) => typeof variant === 'object')
-                  .find((variant) => {
-                    if (!variant.options || !Array.isArray(variant.options)) return false
-                    return variant.options.every((variantOption) => {
-                      if (typeof variantOption !== 'object')
-                        return currentOptions.includes(String(variantOption))
-                      return currentOptions.includes(String(variantOption.id))
-                    })
+                // Ищем вариант, у которого все значения выбраны; пустые значения пропускаем
+                const matchingVariant = variants.find((variant) => {
+                  const variantOptions = Array.isArray(variant.options) ? variant.options : []
+                  if (variantOptions.length === 0) return false
+                  return variantOptions.every((variantOption) => {
+                    const id = idOf(variantOption)
+                    return id !== null && currentOptions.includes(id)
                   })
+                })
 
                 if (matchingVariant) {
                   optionSearchParams.set('variant', String(matchingVariant.id))
