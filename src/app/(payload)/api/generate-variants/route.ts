@@ -22,10 +22,11 @@ const keyOf = (ids: unknown[]): string =>
     .sort()
     .join('|')
 
-// Тип варианта для характеристики. Техническое имя char-<id> не меняется при переименовании
+// Тип варианта для характеристики. Техническое имя char-<id> не меняется при переименовании.
+// Заголовок для покупателя берём из публичного названия (name_uk), а не из внутренней подписи
 async function ensureType(payload: Payload, ch: any, opts: Opts): Promise<string> {
   const name = `char-${ch.id}`
-  const label = ch.adminNote || ch.name_uk
+  const label = ch.name_uk || ''
   const found = await payload.find({
     collection: 'variantTypes',
     where: { name: { equals: name } },
@@ -48,7 +49,8 @@ async function ensureType(payload: Payload, ch: any, opts: Opts): Promise<string
   return String(created.id)
 }
 
-// Опция (значение) внутри типа. Технический код строим из id значения, он стабильный
+// Опция (значение) внутри типа. Технический код строим из id значения, он стабильный.
+// Если подпись значения изменилась, она обновится здесь
 async function ensureOption(payload: Payload, typeId: string, v: any, opts: Opts): Promise<string> {
   const code = `v-${v.id}`
   const label = v.label_uk || v.label_ru || ''
@@ -198,12 +200,12 @@ export async function POST(request: Request) {
 
   const toCreate = combos.filter((c) => !existingKeys.has(keyOf(c)))
 
-  // 5. Создаём строки. Номер артикула — следующий после самого большого
+  // 5. Создаём строки с нулевым остатком. Номер артикула — следующий после самого большого
   let created = 0
   try {
     for (const combo of toCreate) {
       last += 1
-    await payload.create({
+      await payload.create({
         collection: 'variants',
         data: {
           product: productId,
