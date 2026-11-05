@@ -14,7 +14,7 @@ import {
   lexicalEditor,
 } from '@payloadcms/richtext-lexical'
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { DefaultDocumentIDType, Field, slugField, Where } from 'payload'
+import { Field, slugField, Where } from 'payload'
 
 import { adminOnlyFieldAccess } from '@/access/adminOnlyFieldAccess'
 import { CallToAction } from '@/blocks/CallToAction/config'
@@ -230,35 +230,27 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
                     },
                   },
                   filterOptions: ({ data }) => {
-                    if (data?.enableVariants && data?.variantTypes?.length) {
-                      const variantTypeIDs = data.variantTypes.map((item: any) => {
-                        if (typeof item === 'object' && item?.id) {
-                          return item.id
-                        }
-                        return item
-                      }) as DefaultDocumentIDType[]
+                    // Фото привязываем только к характеристикам, где включено «Фото потрібні»
+                    const settings = (data?.variantSettings ?? {}) as Record<
+                      string,
+                      { photos?: boolean }
+                    >
+                    const selected = (data?.attributes ?? {}) as Record<string, string[]>
 
-                      if (variantTypeIDs.length === 0)
-                        return {
-                          variantType: {
-                            in: [],
-                          },
-                        }
-
-                      const query: Where = {
-                        variantType: {
-                          in: variantTypeIDs,
-                        },
+                    // Коды значений (v-<id значения>), выбранных у товара в таких характеристиках
+                    const codes: string[] = []
+                    for (const charId of Object.keys(settings)) {
+                      if (!settings[charId]?.photos) continue
+                      for (const valueId of selected[charId] ?? []) {
+                        codes.push(`v-${valueId}`)
                       }
-
-                      return query
                     }
 
-                    return {
-                      variantType: {
-                        in: [],
-                      },
+                    if (codes.length === 0) {
+                      return { value: { in: [] } } as Where
                     }
+
+                    return { value: { in: codes } } as Where
                   },
                 },
                 {
