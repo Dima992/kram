@@ -24,6 +24,7 @@ import { YouTube } from '@/blocks/YouTube/config'
 import { getStoredRates } from '@/utilities/exchangeRates'
 import { generatePreviewPath } from '@/utilities/generatePreviewPath'
 import { transliterate } from '@/utilities/transliterate'
+import { syncVariantsAfterSave } from '@/utilities/variantSync'
 import { autoGenerateAlt } from './hooks/autoGenerateAlt'
 
 const SITE_NAME = 'Крамниця'
@@ -649,6 +650,9 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
 
       // Альты фото: после сохранения, на двух языках
       autoGenerateAlt,
+
+      // Варианты: создаются и обновляются по выбранным значениям характеристик
+      syncVariantsAfterSave,
     ],
     afterDelete: [
       ...(defaultCollection?.hooks?.afterDelete || []),
