@@ -2,6 +2,91 @@
 
 import type { Header } from '@/payload-types'
 
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
+import { MenuIcon } from 'lucide-react'
+import Link from 'next/link'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
+
+interface Props {
+  menu: Header['navItems']
+}
+
+export function MobileMenu(_props: Props) {
+  const pathname = usePathname()
+  const locale = pathname.startsWith('/ru') ? 'ru' : 'uk'
+  const localePrefix = locale === 'ru' ? '/ru' : ''
+  const searchParams = useSearchParams()
+  const [isOpen, setIsOpen] = useState(false)
+
+  const text = {
+    uk: {
+      myStore: 'Мій магазин',
+      catalog: 'Каталог',
+      contacts: 'Контакти',
+    },
+    ru: {
+      myStore: 'Мой магазин',
+      catalog: 'Каталог',
+      contacts: 'Контакты',
+    },
+  }[locale]
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setIsOpen(false)
+      }
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [isOpen])
+
+  useEffect(() => {
+    setIsOpen(false)
+  }, [pathname, searchParams])
+
+  return (
+    <Sheet onOpenChange={setIsOpen} open={isOpen}>
+      <SheetTrigger aria-label="Меню" className="relative flex h-11 w-11 items-center justify-center rounded-md border border-neutral-200 text-black transition-colors dark:border-neutral-700 dark:bg-black dark:text-white">
+        <MenuIcon className="h-4" />
+      </SheetTrigger>
+
+      <SheetContent side="left" className="px-4">
+        <SheetHeader className="px-0 pt-4 pb-0">
+          <SheetTitle>{text.myStore}</SheetTitle>
+
+          <SheetDescription />
+        </SheetHeader>
+
+        <ul className="flex w-full flex-col py-4">
+          <li className="py-2">
+            <Link href={`${localePrefix}/shop`}>{text.catalog}</Link>
+          </li>
+          <li className="py-2">
+            <Link href={`${localePrefix}/contacts`}>{text.contacts}</Link>
+          </li>
+        </ul>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+/*
+ПРЕЖНЯЯ ВЕРСИЯ (не активна, оставлена на случай возврата). Чтобы вернуть:
+удалить активный код выше и раскомментировать этот блок.
+
+'use client'
+
+import type { Header } from '@/payload-types'
+
 import { CMSLink } from '@/components/Link'
 import { Button } from '@/components/ui/button'
 import {
@@ -136,3 +221,4 @@ export function MobileMenu({ menu }: Props) {
     </Sheet>
   )
 }
+*/
