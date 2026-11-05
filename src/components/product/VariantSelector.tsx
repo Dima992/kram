@@ -75,6 +75,17 @@ export function VariantSelector({ product }: { product: Product }) {
     return null
   }
 
+  // Значения, которые реально есть у этого товара (хотя бы в одном варианте).
+  // Остальные значения типа (которые нужны другим товарам) на странице не показываем
+  const usedOptionIDs = new Set<string>()
+  for (const variant of variants) {
+    const list = Array.isArray(variant.options) ? variant.options : []
+    for (const option of list) {
+      const id = idOf(option)
+      if (id) usedOptionIDs.add(id)
+    }
+  }
+
   // Настройки «Фото потрібні» по характеристикам (ключ: id характеристики)
   const settings =
     (product as unknown as { variantSettings?: PhotoSettings | null }).variantSettings ?? {}
@@ -84,8 +95,17 @@ export function VariantSelector({ product }: { product: Product }) {
       {variantTypes?.map((type) => {
         if (!type || typeof type !== 'object') return null
 
-        const options = type.options?.docs
-        if (!options || !Array.isArray(options) || !options.length) return null
+        const allOptions = type.options?.docs
+        if (!allOptions || !Array.isArray(allOptions)) return null
+
+        // Только значения этого товара, без пустых записей
+        const options = allOptions.filter(
+          (option) =>
+            option !== null &&
+            typeof option === 'object' &&
+            usedOptionIDs.has(String(option.id)),
+        )
+        if (!options.length) return null
 
         // Имя типа = char-<id характеристики>: по нему находим настройку фото
         const charId = type.name?.startsWith('char-') ? type.name.slice(5) : ''
@@ -96,8 +116,6 @@ export function VariantSelector({ product }: { product: Product }) {
             <dt className="mb-3 text-sm font-medium text-neutral-900">{type.label}</dt>
             <dd className="flex flex-wrap gap-2">
               {options.map((option) => {
-                if (!option || typeof option !== 'object') return null
-
                 const optionID = String(option.id)
                 const label = option.label ?? ''
 
