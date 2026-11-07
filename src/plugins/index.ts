@@ -28,6 +28,32 @@ const SITE_NAME = 'Крамниця'
 const TITLE_MAX = 60
 const DESCRIPTION_MAX = 155
 
+// Поля снимка: данные товара на момент покупки
+const snapshotFields: Field[] = [
+  { name: 'productTitle', type: 'text', label: 'Назва товару (снімок)' },
+  { name: 'variantOptions', type: 'text', label: 'Варіант (снімок)' },
+  { name: 'variantSku', type: 'text', label: 'Артикул варіанта (снімок)' },
+  { name: 'unitPrice', type: 'number', label: 'Ціна за одиницю (снімок)' },
+]
+
+// Ищет строки заказа (поле items) внутри вкладок и добавляет к ним поля снимка
+const addSnapshotFields = (fields: Field[]): Field[] =>
+  fields.map((field) => {
+    if (field.type === 'tabs') {
+      return {
+        ...field,
+        tabs: field.tabs.map((tab) => ({ ...tab, fields: addSnapshotFields(tab.fields) })),
+      } as Field
+    }
+    if ('name' in field && field.name === 'items' && 'fields' in field) {
+      return {
+        ...field,
+        fields: [...field.fields, ...snapshotFields],
+      } as Field
+    }
+    return field
+  })
+
 // Защита: значение или тип варианта нельзя удалить, пока он используется
 const guardOptionDelete = async ({ req, id }: { req: any; id: unknown }) => {
   const optionID = String(id)
@@ -238,24 +264,11 @@ export const plugins: Plugin[] = [
             ...Orders.admin,
           },
           fields: [
-            ...defaultCollection.fields
-              .filter((field) => !('name' in field) || !customFieldNames.has(field.name))
-              .map((field) => {
-                // К строкам заказа добавляем снимок товара на момент покупки
-                if ('name' in field && field.name === 'items' && 'fields' in field) {
-                 const snapshotFields: Field[] = [
-                  { name: 'productTitle', type: 'text', label: 'Назва товару (снімок)' },
-                  { name: 'variantOptions', type: 'text', label: 'Варіант (снімок)' },
-                  { name: 'variantSku', type: 'text', label: 'Артикул варіанта (снімок)' },
-                  { name: 'unitPrice', type: 'number', label: 'Ціна за одиницю (снімок)' },
-                ]
-                return {
-                 ...field,
-                 fields: [...field.fields, ...snapshotFields],
-               }
-     }
-                return field
-              }),
+            ...addSnapshotFields(
+              defaultCollection.fields.filter(
+                (field) => !('name' in field) || !customFieldNames.has(field.name),
+              ),
+            ),
             ...customFields,
             {
               name: 'accessToken',
