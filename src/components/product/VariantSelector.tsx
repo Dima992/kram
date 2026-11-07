@@ -2,6 +2,7 @@
 
 import type { Product, Variant } from '@/payload-types'
 
+import type { VariantOption } from '@/payload-types'
 import { createUrl } from '@/utilities/createUrl'
 import clsx from 'clsx'
 import Image from 'next/image'
@@ -99,12 +100,12 @@ export function VariantSelector({ product }: { product: Product }) {
         if (!allOptions || !Array.isArray(allOptions)) return null
 
         // Только значения этого товара, без пустых записей
-        const options = allOptions.filter(
-          (option) =>
-            option !== null &&
-            typeof option === 'object' &&
-            usedOptionIDs.has(String(option.id)),
-        )
+      const options = allOptions.filter(
+  (option): option is VariantOption =>
+    option !== null &&
+    typeof option === 'object' &&
+    usedOptionIDs.has(String(option.id)),
+)
         if (!options.length) return null
 
         // Имя типа = char-<id характеристики>: по нему находим настройку фото
