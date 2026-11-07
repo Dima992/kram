@@ -327,6 +327,7 @@ export interface Product {
         image?: (string | null) | Media;
         youtubeUrl?: string | null;
         variantOption?: (string | null) | VariantOption;
+        variantLabel?: string | null;
         id?: string | null;
       }[]
     | null;
@@ -437,6 +438,10 @@ export interface Product {
    */
   gtin?: string | null;
   mpn?: string | null;
+  /**
+   * Базовый артикул товара, например SH-001. От него получают номера варианты (SH-001-1, SH-001-2).
+   */
+  sku?: string | null;
   supplierSourceKey?: string | null;
   supplierRef?: (string | null) | ImportSource;
   supplierSKU?: string | null;
@@ -1084,10 +1089,11 @@ export interface Variant {
   priceInEUREnabled?: boolean | null;
   priceInEUR?: number | null;
   /**
-   * Необов’язково. Якщо порожньо, використовується ціна товару.
+   * Необов’язково. 0 або порожньо — використовується ціна товару.
    */
   basePrice?: number | null;
   baseCurrency?: ('UAH' | 'USD' | 'EUR') | null;
+  sku?: string | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -1113,9 +1119,9 @@ export interface GoogleCategory {
    */
   path: string;
   /**
-   * Отметьте поля, которые нужно заполнить для этой категории.
+   * Теги Google маленькими латинскими буквами, по одному в строке: gender, color, size, material. Должны совпадать с Google-тегом в характеристиках.
    */
-  requiredFields?: ('gender' | 'age_group' | 'color' | 'size' | 'material' | 'condition' | 'brand' | 'gtin')[] | null;
+  requiredFields?: string[] | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1335,13 +1341,9 @@ export interface Characteristic {
    */
   order?: number | null;
   /**
-   * Какому полю Google соответствует эта характеристика. Если не нужно в фид, оставьте пусто.
+   * Название тега Google маленькими латинскими буквами, например gender, color, size, material, weight. Если в фид не нужно, оставьте пусто.
    */
-  googleAttribute?: ('gender' | 'age_group' | 'color' | 'size' | 'material') | null;
-  /**
-   * Если эта характеристика — вариант товара (цвет, размер, длина), выберите тип из списка. Если нет — оставьте пусто.
-   */
-  variantType?: (string | null) | VariantType;
+  googleAttribute?: string | null;
   /**
    * Для яких категорій ця характеристика. Підкатегорії успадковують її від батьківської. Якщо не вибрано — характеристика діє на весь магазин.
    */
@@ -1881,7 +1883,6 @@ export interface CharacteristicsSelect<T extends boolean = true> {
   adminNote?: T;
   order?: T;
   googleAttribute?: T;
-  variantType?: T;
   categories?: T;
   values?:
     | T
@@ -2245,6 +2246,7 @@ export interface VariantsSelect<T extends boolean = true> {
   priceInEUR?: T;
   basePrice?: T;
   baseCurrency?: T;
+  sku?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
@@ -2289,6 +2291,7 @@ export interface ProductsSelect<T extends boolean = true> {
         image?: T;
         youtubeUrl?: T;
         variantOption?: T;
+        variantLabel?: T;
         id?: T;
       };
   layout?:
@@ -2339,6 +2342,7 @@ export interface ProductsSelect<T extends boolean = true> {
   brand?: T;
   gtin?: T;
   mpn?: T;
+  sku?: T;
   supplierSourceKey?: T;
   supplierRef?: T;
   supplierSKU?: T;
