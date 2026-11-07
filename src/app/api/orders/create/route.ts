@@ -186,6 +186,7 @@ export async function POST(req: Request) {
     const lines: {
       productID: string
       variantID?: string
+      variantSku?: string
       title: string
       options: string
       quantity: number
@@ -229,6 +230,7 @@ export async function POST(req: Request) {
       lines.push({
         productID: String(product.id),
         variantID: variant ? String(variant.id) : undefined,
+        variantSku: variant?.sku || undefined,
         title: product.title,
         options,
         quantity: item.quantity,
@@ -258,6 +260,11 @@ export async function POST(req: Request) {
           product: line.productID,
           ...(line.variantID ? { variant: line.variantID } : {}),
           quantity: line.quantity,
+          // Снимок на момент покупки: остаётся в заказе, даже если вариант потом удалят
+          productTitle: line.title,
+          variantOptions: line.options || undefined,
+          variantSku: line.variantSku,
+          unitPrice: line.price,
         })),
         totalAmount,
         amount: totalAmount,

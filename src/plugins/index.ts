@@ -238,9 +238,24 @@ export const plugins: Plugin[] = [
             ...Orders.admin,
           },
           fields: [
-            ...defaultCollection.fields.filter(
-              (field) => !('name' in field) || !customFieldNames.has(field.name),
-            ),
+            ...defaultCollection.fields
+              .filter((field) => !('name' in field) || !customFieldNames.has(field.name))
+              .map((field) => {
+                // К строкам заказа добавляем снимок товара на момент покупки
+                if ('name' in field && field.name === 'items' && 'fields' in field) {
+                  return {
+                    ...field,
+                    fields: [
+                      ...field.fields,
+                      { name: 'productTitle', type: 'text', label: 'Назва товару (снімок)' },
+                      { name: 'variantOptions', type: 'text', label: 'Варіант (снімок)' },
+                      { name: 'variantSku', type: 'text', label: 'Артикул варіанта (снімок)' },
+                      { name: 'unitPrice', type: 'number', label: 'Ціна за одиницю (снімок)' },
+                    ],
+                  }
+                }
+                return field
+              }),
             ...customFields,
             {
               name: 'accessToken',
