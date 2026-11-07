@@ -8,7 +8,7 @@ import {
   GenerateURL,
 } from '@payloadcms/plugin-seo/types'
 import { FixedToolbarFeature, HeadingFeature, lexicalEditor } from '@payloadcms/richtext-lexical'
-import { Plugin } from 'payload'
+import { Field, Plugin } from 'payload'
 
 import { stripeAdapter } from '@payloadcms/plugin-ecommerce/payments/stripe'
 import type { Payload } from 'payload'
@@ -243,17 +243,17 @@ export const plugins: Plugin[] = [
               .map((field) => {
                 // К строкам заказа добавляем снимок товара на момент покупки
                 if ('name' in field && field.name === 'items' && 'fields' in field) {
-                  return {
-                    ...field,
-                    fields: [
-                      ...field.fields,
-                      { name: 'productTitle', type: 'text', label: 'Назва товару (снімок)' },
-                      { name: 'variantOptions', type: 'text', label: 'Варіант (снімок)' },
-                      { name: 'variantSku', type: 'text', label: 'Артикул варіанта (снімок)' },
-                      { name: 'unitPrice', type: 'number', label: 'Ціна за одиницю (снімок)' },
-                    ],
-                  }
-                }
+                 const snapshotFields: Field[] = [
+                  { name: 'productTitle', type: 'text', label: 'Назва товару (снімок)' },
+                  { name: 'variantOptions', type: 'text', label: 'Варіант (снімок)' },
+                  { name: 'variantSku', type: 'text', label: 'Артикул варіанта (снімок)' },
+                  { name: 'unitPrice', type: 'number', label: 'Ціна за одиницю (снімок)' },
+                ]
+                return {
+                 ...field,
+                 fields: [...field.fields, ...snapshotFields],
+               }
+     }
                 return field
               }),
             ...customFields,
