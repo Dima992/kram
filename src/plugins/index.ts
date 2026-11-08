@@ -54,6 +54,26 @@ const addSnapshotFields = (fields: Field[]): Field[] =>
     return field
   })
 
+// Поля плагина, которые дублируют наши или не используются. Скрываем в админке, данные не удаляем
+const hiddenFieldNames = new Set(['amount', 'customerEmail', 'transactions'])
+
+const hideFields = (fields: Field[]): Field[] =>
+  fields.map((field) => {
+    if (field.type === 'tabs') {
+      return {
+        ...field,
+        tabs: field.tabs.map((tab) => ({ ...tab, fields: hideFields(tab.fields) })),
+      } as Field
+    }
+    if ('name' in field && hiddenFieldNames.has(field.name)) {
+      return {
+        ...field,
+        admin: { ...field.admin, hidden: true },
+      } as Field
+    }
+    return field
+  })
+
 // Защита: значение или тип варианта нельзя удалить, пока он используется
 const guardOptionDelete = async ({ req, id }: { req: any; id: unknown }) => {
   const optionID = String(id)
@@ -265,8 +285,10 @@ export const plugins: Plugin[] = [
           },
           fields: [
             ...addSnapshotFields(
-              defaultCollection.fields.filter(
-                (field) => !('name' in field) || !customFieldNames.has(field.name),
+              hideFields(
+                defaultCollection.fields.filter(
+                  (field) => !('name' in field) || !customFieldNames.has(field.name),
+                ),
               ),
             ),
             ...customFields,
