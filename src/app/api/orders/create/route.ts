@@ -18,6 +18,8 @@ const carrierLabels: Record<Carrier, string> = {
   address: 'Адресна доставка',
 }
 
+const DEFAULT_COUNTRY = 'Україна'
+
 const orderMessages = {
   uk: {
     invalidOrder: 'Некоректні товари або спосіб оплати.',
@@ -102,17 +104,22 @@ export async function POST(req: Request) {
     const orderType: 'full' | 'quick' = body.orderType === 'quick' ? 'quick' : 'full'
 
     // Необязательные поля клиента: обрезаем пробелы и длину
-    const surname =
-      typeof body.surname === 'string' ? body.surname.trim().slice(0, 100) : ''
-    const patronymic =
-      typeof body.patronymic === 'string' ? body.patronymic.trim().slice(0, 100) : ''
-    const comment =
-      typeof body.comment === 'string' ? body.comment.trim().slice(0, 1000) : ''
+    const surname = typeof body.surname === 'string' ? body.surname.trim().slice(0, 100) : ''
+    const patronymic = typeof body.patronymic === 'string' ? body.patronymic.trim().slice(0, 100) : ''
+    const comment = typeof body.comment === 'string' ? body.comment.trim().slice(0, 1000) : ''
+
+    // Страна: пока на сайте не выбирается, поэтому по умолчанию «Україна»
+    const country =
+      typeof body.country === 'string' && body.country.trim()
+        ? body.country.trim().slice(0, 60)
+        : DEFAULT_COUNTRY
+    const isForeign = country !== DEFAULT_COUNTRY
 
     // Проверка доставки. В быстром заказе доставки нет, там только телефон.
     const carrier: Carrier | undefined = isCarrier(body.deliveryCarrier)
       ? body.deliveryCarrier
       : undefined
+    const addressDelivery = orderType === 'full' && body.addressDelivery === true
     const details: Record<string, unknown> =
       typeof body.deliveryDetails === 'object' && body.deliveryDetails !== null
         ? (body.deliveryDetails as Record<string, unknown>)
@@ -124,26 +131,26 @@ export async function POST(req: Request) {
     if (orderType === 'full') {
       if (!carrier) return fail(messages.invalidOrder)
 
-      if (carrier === 'nova_poshta') {
-        const city = typeof details.city === 'string' ? details.city.trim() : ''
-        const warehouse = typeof details.warehouse === 'string' ? details.warehouse.trim() : ''
-        if (!city || !warehouse) return fail(messages.npRequired)
-        cleanDetails = { city, warehouse }
-        deliveryAddressText = `${city}, ${warehouse}`
-      }
-
-        if (carrier === 'ukrposhta') {
-        const city = typeof details.city === 'string' ? details.city.trim() : ''
-        const warehouse = typeof details.warehouse === 'string' ? details.warehouse.trim() : ''
-        if (!city || !warehouse) return fail(messages.ukrRequired)
-        cleanDetails = { city, warehouse }
-        deliveryAddressText = `${city}, ${warehouse}`
-      }
-
       if (carrier === 'address') {
         if (!comment) return fail(messages.addressCommentRequired)
-        cleanDetails = undefined
+      } else {
+        const city = typeof details.city === 'string' ? details.city.trim() : ''
+        const warehouse = typeof details.warehouse === 'string' ? details.warehouse.trim() : ''
+        const postcode = typeof details.postcode === 'string' ? details.postcode.trim().slice(0, 10) : ''
+        const carrierError = carrier === 'nova_poshta' ? messages.npRequired : messages.ukrRequired
+
+        // Город обязателен всегда. Отделение нужно, если это не адресная доставка
+        if (!city) return fail(carrierError)
+        if (!addressDelivery && !warehouse) return fail(carrierError)
+        // При адресной доставке адрес пишется в комментарии
+        if (addressDelivery && !comment) return fail(messages.addressCommentRequired)
+
+        cleanDetails = { city, warehouse, postcode }
+        deliveryAddressText = [city, warehouse].filter(Boolean).join(', ')
       }
+
+      // Для доставки за пределы Украины адрес пишется в комментарии
+      if (isForeign && !comment) return fail(messages.addressCommentRequired)
     }
 
     const payload = await getPayload({ config: configPromise })
@@ -253,14 +260,16 @@ export async function POST(req: Request) {
         patronymic: patronymic || undefined,
         phone: body.phone,
         comment: comment || undefined,
+        country,
         deliveryCarrier: carrier,
+        addressDelivery: addressDelivery || undefined,
         deliveryDetails: cleanDetails,
         paymentMethod: body.paymentMethod,
         items: lines.map((line) => ({
           product: line.productID,
           ...(line.variantID ? { variant: line.variantID } : {}),
           quantity: line.quantity,
-          // Снимок на момент покупки: остаётся в заказе, даже если вариант потом удалят
+          // Данные на момент покупки: остаются в заказе, даже если товар или вариант потом изменят
           productTitle: line.title,
           variantOptions: line.options || undefined,
           variantSku: line.variantSku,
@@ -307,7 +316,8 @@ export async function POST(req: Request) {
         `👤 Клієнт: ${fullName}\n` +
         (patronymic ? `👤 По батькові: ${escapeMarkdown(patronymic)}\n` : '') +
         `📞 Тел: ${body.phone}\n` +
-        `🚚 Доставка: ${carrierText}\n` +
+        (isForeign ? `🌍 Країна: ${escapeMarkdown(country)}\n` : '') +
+        `🚚 Доставка: ${carrierText}${addressDelivery ? ' (адресна)' : ''}\n` +
         (deliveryAddressText ? `📍 ${escapeMarkdown(deliveryAddressText)}\n` : '') +
         (comment ? `💬 Коментар: ${escapeMarkdown(comment)}\n` : '') +
         `🛍 Товари:\n${itemsText}\n` +

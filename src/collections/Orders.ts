@@ -2,6 +2,14 @@ import type { Order } from '@/payload-types'
 import { sendServerConversion } from '@/utilities/serverAnalytics'
 import type { CollectionConfig } from 'payload'
 
+// Блок доставки нужен для Новой почты и Укрпочты
+const isPostCarrier = (data: { deliveryCarrier?: string | null }) =>
+  data.deliveryCarrier === 'nova_poshta' || data.deliveryCarrier === 'ukrposhta'
+
+// Индекс, адрес и отчество нужны только для Укрпочты
+const isUkrposhta = (data: { deliveryCarrier?: string | null }) =>
+  data.deliveryCarrier === 'ukrposhta'
+
 export const Orders: CollectionConfig = {
   slug: 'orders',
   admin: {
@@ -9,6 +17,7 @@ export const Orders: CollectionConfig = {
     defaultColumns: ['id', 'customerName', 'phone', 'totalAmount', 'status', 'createdAt'],
   },
   fields: [
+    // Боковая колонка: то, что меняют при обработке заказа
     {
       name: 'status',
       type: 'select',
@@ -41,6 +50,29 @@ export const Orders: CollectionConfig = {
       },
     },
     {
+      name: 'paymentMethod',
+      type: 'select',
+      label: 'Спосіб оплати',
+      options: [
+        { label: 'LiqPay (Онлайн)', value: 'liqpay' },
+        { label: 'IBAN (Розрахунковий рахунок)', value: 'iban' },
+        { label: 'Накладений платіж (200 грн предоплата)', value: 'cod' },
+      ],
+      admin: {
+        position: 'sidebar',
+      },
+    },
+    {
+      name: 'totalAmount',
+      type: 'number',
+      label: 'Загальна сума (грн)',
+      admin: {
+        position: 'sidebar',
+      },
+    },
+
+    // Контакты клиента
+    {
       name: 'surname',
       type: 'text',
       label: 'Прізвище',
@@ -56,6 +88,7 @@ export const Orders: CollectionConfig = {
       label: 'По батькові',
       admin: {
         description: 'Для Укрпошти. Може бути порожнім.',
+        condition: (data) => isUkrposhta(data) || Boolean(data.patronymic),
       },
     },
     {
@@ -68,26 +101,68 @@ export const Orders: CollectionConfig = {
         },
       },
     },
+
+    // Доставка
+    {
+      name: 'country',
+      type: 'text',
+      label: 'Країна',
+      defaultValue: 'Україна',
+    },
     {
       name: 'deliveryCarrier',
       type: 'select',
+      label: 'Спосіб доставки',
       options: [
         { label: 'Нова Пошта', value: 'nova_poshta' },
         { label: 'Укрпошта', value: 'ukrposhta' },
         { label: 'Адресна доставка', value: 'address' },
       ],
-      label: 'Спосіб доставки',
+    },
+    {
+      name: 'addressDelivery',
+      type: 'checkbox',
+      label: 'Адресна доставка (відділення не вибрано, адреса в коментарі)',
+      admin: {
+        condition: (data) => isPostCarrier(data),
+      },
     },
     {
       name: 'deliveryDetails',
       type: 'group',
+      admin: {
+        condition: (data) => isPostCarrier(data),
+      },
       fields: [
         { name: 'city', type: 'text', label: 'Місто' },
-        { name: 'warehouse', type: 'text', label: 'Відділення / Поштомат' },
-        { name: 'postcode', type: 'text', label: 'Індекс (для Укрпошти)' },
-        { name: 'address', type: 'text', label: 'Адреса (для Укрпошти)' },
+        {
+          name: 'warehouse',
+          type: 'text',
+          label: 'Відділення / Поштомат',
+          admin: {
+            condition: (data) => !data.addressDelivery,
+          },
+        },
+        {
+          name: 'postcode',
+          type: 'text',
+          label: 'Індекс (для Укрпошти)',
+          admin: {
+            condition: (data) => isUkrposhta(data),
+          },
+        },
+        {
+          name: 'address',
+          type: 'text',
+          label: 'Адреса (для Укрпошти)',
+          admin: {
+            condition: (data) => isUkrposhta(data),
+          },
+        },
       ],
     },
+
+    // Комментарий клиента
     {
       name: 'comment',
       type: 'textarea',
@@ -95,20 +170,6 @@ export const Orders: CollectionConfig = {
       admin: {
         description: 'Побажання клієнта. При адресній доставці тут адреса. Може бути порожнім.',
       },
-    },
-    {
-      name: 'paymentMethod',
-      type: 'select',
-      options: [
-        { label: 'LiqPay (Онлайн)', value: 'liqpay' },
-        { label: 'IBAN (Розрахунковий рахунок)', value: 'iban' },
-        { label: 'Накладений платіж (200 грн предоплата)', value: 'cod' },
-      ],
-    },
-    {
-      name: 'totalAmount',
-      type: 'number',
-      label: 'Загальна сума (грн)',
     },
   ],
 

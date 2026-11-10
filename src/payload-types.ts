@@ -252,6 +252,10 @@ export interface Order {
         product?: (string | null) | Product;
         variant?: (string | null) | Variant;
         quantity: number;
+        productTitle?: string | null;
+        variantOptions?: string | null;
+        variantSku?: string | null;
+        unitPrice?: number | null;
         id?: string | null;
       }[]
     | null;
@@ -275,6 +279,8 @@ export interface Order {
   currency?: ('UAH' | 'USD' | 'EUR') | null;
   status: OrderStatus;
   orderType?: ('full' | 'quick') | null;
+  paymentMethod?: ('liqpay' | 'iban' | 'cod') | null;
+  totalAmount?: number | null;
   surname?: string | null;
   customerName?: string | null;
   /**
@@ -282,7 +288,9 @@ export interface Order {
    */
   patronymic?: string | null;
   phone?: string | null;
+  country?: string | null;
   deliveryCarrier?: ('nova_poshta' | 'ukrposhta' | 'address') | null;
+  addressDelivery?: boolean | null;
   deliveryDetails?: {
     city?: string | null;
     warehouse?: string | null;
@@ -293,8 +301,6 @@ export interface Order {
    * Побажання клієнта. При адресній доставці тут адреса. Може бути порожнім.
    */
   comment?: string | null;
-  paymentMethod?: ('liqpay' | 'iban' | 'cod') | null;
-  totalAmount?: number | null;
   accessToken?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -2389,6 +2395,10 @@ export interface OrdersSelect<T extends boolean = true> {
         product?: T;
         variant?: T;
         quantity?: T;
+        productTitle?: T;
+        variantOptions?: T;
+        variantSku?: T;
+        unitPrice?: T;
         id?: T;
       };
   shippingAddress?:
@@ -2413,11 +2423,15 @@ export interface OrdersSelect<T extends boolean = true> {
   currency?: T;
   status?: T;
   orderType?: T;
+  paymentMethod?: T;
+  totalAmount?: T;
   surname?: T;
   customerName?: T;
   patronymic?: T;
   phone?: T;
+  country?: T;
   deliveryCarrier?: T;
+  addressDelivery?: T;
   deliveryDetails?:
     | T
     | {
@@ -2427,8 +2441,6 @@ export interface OrdersSelect<T extends boolean = true> {
         address?: T;
       };
   comment?: T;
-  paymentMethod?: T;
-  totalAmount?: T;
   accessToken?: T;
   updatedAt?: T;
   createdAt?: T;
