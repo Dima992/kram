@@ -23,7 +23,6 @@ type FieldErrors = {
   patronymic?: boolean
   np?: boolean
   up?: boolean
-  comment?: boolean
 }
 
 type CheckoutLine = {
@@ -71,7 +70,12 @@ const dictionary = {
     np: 'Нова Пошта',
     ukr: 'Укрпошта',
     addressCheckbox: 'Адресна доставка',
-    addressHint: 'Оберіть місто, а вулицю, будинок і квартиру напишіть у коментарі.',
+    addressHint: 'Оберіть населений пункт, а адресу вкажіть у полі нижче.',
+    addressLabel: 'Адреса',
+    addressPlaceholder: 'Вулиця, будинок, корпус, квартира...',
+    countryLabel: 'Країна',
+    postcodeLabel: 'Індекс',
+    postcodeHint: 'Можна не вказувати',
     patronymic: 'По батькові',
     patronymicHint: 'Необхідно для Укрпошти.',
     payment: '3. Спосіб оплати',
@@ -84,7 +88,6 @@ const dictionary = {
     codDescDisabled: 'Недоступно для Укрпошти та адресної доставки. Оберіть 100% предоплату.',
     commentLabel: 'Коментар до замовлення',
     commentPlaceholder: 'Побажання, наприклад: зручний час дзвінка після 11:00',
-    commentRequiredAddress: 'Напишіть вулицю, будинок і квартиру в коментарі',
     total: 'Всього до сплати',
     deliveryNote: 'Доставка оплачується окремо за тарифом перевізника',
     prepaymentNotice: 'До сплати зараз (Предоплата): 200 ₴',
@@ -127,7 +130,12 @@ const dictionary = {
     np: 'Новая Почта',
     ukr: 'Укрпочта',
     addressCheckbox: 'Адресная доставка',
-    addressHint: 'Выберите город, а улицу, дом и квартиру напишите в комментарии.',
+    addressHint: 'Выберите населенный пункт, а адрес укажите в поле ниже.',
+    addressLabel: 'Адрес',
+    addressPlaceholder: 'Улица, дом, корпус, квартира...',
+    countryLabel: 'Страна',
+    postcodeLabel: 'Индекс',
+    postcodeHint: 'Можно не указывать',
     patronymic: 'Отчество',
     patronymicHint: 'Необходимо для Укрпочты.',
     payment: '3. Способ оплаты',
@@ -140,7 +148,6 @@ const dictionary = {
     codDescDisabled: 'Недоступно для Укрпочты и адресной доставки. Выберите 100% предоплату.',
     commentLabel: 'Комментарий к заказу',
     commentPlaceholder: 'Пожелания, например: удобное время звонка после 11:00',
-    commentRequiredAddress: 'Напишите улицу, дом и квартиру в комментарии',
     total: 'Всего к оплате',
     deliveryNote: 'Доставка оплачивается отдельно по тарифу перевозчика',
     prepaymentNotice: 'К оплате сейчас (Предоплата): 200 ₴',
@@ -189,7 +196,9 @@ function buildLines(items: CartItems): CheckoutLine[] {
     if (price === null) available = false
 
     let image: MediaType | undefined =
-  product.gallery?.[0]?.image && typeof product.gallery[0].image === 'object' ? (product.gallery[0].image as MediaType) : undefined
+      product.gallery?.[0]?.image && typeof product.gallery[0].image === 'object'
+        ? (product.gallery[0].image as MediaType)
+        : undefined
 
     if (variant) {
       const variantOptionIDs = (variant.options || []).map((option) =>
@@ -203,7 +212,9 @@ function buildLines(items: CartItems): CheckoutLine[] {
             : galleryItem.variantOption
         return variantOptionIDs.includes(id)
       })
-      if (imageVariant && typeof imageVariant.image === 'object' && imageVariant.image !== null) image = imageVariant.image as MediaType
+      if (imageVariant && typeof imageVariant.image === 'object' && imageVariant.image !== null) {
+        image = imageVariant.image as MediaType
+      }
     }
 
     return [
@@ -244,6 +255,9 @@ export function UACheckoutPage() {
   const [npLoadError, setNpLoadError] = useState(false)
   const [upDelivery, setUpDelivery] = useState<UPDelivery | null>(null)
   const [upLoadError, setUpLoadError] = useState(false)
+  const [address, setAddress] = useState('')
+  const [country, setCountry] = useState('Україна')
+  const [postcode, setPostcode] = useState('')
   const [comment, setComment] = useState('')
 
   const [errors, setErrors] = useState<FieldErrors>({})
@@ -300,7 +314,7 @@ export function UACheckoutPage() {
   }
 
   // Телефон обязателен всегда. Для доставки: фамилия и имя, отчество для Укрпочты,
-  // город и (если не адресная доставка) отделение. При адресной доставке адрес в комментарии.
+  // город и (если не адресная доставка) отделение. Адрес и индекс не обязательны.
   const validate = (): FieldErrors => {
     const found: FieldErrors = {}
     if (!phone.trim()) found.phone = true
@@ -312,8 +326,6 @@ export function UACheckoutPage() {
 
       if (carrier === 'nova_poshta' && !npDelivery) found.np = true
       if (carrier === 'ukrposhta' && !upDelivery) found.up = true
-
-      if (addressMode && !comment.trim()) found.comment = true
     }
     return found
   }
@@ -335,6 +347,21 @@ export function UACheckoutPage() {
     }
 
     const isQuick = mode === 'quick'
+    const baseDelivery = carrier === 'nova_poshta' ? npDelivery : upDelivery
+
+    // Адрес и индекс отправляем только при адресной доставке (индекс Укрпочты — при любой доставке через API)
+    const deliveryDetails = isQuick
+      ? null
+      : {
+          ...(baseDelivery ?? {}),
+          ...(addressMode
+            ? {
+                address: address.trim(),
+                ...(carrier === 'ukrposhta' ? { postcode: postcode.trim() } : {}),
+              }
+            : {}),
+        }
+
     setIsLoading(true)
     try {
       const response = await fetch('/api/orders/create', {
@@ -349,11 +376,8 @@ export function UACheckoutPage() {
           comment: comment.trim(),
           deliveryCarrier: isQuick ? 'nova_poshta' : carrier,
           addressDelivery: !isQuick && addressMode,
-          deliveryDetails: isQuick
-            ? null
-            : carrier === 'nova_poshta'
-              ? npDelivery
-              : upDelivery,
+          country: addressMode && country.trim() ? country.trim() : 'Україна',
+          deliveryDetails,
           paymentMethod: payMethod,
           items: lines.map((line) => ({
             productId: line.productId,
@@ -655,24 +679,57 @@ export function UACheckoutPage() {
                     {upLoadError && <p className="text-xs font-medium text-red-600">{t.loadError}</p>}
                   </>
                 )}
+
+                {addressMode && (
+                  <div className="space-y-3 rounded-xl border border-zinc-200 p-4 dark:border-zinc-800">
+                    <div>
+                      <label className="text-xs font-medium">{t.addressLabel}</label>
+                      <textarea
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        placeholder={t.addressPlaceholder}
+                        rows={2}
+                        className={`${fieldClass(false)} resize-y`}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-xs font-medium">{t.countryLabel}</label>
+                        <input
+                          type="text"
+                          value={country}
+                          onChange={(e) => setCountry(e.target.value)}
+                          placeholder="Україна"
+                          className={fieldClass(false)}
+                        />
+                      </div>
+                      {carrier === 'ukrposhta' && (
+                        <div>
+                          <label className="text-xs font-medium">{t.postcodeLabel}</label>
+                          <input
+                            type="text"
+                            value={postcode}
+                            onChange={(e) => setPostcode(e.target.value)}
+                            placeholder="21000"
+                            className={fieldClass(false)}
+                          />
+                          <p className="text-[11px] text-muted-foreground mt-1">{t.postcodeHint}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm space-y-3">
-                <label className="text-sm font-semibold">
-                  {t.commentLabel}
-                  {addressMode && ' *'}
-                </label>
+                <label className="text-sm font-semibold">{t.commentLabel}</label>
                 <textarea
                   value={comment}
-                  onChange={(e) => {
-                    setComment(e.target.value)
-                    clearError('comment')
-                  }}
+                  onChange={(e) => setComment(e.target.value)}
                   placeholder={t.commentPlaceholder}
                   rows={3}
-                  className={`${fieldClass(Boolean(errors.comment))} resize-y`}
+                  className={`${fieldClass(false)} resize-y`}
                 />
-                {errors.comment && <p className="text-xs font-medium text-red-600">{t.commentRequiredAddress}</p>}
               </div>
 
               <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900 shadow-sm space-y-4">
