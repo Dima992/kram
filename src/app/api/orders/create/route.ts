@@ -9,13 +9,12 @@ type RequestedItem = {
   quantity: number
 }
 
-type Carrier = 'nova_poshta' | 'ukrposhta' | 'address'
-const carriers: Carrier[] = ['nova_poshta', 'ukrposhta', 'address']
+type Carrier = 'nova_poshta' | 'ukrposhta'
+const carriers: Carrier[] = ['nova_poshta', 'ukrposhta']
 
 const carrierLabels: Record<Carrier, string> = {
   nova_poshta: 'Нова Пошта',
   ukrposhta: 'Укрпошта',
-  address: 'Адресна доставка',
 }
 
 const DEFAULT_COUNTRY = 'Україна'
@@ -29,7 +28,7 @@ const orderMessages = {
     invalidAmount: 'Сума замовлення недійсна.',
     npRequired: 'Оберіть місто та відділення Нової пошти.',
     ukrRequired: 'Оберіть населений пункт і відділення Укрпошти.',
-    addressCommentRequired: 'Напишіть адресу доставки в коментарі.',
+    cityRequired: 'Оберіть населений пункт.',
     failedCreate: 'Не вдалося створити замовлення.',
     genericError: 'Сталася помилка при створенні замовлення.',
   },
@@ -41,7 +40,7 @@ const orderMessages = {
     invalidAmount: 'Сумма заказа недействительна.',
     npRequired: 'Выберите город и отделение Новой почты.',
     ukrRequired: 'Выберите населенный пункт и отделение Укрпочты.',
-    addressCommentRequired: 'Напишите адрес доставки в комментарии.',
+    cityRequired: 'Выберите населенный пункт.',
     failedCreate: 'Не удалось создать заказ.',
     genericError: 'Произошла ошибка при создании заказа.',
   },
@@ -108,9 +107,12 @@ export async function POST(req: Request) {
     const patronymic = typeof body.patronymic === 'string' ? body.patronymic.trim().slice(0, 100) : ''
     const comment = typeof body.comment === 'string' ? body.comment.trim().slice(0, 1000) : ''
 
-    // Страна: пока на сайте не выбирается, поэтому по умолчанию «Україна»
+    // Адресная доставка: отделение не нужно, адрес строкой и страна
+    const addressDelivery = orderType === 'full' && body.addressDelivery === true
+
+    // Страна сохраняется только при адресной доставке, иначе всегда Україна
     const country =
-      typeof body.country === 'string' && body.country.trim()
+      addressDelivery && typeof body.country === 'string' && body.country.trim()
         ? body.country.trim().slice(0, 60)
         : DEFAULT_COUNTRY
     const isForeign = country !== DEFAULT_COUNTRY
@@ -119,7 +121,6 @@ export async function POST(req: Request) {
     const carrier: Carrier | undefined = isCarrier(body.deliveryCarrier)
       ? body.deliveryCarrier
       : undefined
-    const addressDelivery = orderType === 'full' && body.addressDelivery === true
     const details: Record<string, unknown> =
       typeof body.deliveryDetails === 'object' && body.deliveryDetails !== null
         ? (body.deliveryDetails as Record<string, unknown>)
@@ -131,26 +132,30 @@ export async function POST(req: Request) {
     if (orderType === 'full') {
       if (!carrier) return fail(messages.invalidOrder)
 
-      if (carrier === 'address') {
-        if (!comment) return fail(messages.addressCommentRequired)
-      } else {
-        const city = typeof details.city === 'string' ? details.city.trim() : ''
-        const warehouse = typeof details.warehouse === 'string' ? details.warehouse.trim() : ''
-        const postcode = typeof details.postcode === 'string' ? details.postcode.trim().slice(0, 10) : ''
-        const carrierError = carrier === 'nova_poshta' ? messages.npRequired : messages.ukrRequired
+      const city = typeof details.city === 'string' ? details.city.trim().slice(0, 100) : ''
+      const warehouse =
+        typeof details.warehouse === 'string' ? details.warehouse.trim().slice(0, 200) : ''
+      // Индекс: свободный текст, не блокирует заказ. Для Укрпочты при отделении подтягивается из API
+      const postcode =
+        typeof details.postcode === 'string' ? details.postcode.trim().slice(0, 20) : ''
+      // Адрес строкой: только при адресной доставке, не обязательный
+      const address =
+        typeof details.address === 'string' ? details.address.trim().slice(0, 300) : ''
 
-        // Город обязателен всегда. Отделение нужно, если это не адресная доставка
-        if (!city) return fail(carrierError)
-        if (!addressDelivery && !warehouse) return fail(carrierError)
-        // При адресной доставке адрес пишется в комментарии
-        if (addressDelivery && !comment) return fail(messages.addressCommentRequired)
+      const carrierError = carrier === 'nova_poshta' ? messages.npRequired : messages.ukrRequired
 
-        cleanDetails = { city, warehouse, postcode }
-        deliveryAddressText = [city, warehouse].filter(Boolean).join(', ')
-      }
+      // Город обязателен всегда. Отделение нужно, если это не адресная доставка
+      if (!city) return fail(addressDelivery ? messages.cityRequired : carrierError)
+      if (!addressDelivery && !warehouse) return fail(carrierError)
 
-      // Для доставки за пределы Украины адрес пишется в комментарии
-      if (isForeign && !comment) return fail(messages.addressCommentRequired)
+      cleanDetails = { city }
+      if (!addressDelivery && warehouse) cleanDetails.warehouse = warehouse
+      if (postcode) cleanDetails.postcode = postcode
+      if (addressDelivery && address) cleanDetails.address = address
+
+      deliveryAddressText = addressDelivery
+        ? [city, address].filter(Boolean).join(', ')
+        : [city, warehouse].filter(Boolean).join(', ')
     }
 
     const payload = await getPayload({ config: configPromise })
