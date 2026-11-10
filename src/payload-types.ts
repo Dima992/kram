@@ -288,9 +288,9 @@ export interface Order {
    */
   patronymic?: string | null;
   phone?: string | null;
-  country?: string | null;
   deliveryCarrier?: ('nova_poshta' | 'ukrposhta' | 'address') | null;
   addressDelivery?: boolean | null;
+  country?: string | null;
   deliveryDetails?: {
     city?: string | null;
     warehouse?: string | null;
@@ -298,7 +298,7 @@ export interface Order {
     address?: string | null;
   };
   /**
-   * Побажання клієнта. При адресній доставці тут адреса. Може бути порожнім.
+   * Побажання клієнта. Може бути порожнім.
    */
   comment?: string | null;
   accessToken?: string | null;
@@ -2429,9 +2429,9 @@ export interface OrdersSelect<T extends boolean = true> {
   customerName?: T;
   patronymic?: T;
   phone?: T;
-  country?: T;
   deliveryCarrier?: T;
   addressDelivery?: T;
+  country?: T;
   deliveryDetails?:
     | T
     | {

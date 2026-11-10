@@ -2,13 +2,23 @@ import type { Order } from '@/payload-types'
 import { sendServerConversion } from '@/utilities/serverAnalytics'
 import type { CollectionConfig } from 'payload'
 
+type DeliveryData = {
+  deliveryCarrier?: string | null
+  addressDelivery?: boolean | null
+}
+
 // Блок доставки нужен для Новой почты и Укрпочты
-const isPostCarrier = (data: { deliveryCarrier?: string | null }) =>
+const isPostCarrier = (data: DeliveryData) =>
   data.deliveryCarrier === 'nova_poshta' || data.deliveryCarrier === 'ukrposhta'
 
-// Индекс, адрес и отчество нужны только для Укрпочты
-const isUkrposhta = (data: { deliveryCarrier?: string | null }) =>
-  data.deliveryCarrier === 'ukrposhta'
+// Индекс и отчество нужны только для Укрпочты
+const isUkrposhta = (data: DeliveryData) => data.deliveryCarrier === 'ukrposhta'
+
+// Адресная доставка: отделение не нужно, есть адрес строкой и страна
+const isAddressDelivery = (data: DeliveryData) => Boolean(data.addressDelivery)
+
+// Отделение показываем только если это не адресная доставка
+const showWarehouse = (data: DeliveryData) => isPostCarrier(data) && !isAddressDelivery(data)
 
 export const Orders: CollectionConfig = {
   slug: 'orders',
@@ -104,27 +114,31 @@ export const Orders: CollectionConfig = {
 
     // Доставка
     {
-      name: 'country',
-      type: 'text',
-      label: 'Країна',
-      defaultValue: 'Україна',
-    },
-    {
       name: 'deliveryCarrier',
       type: 'select',
       label: 'Спосіб доставки',
       options: [
         { label: 'Нова Пошта', value: 'nova_poshta' },
         { label: 'Укрпошта', value: 'ukrposhta' },
-        { label: 'Адресна доставка', value: 'address' },
+        { label: 'Адресна доставка (старі заказы)', value: 'address' },
       ],
     },
     {
       name: 'addressDelivery',
       type: 'checkbox',
-      label: 'Адресна доставка (відділення не вибрано, адреса в коментарі)',
+      label: 'Адресна доставка',
       admin: {
         condition: (data) => isPostCarrier(data),
+      },
+    },
+    // Страна: только при адресной доставке, по умолчанию Україна
+    {
+      name: 'country',
+      type: 'text',
+      label: 'Країна',
+      defaultValue: 'Україна',
+      admin: {
+        condition: (data) => isPostCarrier(data) && isAddressDelivery(data),
       },
     },
     {
@@ -140,9 +154,10 @@ export const Orders: CollectionConfig = {
           type: 'text',
           label: 'Відділення / Поштомат',
           admin: {
-            condition: (data) => !data.addressDelivery,
+            condition: (data) => showWarehouse(data),
           },
         },
+        // Индекс: для Укрпошты, при отделении подтягивается из API, при адресной вводится вручную
         {
           name: 'postcode',
           type: 'text',
@@ -151,12 +166,13 @@ export const Orders: CollectionConfig = {
             condition: (data) => isUkrposhta(data),
           },
         },
+        // Адрес строкой: только при адресной доставке
         {
           name: 'address',
           type: 'text',
-          label: 'Адреса (для Укрпошти)',
+          label: 'Адреса (свободний текст)',
           admin: {
-            condition: (data) => isUkrposhta(data),
+            condition: (data) => isAddressDelivery(data),
           },
         },
       ],
@@ -168,7 +184,7 @@ export const Orders: CollectionConfig = {
       type: 'textarea',
       label: 'Коментар до замовлення',
       admin: {
-        description: 'Побажання клієнта. При адресній доставці тут адреса. Може бути порожнім.',
+        description: 'Побажання клієнта. Може бути порожнім.',
       },
     },
   ],
