@@ -275,6 +275,7 @@ const findProductBySlug = async (slug: string, draft: boolean, locale: Locale) =
   const result = await payload.find({
     collection: 'products',
     depth: 3,
+    joins: { variants: { limit: 50 } },
     draft,
     limit: 1,
     locale,
