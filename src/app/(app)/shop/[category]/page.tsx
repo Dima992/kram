@@ -151,6 +151,28 @@ const matchesFilter = (product: { attributes?: unknown }, groups: FilterGroup[])
   })
 }
 
+// Есть ли в описании хоть какой-то текст
+const hasText = (node: unknown): boolean => {
+  if (!node || typeof node !== 'object') return false
+  const n = node as { text?: unknown; children?: unknown[] }
+  if (typeof n.text === 'string' && n.text.trim() !== '') return true
+  return Array.isArray(n.children) && n.children.some(hasText)
+}
+
+// Описание для языка страницы. На русском без своего текста не берём украинский
+const descriptionFor = async (categoryId: number | string, locale: Locale, fallback: unknown) => {
+  if (locale !== 'ru') return fallback
+  const payload = await getPayload({ config: configPromise })
+  const doc = await payload.findByID({
+    collection: 'categories',
+    id: categoryId,
+    locale: 'ru',
+    fallbackLocale: false,
+    depth: 0,
+  })
+  return hasText(doc.description) ? doc.description : null
+}
+
 export async function generateMetadata({ params, searchParams }: Args) {
   const { category: slug } = await params
   const { f } = await searchParams
@@ -313,6 +335,7 @@ export default async function CategoryPage({ params, searchParams }: Args) {
   const visibleBlocks = blocks.filter((block) => block.products.length > 0)
 
   const photo = photoOf(current.image)
+  const description = await descriptionFor(current.id, locale, current.description)
 
   return (
     <div>
@@ -348,9 +371,9 @@ export default async function CategoryPage({ params, searchParams }: Args) {
 
       <h1 className="mb-6 text-3xl font-medium">{current.title}</h1>
 
-      {current.description ? (
+      {description ? (
         <RichText
-          data={current.description as SerializedEditorState}
+          data={description as SerializedEditorState}
           enableGutter={false}
           className="mb-8"
         />
