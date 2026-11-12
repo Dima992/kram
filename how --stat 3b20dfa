@@ -1,0 +1,253 @@
+import {
+  MetaDescriptionField,
+  MetaImageField,
+  MetaTitleField,
+  OverviewField,
+  PreviewField,
+} from '@payloadcms/plugin-seo/fields'
+import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { revalidatePath } from 'next/cache'
+import type { CollectionConfig } from 'payload'
+import { slugField } from 'payload'
+
+import { adminOnly } from '@/access/adminOnly'
+import { transliterate } from '@/utilities/transliterate'
+
+// Название категории на украинском (основной язык)
+const ukTitleOf = async (doc: any, req: any): Promise<string> => {
+  const ownTitle = typeof doc?.title === 'string' ? doc.title : ''
+  if (req.locale === 'uk' || !doc?.id) return ownTitle
+
+  const existing: any = await req.payload
+    .findByID({
+      collection: 'categories',
+      id: doc.id,
+      locale: 'uk',
+      depth: 0,
+      overrideAccess: true,
+      req,
+    })
+    .catch(() => null)
+
+  return typeof existing?.title === 'string' && existing.title ? existing.title : ownTitle
+}
+
+// Перед сохранением на русском:
+// 1) запоминаем украинское название из базы (чтобы вернуть, если пропадёт);
+// 2) если русское название пустое, берём украинское.
+const protectUkTitle = async ({ data, req, originalDoc }: any) => {
+  if (req.context?.restoringUk) return data
+  if (req.locale !== 'ru') return data
+
+  const doc = data as any
+  const id = originalDoc?.id
+  if (!id) return data
+
+  const uk: any = await req.payload
+    .findByID({
+      collection: 'categories',
+      id,
+      locale: 'uk',
+      depth: 0,
+      overrideAccess: true,
+      req,
+    })
+    .catch(() => null)
+
+  const ukTitle = typeof uk?.title === 'string' ? uk.title : ''
+  if (ukTitle) req.context.savedUkTitle = ukTitle
+
+  const ruTitle = typeof doc.title === 'string' ? doc.title.trim() : ''
+  if (!ruTitle && ukTitle) doc.title = ukTitle
+
+  return data
+}
+
+// После сохранения на русском: если украинское название стало пустым, возвращаем его
+const restoreUkTitle = async ({ doc, req }: any) => {
+  if (req.context?.restoringUk) return doc
+  if (req.locale !== 'ru') return doc
+
+  const savedUk = req.context?.savedUkTitle as string | undefined
+  if (!savedUk || !doc?.id) return doc
+
+  const now: any = await req.payload
+    .findByID({
+      collection: 'categories',
+      id: doc.id,
+      locale: 'uk',
+      depth: 0,
+      overrideAccess: true,
+      req,
+    })
+    .catch(() => null)
+
+  if (now && !now.title) {
+    await req.payload.update({
+      collection: 'categories',
+      id: doc.id,
+      locale: 'uk',
+      data: { title: savedUk },
+      depth: 0,
+      overrideAccess: true,
+      context: { restoringUk: true },
+    })
+  }
+
+  return doc
+}
+
+export const Categories: CollectionConfig = {
+  slug: 'categories',
+  access: {
+    create: adminOnly,
+    delete: adminOnly,
+    read: () => true,
+    update: adminOnly,
+  },
+  admin: {
+    // В выборе категории в товаре показываем полный путь
+    useAsTitle: 'pathTitle',
+    group: 'Content',
+    defaultColumns: ['pathTitle', 'title'],
+  },
+  hooks: {
+    // После сохранения или удаления категории обновляем страницы магазина
+    afterChange: [
+      () => {
+        revalidatePath('/shop', 'layout')
+      },
+      // Возвращаем украинское название, если оно пропало при сохранении на русском
+      restoreUkTitle,
+      // Alt для фото категории: название категории (если alt пустой или это имя файла)
+      async ({ doc, req }) => {
+        try {
+          const imageId =
+            doc.image && typeof doc.image === 'object' ? doc.image.id : doc.image
+          if (!imageId) return doc
+
+          const media = await req.payload.findByID({
+            collection: 'media',
+            id: imageId,
+            locale: 'uk',
+            depth: 0,
+            fallbackLocale: false,
+            req,
+          })
+
+          const alt = (media.alt || '').trim()
+          const base = (media.filename || '').replace(/\.[^.]+$/, '')
+          const isPlaceholder = alt === '' || alt === media.filename || alt === base
+          if (!isPlaceholder) return doc
+
+          await req.payload.update({
+            collection: 'media',
+            id: imageId,
+            locale: 'uk',
+            data: { alt: `${String(doc.title)} — фото категорії` },
+            req,
+          })
+        } catch (err) {
+          req.payload.logger.error({ err }, 'Category alt skipped')
+        }
+        return doc
+      },
+    ],
+    afterDelete: [
+      () => {
+        revalidatePath('/shop', 'layout')
+      },
+    ],
+    // Перед сохранением: защита украинского и заполнение русского из украинского
+    beforeChange: [
+      protectUkTitle,
+      // Собираем полный путь: родитель → подкатегория (всегда по украинским названиям)
+      async ({ data, req }) => {
+        const doc = data as any
+        const names: string[] = [await ukTitleOf(doc, req)]
+
+        let parentId = doc?.parent
+          ? typeof doc.parent === 'object'
+            ? doc.parent.id
+            : doc.parent
+          : null
+        let guard = 0
+
+        while (parentId && guard < 10) {
+          const parent: any = await req.payload
+            .findByID({
+              collection: 'categories',
+              id: parentId,
+              locale: 'uk',
+              depth: 0,
+              overrideAccess: true,
+              req,
+            })
+            .catch(() => null)
+          if (!parent) break
+
+          names.unshift(parent.title)
+          parentId = parent.parent
+            ? typeof parent.parent === 'object'
+              ? parent.parent.id
+              : parent.parent
+            : null
+          guard++
+        }
+
+        doc.pathTitle = names.filter(Boolean).join(' → ')
+        return doc
+      },
+    ],
+  },
+  fields: [
+    {
+      name: 'title',
+      type: 'text',
+      required: true,
+      localized: true, // Включаем перевод названия категории (UK / RU)
+    },
+    {
+      name: 'pathTitle',
+      type: 'text',
+      label: 'Повний шлях (автоматично)',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Заповнюється сам при збереженні. Не редагуйте вручну.',
+      },
+    },
+    {
+      name: 'parent',
+      type: 'relationship',
+      relationTo: 'categories',
+      label: 'Батьківська категорія',
+      admin: {
+        position: 'sidebar',
+        description: 'Порожньо — верхній рівень. Наприклад, «Шуби» можна вкласти в «Верхній одяг».',
+      },
+      // Нельзя выбрать саму категорию в качестве родителя
+      filterOptions: ({ id }) => {
+        if (id) return { id: { not_equals: id } }
+        return true
+      },
+      // Не даём создать цикл (A → B → A)
+      validate: async (value: unknown, { id, req }: { id?: unknown; req: any }) => {
+        if (!value) return true
+        let currentId: unknown = value
+        for (let depth = 0; depth < 10; depth++) {
+          if (id !== undefined && String(currentId) === String(id)) {
+            return 'Категорія не може бути вкладена сама в себе'
+          }
+          const doc = await req.payload
+            .findByID({ collection: 'categories', id: currentId, depth: 0, overrideAccess: true, req })
+            .catch(() => null)
+          if (!doc || !doc.parent) return true
+          currentId = typeof doc.parent === 'object' ? doc.parent.id : doc.parent
+        }
+        return true
+      },
+    },
+    {
+      type: 'tabs',
+    
