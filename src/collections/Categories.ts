@@ -13,67 +13,14 @@ import { slugField } from 'payload'
 import { adminOnly } from '@/access/adminOnly'
 import { transliterate } from '@/utilities/transliterate'
 
-// Название категории на украинском (основной язык)
+// Название категории на украинском (для полного пути)
 const ukTitleOf = async (doc: any, req: any): Promise<string> => {
   const ownTitle = typeof doc?.title === 'string' ? doc.title : ''
   if (req.locale === 'uk' || !doc?.id) return ownTitle
 
-  const existing: any = await req.payload
-    .findByID({
-      collection: 'categories',
-      id: doc.id,
-      locale: 'uk',
-      depth: 0,
-      overrideAccess: true,
-      req,
-    })
-    .catch(() => null)
-
-  return typeof existing?.title === 'string' && existing.title ? existing.title : ownTitle
-}
-
-// Перед сохранением на русском:
-// 1) запоминаем украинское название из базы (чтобы вернуть, если пропадёт);
-// 2) если русское название пустое, берём украинское.
-const protectUkTitle = async ({ data, req, originalDoc }: any) => {
-  if (req.context?.restoringUk) return data
-  if (req.locale !== 'ru') return data
-
-  const doc = data as any
-  const id = originalDoc?.id
-  if (!id) return data
-
   const uk: any = await req.payload
     .findByID({
       collection: 'categories',
-      id,
-      locale: 'uk',
-      depth: 0,
-      overrideAccess: true,
-      req,
-    })
-    .catch(() => null)
-
-  const ukTitle = typeof uk?.title === 'string' ? uk.title : ''
-  if (ukTitle) req.context.savedUkTitle = ukTitle
-
-  const ruTitle = typeof doc.title === 'string' ? doc.title.trim() : ''
-  if (!ruTitle && ukTitle) doc.title = ukTitle
-
-  return data
-}
-
-// После сохранения на русском: если украинское название стало пустым, возвращаем его
-const restoreUkTitle = async ({ doc, req }: any) => {
-  if (req.context?.restoringUk) return doc
-  if (req.locale !== 'ru') return doc
-
-  const savedUk = req.context?.savedUkTitle as string | undefined
-  if (!savedUk || !doc?.id) return doc
-
-  const now: any = await req.payload
-    .findByID({
-      collection: 'categories',
       id: doc.id,
       locale: 'uk',
       depth: 0,
@@ -82,19 +29,7 @@ const restoreUkTitle = async ({ doc, req }: any) => {
     })
     .catch(() => null)
 
-  if (now && !now.title) {
-    await req.payload.update({
-      collection: 'categories',
-      id: doc.id,
-      locale: 'uk',
-      data: { title: savedUk },
-      depth: 0,
-      overrideAccess: true,
-      context: { restoringUk: true },
-    })
-  }
-
-  return doc
+  return typeof uk?.title === 'string' && uk.title ? uk.title : ownTitle
 }
 
 export const Categories: CollectionConfig = {
@@ -117,8 +52,6 @@ export const Categories: CollectionConfig = {
       () => {
         revalidatePath('/shop', 'layout')
       },
-      // Возвращаем украинское название, если оно пропало при сохранении на русском
-      restoreUkTitle,
       // Alt для фото категории: название категории (если alt пустой или это имя файла)
       async ({ doc, req }) => {
         try {
@@ -158,10 +91,8 @@ export const Categories: CollectionConfig = {
         revalidatePath('/shop', 'layout')
       },
     ],
-    // Перед сохранением: защита украинского и заполнение русского из украинского
+    // Собираем полный путь: родитель → подкатегория (всегда по украинским названиям)
     beforeChange: [
-      protectUkTitle,
-      // Собираем полный путь: родитель → подкатегория (всегда по украинским названиям)
       async ({ data, req }) => {
         const doc = data as any
         const names: string[] = [await ukTitleOf(doc, req)]
