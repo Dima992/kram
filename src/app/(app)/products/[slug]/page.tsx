@@ -24,7 +24,7 @@ type Args = {
   params: Promise<{
     slug: string
   }>
-  searchParams?: Promise<{ color?: string | string[] }>
+  searchParams?: Promise<{ v?: string | string[]; color?: string | string[] }>
 }
 
 // Язык берём из метки, которую ставит proxy
@@ -43,6 +43,9 @@ const idOf = (value: unknown): string | null => {
   return String(value)
 }
 
+const toList = (value: string | string[] | undefined): string[] =>
+  Array.isArray(value) ? value : value ? [value] : []
+
 // Оставляем и фото, и видео YouTube (у видео нет фото, поэтому раньше их отбрасывало)
 const getGallery = (product: Product) =>
   product.gallery
@@ -55,21 +58,33 @@ const getGallery = (product: Product) =>
       image: typeof item.image === 'object' ? (item.image as Media) : undefined,
     })) || []
 
-// Находит id варианта (опции) по выбранному значению характеристики: в опции код вида v-<id значения>
-const findColorOptionId = (product: Product, colorValueId: string | undefined): string | null => {
-  if (!colorValueId) return null
-  const code = `v-${colorValueId}`
+// Переводит значения характеристик (из адреса) в id вариантов товара: в опции код вида v-<id значения>
+const valueIdsToOptionIds = (product: Product, valueIds: string[]): string[] => {
+  const codeToOption = new Map<string, string>()
   for (const type of product.variantTypes ?? []) {
     if (!type || typeof type !== 'object') continue
     for (const option of type.options?.docs ?? []) {
       if (!option || typeof option !== 'object') continue
-      if ((option as { value?: unknown }).value === code) return idOf(option)
+      const code = (option as { value?: unknown }).value
+      const id = idOf(option)
+      if (typeof code === 'string' && id) codeToOption.set(code, id)
     }
   }
-  return null
+  return valueIds
+    .map((valueId) => codeToOption.get(`v-${valueId}`))
+    .filter((id): id is string => Boolean(id))
 }
 
-// Фото выбранного цвета ставим первым, остальные идут за ним
+// Первый выбранный вариант, у которого есть своё фото в галерее
+const pickPreferredOption = (product: Product, optionIds: string[]): string | null =>
+  optionIds.find((optionId) =>
+    (product.gallery ?? []).some(
+      (item) =>
+        idOf(item.variantOption) === optionId && item.image && typeof item.image === 'object',
+    ),
+  ) ?? null
+
+// Фото выбранного варианта ставим первым, остальные идут за ним
 const orderGallery = <T extends { variantOption?: unknown }>(gallery: T[], optionId: string | null) => {
   if (!optionId) return gallery
   const first = gallery.filter((item) => idOf(item.variantOption) === optionId)
@@ -176,16 +191,17 @@ export async function generateMetadata({ params }: Args): Promise<Metadata> {
 
 export default async function ProductPage({ params, searchParams }: Args) {
   const { slug } = await params
-  const { color } = (await searchParams) ?? {}
-  const colorValueId = Array.isArray(color) ? color[0] : color
+  const query = (await searchParams) ?? {}
+  // Все выбранные значения из адреса (?v=…); старый ?color=… тоже поддерживаем
+  const valueIds = [...toList(query.v), ...toList(query.color)]
   const locale = await getLocale()
   const product = await queryProductBySlug({ slug, locale })
 
   if (!product) return notFound()
 
-  // Если открыли со страницы с выбранным цветом, первым идёт фото этого цвета
-  const colorOptionId = findColorOptionId(product, colorValueId)
-  const gallery = orderGallery(getGallery(product), colorOptionId)
+  // Первым идёт фото первого выбранного значения, у которого есть фото
+  const preferredOptionId = pickPreferredOption(product, valueIdsToOptionIds(product, valueIds))
+  const gallery = orderGallery(getGallery(product), preferredOptionId)
   const characteristics = await buildCharacteristics(product, locale)
 
   const metaImage = typeof product.meta?.image === 'object' ? product.meta?.image : undefined

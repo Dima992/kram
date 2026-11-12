@@ -10,19 +10,21 @@ type Props = {
   locale?: 'uk' | 'ru'
   product: Partial<Product>
   priority?: boolean
-  // Для вывода по цвету: id выбранного цвета, его название и фото этого цвета
-  colorId?: string
+  // Подпись цвета (для карточек по цвету)
   colorLabel?: string
+  // Фото выбранного цвета (вместо первого фото галереи)
   imageOverride?: MediaType
+  // Все выбранные значения характеристик: попадают в ссылку, чтобы товар открылся с ними
+  valueIds?: string[]
 }
 
 export const ProductGridItem: React.FC<Props> = ({
   locale,
   priority = false,
   product,
-  colorId,
   colorLabel,
   imageOverride,
+  valueIds,
 }) => {
   const { gallery, priceInUAH, title } = product
 
@@ -35,7 +37,10 @@ export const ProductGridItem: React.FC<Props> = ({
   const image = imageOverride || defaultImage
 
   const baseHref = `${locale === 'ru' ? '/ru' : ''}/products/${product.slug}`
-  const productHref = colorId ? `${baseHref}?color=${colorId}` : baseHref
+  const query = valueIds?.length
+    ? `?${valueIds.map((id) => `v=${encodeURIComponent(id)}`).join('&')}`
+    : ''
+  const productHref = `${baseHref}${query}`
 
   return (
     <Link className="relative inline-block h-full w-full group" href={productHref}>

@@ -306,8 +306,7 @@ export default async function CategoryPage({ params, searchParams }: Args) {
     ? candidates.docs.filter((product) => matchesFilter(product, groups))
     : []
 
-  // Карточки по цвету: при выбранном цвете каждый цвет товара — отдельная карточка с его фото
-    // Карточки с фото: по выбранным значениям любой характеристики, у которой включено «Фото потрібні»
+  // Карточки с фото: по выбранным значениям любой характеристики, у которой включено «Фото потрібні»
   const cards = filterActive
     ? await buildColorCards(payload, filtered, filterChars, selected, locale)
     : []
@@ -535,17 +534,24 @@ export default async function CategoryPage({ params, searchParams }: Args) {
               </p>
               {cards.length > 0 ? (
                 <Grid className="mb-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {cards.map((card, index) => (
-                    <ProductGridItem
-                      key={`${String(card.product.id)}-${card.colorId ?? 'main'}`}
-                      locale={locale}
-                      priority={index === 0}
-                      product={card.product}
-                      colorId={card.colorId}
-                      colorLabel={card.colorLabel}
-                      imageOverride={card.image as MediaType | undefined}
-                    />
-                  ))}
+                  {cards.map((card, index) => {
+                    // Все выбранные значения фильтра: карточка с цветом идёт первой
+                    const selectedList = Array.from(selected)
+                    const valueIds = card.colorId
+                      ? [card.colorId, ...selectedList.filter((id) => id !== card.colorId)]
+                      : selectedList
+                    return (
+                      <ProductGridItem
+                        key={`${String(card.product.id)}-${card.colorId ?? 'main'}`}
+                        locale={locale}
+                        priority={index === 0}
+                        product={card.product}
+                        colorLabel={card.colorLabel}
+                        imageOverride={card.image as MediaType | undefined}
+                        valueIds={valueIds}
+                      />
+                    )
+                  })}
                 </Grid>
               ) : (
                 <p className="mb-12">{labels[locale].noMatch}</p>
