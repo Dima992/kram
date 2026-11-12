@@ -24,12 +24,23 @@ type Args = {
   params: Promise<{
     slug: string
   }>
+  searchParams?: Promise<{ color?: string | string[] }>
 }
 
 // Язык берём из метки, которую ставит proxy
 const getLocale = async (): Promise<Locale> => {
   const headers = await getHeaders()
   return headers.get('x-locale') === 'ru' ? 'ru' : 'uk'
+}
+
+// Достаёт id из связи: бывает либо сам id, либо объект с id
+const idOf = (value: unknown): string | null => {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'object') {
+    const id = (value as { id?: unknown }).id
+    return id === undefined || id === null ? null : String(id)
+  }
+  return String(value)
 }
 
 // Оставляем и фото, и видео YouTube (у видео нет фото, поэтому раньше их отбрасывало)
@@ -43,6 +54,28 @@ const getGallery = (product: Product) =>
       ...item,
       image: typeof item.image === 'object' ? (item.image as Media) : undefined,
     })) || []
+
+// Находит id варианта (опции) по выбранному значению характеристики: в опции код вида v-<id значения>
+const findColorOptionId = (product: Product, colorValueId: string | undefined): string | null => {
+  if (!colorValueId) return null
+  const code = `v-${colorValueId}`
+  for (const type of product.variantTypes ?? []) {
+    if (!type || typeof type !== 'object') continue
+    for (const option of type.options?.docs ?? []) {
+      if (!option || typeof option !== 'object') continue
+      if ((option as { value?: unknown }).value === code) return idOf(option)
+    }
+  }
+  return null
+}
+
+// Фото выбранного цвета ставим первым, остальные идут за ним
+const orderGallery = <T extends { variantOption?: unknown }>(gallery: T[], optionId: string | null) => {
+  if (!optionId) return gallery
+  const first = gallery.filter((item) => idOf(item.variantOption) === optionId)
+  const rest = gallery.filter((item) => idOf(item.variantOption) !== optionId)
+  return [...first, ...rest]
+}
 
 // Характеристики, которые выбраны у товара: только выбранные значения, пустые скрываем
 const buildCharacteristics = async (
@@ -141,14 +174,18 @@ export async function generateMetadata({ params }: Args): Promise<Metadata> {
   }
 }
 
-export default async function ProductPage({ params }: Args) {
+export default async function ProductPage({ params, searchParams }: Args) {
   const { slug } = await params
+  const { color } = (await searchParams) ?? {}
+  const colorValueId = Array.isArray(color) ? color[0] : color
   const locale = await getLocale()
   const product = await queryProductBySlug({ slug, locale })
 
   if (!product) return notFound()
 
-  const gallery = getGallery(product)
+  // Если открыли со страницы с выбранным цветом, первым идёт фото этого цвета
+  const colorOptionId = findColorOptionId(product, colorValueId)
+  const gallery = orderGallery(getGallery(product), colorOptionId)
   const characteristics = await buildCharacteristics(product, locale)
 
   const metaImage = typeof product.meta?.image === 'object' ? product.meta?.image : undefined

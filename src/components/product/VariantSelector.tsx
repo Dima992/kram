@@ -87,6 +87,9 @@ export function VariantSelector({ product }: { product: Product }) {
     }
   }
 
+  // Цвет из карточки: ?color=<id значения характеристики>. Предвыбираем соответствующее значение.
+  const colorValueId = searchParams.get('color')
+
   // Настройки «Фото потрібні» по характеристикам (ключ: id характеристики)
   const settings =
     (product as unknown as { variantSettings?: PhotoSettings | null }).variantSettings ?? {}
@@ -100,13 +103,28 @@ export function VariantSelector({ product }: { product: Product }) {
         if (!allOptions || !Array.isArray(allOptions)) return null
 
         // Только значения этого товара, без пустых записей
-      const options = allOptions.filter(
-  (option): option is VariantOption =>
-    option !== null &&
-    typeof option === 'object' &&
-    usedOptionIDs.has(String(option.id)),
-)
+        const options = allOptions.filter(
+          (option): option is VariantOption =>
+            option !== null && typeof option === 'object' && usedOptionIDs.has(String(option.id)),
+        )
         if (!options.length) return null
+
+        // Ищем опцию, которая соответствует выбранному цвету (код v-<id значения>)
+        let presetOptionId: string | null = null
+        if (colorValueId) {
+          for (const option of options) {
+            if ((option as { value?: unknown }).value === `v-${colorValueId}`) {
+              presetOptionId = String(option.id)
+            }
+          }
+        }
+
+        // Параметры адреса: если пользователь ещё не выбирал этот тип, берём предвыбор из цвета
+        const baseParams = new URLSearchParams(searchParams.toString())
+        if (presetOptionId && !baseParams.get(type.name)) {
+          baseParams.set(type.name, presetOptionId)
+        }
+        const selectedId = baseParams.get(type.name)
 
         // Имя типа = char-<id характеристики>: по нему находим настройку фото
         const charId = type.name?.startsWith('char-') ? type.name.slice(5) : ''
@@ -120,8 +138,8 @@ export function VariantSelector({ product }: { product: Product }) {
                 const optionID = String(option.id)
                 const label = option.label ?? ''
 
-                // Берём текущие параметры из адреса, чтобы не потерять другие выборы
-                const optionSearchParams = new URLSearchParams(searchParams.toString())
+                // Берём текущие параметры адреса, чтобы не потерять другие выборы
+                const optionSearchParams = new URLSearchParams(baseParams.toString())
                 optionSearchParams.delete('variant')
                 optionSearchParams.delete('image')
                 optionSearchParams.set(type.name, optionID)
@@ -148,8 +166,7 @@ export function VariantSelector({ product }: { product: Product }) {
                 }
 
                 const optionUrl = createUrl(pathname, optionSearchParams)
-                const isActive =
-                  isAvailableForSale && searchParams.get(type.name) === optionID
+                const isActive = isAvailableForSale && selectedId === optionID
 
                 const onSelect = () => {
                   router.replace(`${optionUrl}`, { scroll: false })
