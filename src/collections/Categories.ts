@@ -108,6 +108,7 @@ export const Categories: CollectionConfig = {
           guard++
         }
 
+        console.log('DIAG после родителей', { локаль: req.locale })
         doc.pathTitle = names.filter(Boolean).join(' → ')
         return doc
       },
