@@ -4,6 +4,7 @@ import { ProductGridItem } from '@/components/ProductGridItem'
 import { RichText } from '@/components/RichText'
 import type { Media as MediaType } from '@/payload-types'
 import { nonEmptyCategoryIds, parentIdOf, subtreeIds } from '@/utilities/categoryTree'
+import { buildColorCards } from '@/utilities/colorCards'
 import configPromise from '@payload-config'
 import type { SerializedEditorState } from '@payloadcms/richtext-lexical/lexical'
 import { headers as getHeaders } from 'next/headers'
@@ -41,6 +42,7 @@ type CharacteristicDoc = {
   name_uk: string
   name_ru?: string | null
   categories?: unknown
+  googleAttribute?: string | null
   values?: CharacteristicValue[] | null
 }
 
@@ -244,6 +246,7 @@ export default async function CategoryPage({ params, searchParams }: Args) {
     basePrice: true,
     priceInUAH: true,
     attributes: true,
+    variantSettings: true,
   } as const
 
   const selected = parseSelected(f)
@@ -301,6 +304,12 @@ export default async function CategoryPage({ params, searchParams }: Args) {
 
   const filtered = filterActive
     ? candidates.docs.filter((product) => matchesFilter(product, groups))
+    : []
+
+  // Карточки по цвету: при выбранном цвете каждый цвет товара — отдельная карточка с его фото
+    // Карточки с фото: по выбранным значениям любой характеристики, у которой включено «Фото потрібні»
+  const cards = filterActive
+    ? await buildColorCards(payload, filtered, filterChars, selected, locale)
     : []
 
   // Свои товары категории и блоки подкатегорий: только когда фильтр выключен
@@ -524,14 +533,17 @@ export default async function CategoryPage({ params, searchParams }: Args) {
                 {labels[locale].found}
                 {filtered.length}
               </p>
-              {filtered.length > 0 ? (
+              {cards.length > 0 ? (
                 <Grid className="mb-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filtered.map((product, index) => (
+                  {cards.map((card, index) => (
                     <ProductGridItem
-                      key={product.id}
+                      key={`${String(card.product.id)}-${card.colorId ?? 'main'}`}
                       locale={locale}
                       priority={index === 0}
-                      product={product}
+                      product={card.product}
+                      colorId={card.colorId}
+                      colorLabel={card.colorLabel}
+                      imageOverride={card.image as MediaType | undefined}
                     />
                   ))}
                 </Grid>

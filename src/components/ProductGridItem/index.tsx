@@ -1,4 +1,4 @@
-import type { Product } from '@/payload-types'
+import type { Media as MediaType, Product } from '@/payload-types'
 
 import { Media } from '@/components/Media'
 import { Price } from '@/components/Price'
@@ -10,18 +10,32 @@ type Props = {
   locale?: 'uk' | 'ru'
   product: Partial<Product>
   priority?: boolean
+  // Для вывода по цвету: id выбранного цвета, его название и фото этого цвета
+  colorId?: string
+  colorLabel?: string
+  imageOverride?: MediaType
 }
 
-export const ProductGridItem: React.FC<Props> = ({ locale, priority = false, product }) => {
+export const ProductGridItem: React.FC<Props> = ({
+  locale,
+  priority = false,
+  product,
+  colorId,
+  colorLabel,
+  imageOverride,
+}) => {
   const { gallery, priceInUAH, title } = product
 
   // Цена только в гривнах. Без запасных вариантов в USD или базовой цене.
   const price = priceInUAH
 
-  const image =
+  // Если передано фото цвета, показываем его. Иначе первое фото из галереи.
+  const defaultImage =
     gallery?.[0]?.image && typeof gallery[0]?.image !== 'string' ? gallery[0]?.image : false
+  const image = imageOverride || defaultImage
 
-  const productHref = `${locale === 'ru' ? '/ru' : ''}/products/${product.slug}`
+  const baseHref = `${locale === 'ru' ? '/ru' : ''}/products/${product.slug}`
+  const productHref = colorId ? `${baseHref}?color=${colorId}` : baseHref
 
   return (
     <Link className="relative inline-block h-full w-full group" href={productHref}>
@@ -41,7 +55,10 @@ export const ProductGridItem: React.FC<Props> = ({ locale, priority = false, pro
       ) : null}
 
       <div className="font-mono text-primary/50 group-hover:text-primary flex justify-between items-center mt-4">
-        <div>{title}</div>
+        <div>
+          {title}
+          {colorLabel ? <span className="block text-xs">{colorLabel}</span> : null}
+        </div>
 
         {typeof price === 'number' && (
           <div className="">
