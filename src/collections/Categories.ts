@@ -75,7 +75,6 @@ export const Categories: CollectionConfig = {
     // Собираем полный путь: родитель → подкатегория (по украинским названиям)
     beforeChange: [
       async ({ data, req }) => {
-        console.log('DIAG категория', { локаль: req.locale, title: (data as any)?.title })
         const doc = data as any
         const names: string[] = [typeof doc?.title === 'string' ? doc.title : '']
 
@@ -108,7 +107,6 @@ export const Categories: CollectionConfig = {
           guard++
         }
 
-        console.log('DIAG после родителей', { локаль: req.locale })
         doc.pathTitle = names.filter(Boolean).join(' → ')
         return doc
       },
