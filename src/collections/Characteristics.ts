@@ -122,6 +122,10 @@ export const Characteristics: CollectionConfig = {
       admin: {
         description:
           'Варіанти, які можна буде вибрати в товарі галочками. Общие значения (S, M, 90 см) заполните в обоих полях одинаково.',
+        components: {
+          // Подпись строки: название значения вместо «Value 01»
+          RowLabel: '@/components/admin/CharacteristicValueRowLabel#CharacteristicValueRowLabel',
+        },
       },
       fields: [
         {
