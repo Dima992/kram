@@ -87,6 +87,7 @@ export const Categories: CollectionConfig = {
         let guard = 0
 
         while (parentId && guard < 10) {
+          // Поиск родителя без req: иначе он меняет язык всего сохранения на uk
           const parent: any = await req.payload
             .findByID({
               collection: 'categories',
@@ -94,7 +95,6 @@ export const Categories: CollectionConfig = {
               locale: 'uk',
               depth: 0,
               overrideAccess: true,
-              req,
             })
             .catch(() => null)
           if (!parent) break
