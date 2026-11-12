@@ -534,12 +534,23 @@ export default async function CategoryPage({ params, searchParams }: Args) {
               </p>
               {cards.length > 0 ? (
                 <Grid className="mb-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {cards.map((card, index) => {
-                    // Все выбранные значения фильтра: карточка с цветом идёт первой
-                    const selectedList = Array.from(selected)
-                    const valueIds = card.colorId
-                      ? [card.colorId, ...selectedList.filter((id) => id !== card.colorId)]
-                      : selectedList
+                    {cards.map((card, index) => {
+                    // Ищем характеристику, к которой относится значение (например, цвет или размер)
+                    const charOf = (id: string) =>
+                      String(
+                        filterChars.find((characteristic) =>
+                          (characteristic.values ?? []).some((value) => String(value.id) === id),
+                        )?.id ?? '',
+                      )
+
+                    // Для карточки с цветом: её цвет + выбранные значения ДРУГИХ характеристик (размер).
+                    // Другие цвета в ссылку не попадают, иначе страница товара выберет не тот.
+                    const cardChar = card.colorId ? charOf(card.colorId) : ''
+                    const otherSelected = Array.from(selected).filter(
+                      (id) => !cardChar || charOf(id) !== cardChar,
+                    )
+                    const valueIds = card.colorId ? [card.colorId, ...otherSelected] : otherSelected
+
                     return (
                       <ProductGridItem
                         key={`${String(card.product.id)}-${card.colorId ?? 'main'}`}

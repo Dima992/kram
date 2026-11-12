@@ -221,6 +221,16 @@ function variantLabels(variant: VariantRow, lookup: FeedOptionLookup): string[] 
     .filter((label): label is string => Boolean(label))
 }
 
+// Ссылка на вариант: значения характеристик (цвет и размер) в адресе, как в фильтре на сайте.
+// Тогда страница сама выберет цвет и размер, и кнопка покупки будет активна.
+function variantLink(productURL: string, optionIDs: string[], lookup: FeedOptionLookup): string {
+  const valueIDs = optionIDs
+    .map((optionID) => lookup[optionID]?.valueID)
+    .filter((valueID): valueID is string => Boolean(valueID))
+  if (valueIDs.length === 0) return productURL
+  return `${productURL}?${valueIDs.map((valueID) => `v=${encodeURIComponent(valueID)}`).join('&')}`
+}
+
 // Google-значения характеристик варианта: связь по ID значения, без сравнения текста.
 // Варианты без связи (созданы вручную) в фид Google-атрибуты не получают
 function getVariantAttributes(
@@ -352,7 +362,7 @@ function buildItems(
         id: variant.sku?.trim() || `${product.id}-${variant.id}`,
         groupID: String(product.id),
         title: labels.length ? `${title}, ${labels.join(', ')}` : title,
-        link: `${productURL}?variant=${encodeURIComponent(String(variant.id))}`,
+        link: variantLink(productURL, optionIDs, lookup),
         price,
         availability: variantAvailability(variant, product.stockStatus),
         // Пол и материал — из товара; цвет и размер — из варианта
