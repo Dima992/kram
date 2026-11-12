@@ -13,25 +13,6 @@ import { slugField } from 'payload'
 import { adminOnly } from '@/access/adminOnly'
 import { transliterate } from '@/utilities/transliterate'
 
-// Название категории на украинском (для полного пути)
-const ukTitleOf = async (doc: any, req: any): Promise<string> => {
-  const ownTitle = typeof doc?.title === 'string' ? doc.title : ''
-  if (req.locale === 'uk' || !doc?.id) return ownTitle
-
-  const uk: any = await req.payload
-    .findByID({
-      collection: 'categories',
-      id: doc.id,
-      locale: 'uk',
-      depth: 0,
-      overrideAccess: true,
-      req,
-    })
-    .catch(() => null)
-
-  return typeof uk?.title === 'string' && uk.title ? uk.title : ownTitle
-}
-
 export const Categories: CollectionConfig = {
   slug: 'categories',
   access: {
@@ -91,11 +72,11 @@ export const Categories: CollectionConfig = {
         revalidatePath('/shop', 'layout')
       },
     ],
-    // Собираем полный путь: родитель → подкатегория (всегда по украинским названиям)
+    // Собираем полный путь: родитель → подкатегория (по украинским названиям)
     beforeChange: [
       async ({ data, req }) => {
         const doc = data as any
-        const names: string[] = [await ukTitleOf(doc, req)]
+        const names: string[] = [typeof doc?.title === 'string' ? doc.title : '']
 
         let parentId = doc?.parent
           ? typeof doc.parent === 'object'
