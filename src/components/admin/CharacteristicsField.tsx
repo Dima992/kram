@@ -104,20 +104,22 @@ export const CharacteristicsField: React.FC<{ path: string }> = ({ path }) => {
     [settingsValue],
   )
 
-  // Основная категория — первая выбранная; учитываем и её родителей
+  // Все категории товара и их родители.
+  // Удалённые категории (которых нет в списке) пропускаем, чтобы не обрывать поиск.
   const relevantCats = useMemo(() => {
     const ids = Array.isArray(categoriesValue) ? categoriesValue.map(idOf) : []
-    const set = new Set<string>()
-    if (ids.length === 0) return set
-
     const byId = new Map(allCats.map((c) => [String(c.id), c]))
-    let current = ids[0]
-    let guard = 0
-    while (current && guard < 10) {
-      set.add(current)
-      const node = byId.get(current)
-      current = node ? parentIdOf(node) : ''
-      guard++
+    const set = new Set<string>()
+
+    for (const start of ids) {
+      let current = start
+      let guard = 0
+      while (byId.has(current) && guard < 10) {
+        set.add(current)
+        const node = byId.get(current)
+        current = node ? parentIdOf(node) : ''
+        guard++
+      }
     }
     return set
   }, [categoriesValue, allCats])
