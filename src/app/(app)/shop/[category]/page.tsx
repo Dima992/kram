@@ -17,7 +17,7 @@ type Locale = 'uk' | 'ru'
 
 type Args = {
   params: Promise<{ category: string }>
-  searchParams: Promise<{ f?: string }>
+  searchParams: Promise<{ f?: string | string[] }>
 }
 
 type CategoryDoc = {
@@ -52,6 +52,8 @@ const labels = {
     empty: 'У цій категорії поки немає товарів.',
     all: 'Показати всі',
     clear: 'Скинути фільтр',
+    apply: 'Застосувати',
+    filter: 'Фільтр',
     found: 'Знайдено товарів: ',
     noMatch: 'За цим фільтром товарів немає.',
   },
@@ -60,6 +62,8 @@ const labels = {
     empty: 'В этой категории пока нет товаров.',
     all: 'Показать все',
     clear: 'Сбросить фильтр',
+    apply: 'Применить',
+    filter: 'Фильтр',
     found: 'Найдено товаров: ',
     noMatch: 'По этому фильтру товаров нет.',
   },
@@ -101,14 +105,16 @@ const breadcrumbChain = (current: CategoryDoc, byId: Map<string, CategoryDoc>) =
 const photoOf = (value: unknown): MediaType | null =>
   value && typeof value === 'object' ? (value as MediaType) : null
 
-// Выбранные значения фильтра из адреса: ?f=id1,id2
-const parseSelected = (raw: string | undefined): Set<string> =>
-  new Set(
-    (raw ?? '')
-      .split(',')
+// Выбранные значения фильтра из адреса: ?f=id1&f=id2 (также поддерживаем старый вид ?f=id1,id2)
+const parseSelected = (raw: string | string[] | undefined): Set<string> => {
+  const parts = Array.isArray(raw) ? raw : raw ? [raw] : []
+  return new Set(
+    parts
+      .flatMap((part) => part.split(','))
       .map((part) => part.trim())
       .filter(Boolean),
   )
+}
 
 const idsOfRelation = (relation: unknown): string[] =>
   Array.isArray(relation)
@@ -129,15 +135,17 @@ const attrsOf = (attributes: unknown): Record<string, unknown> =>
     ? (attributes as Record<string, unknown>)
     : {}
 
-// Все id значений характеристик, которые реально стоят у товаров
-const usedValueIdsOf = (docs: { attributes?: unknown }[]): Set<string> => {
-  const used = new Set<string>()
+// Сколько товаров у каждого значения характеристики (без учёта выбора; нужно, чтобы понять, какие значения показывать)
+const countValues = (docs: { attributes?: unknown }[]): Map<string, number> => {
+  const counts = new Map<string, number>()
   for (const product of docs) {
+    const ids = new Set<string>()
     for (const stored of Object.values(attrsOf(product.attributes))) {
-      if (Array.isArray(stored)) stored.forEach((value) => used.add(idOfValue(value)))
+      if (Array.isArray(stored)) stored.forEach((value) => ids.add(idOfValue(value)))
     }
+    ids.forEach((id) => counts.set(id, (counts.get(id) ?? 0) + 1))
   }
-  return used
+  return counts
 }
 
 // Товар подходит, если по каждой выбранной характеристике у него есть хотя бы одно выбранное значение
@@ -149,6 +157,23 @@ const matchesFilter = (product: { attributes?: unknown }, groups: FilterGroup[])
       : []
     return stored.some((id) => group.valueIds.includes(id))
   })
+}
+
+// Умный счётчик: для одной характеристики считаем товары, которые подходят под выбор во всех ДРУГИХ характеристиках
+const countForChar = (
+  docs: { attributes?: unknown }[],
+  groups: FilterGroup[],
+  charId: string,
+): Map<string, number> => {
+  const others = groups.filter((group) => group.charId !== charId)
+  const counts = new Map<string, number>()
+  for (const product of docs) {
+    if (!matchesFilter(product, others)) continue
+    const stored = attrsOf(product.attributes)[charId]
+    if (!Array.isArray(stored)) continue
+    new Set(stored.map(idOfValue)).forEach((id) => counts.set(id, (counts.get(id) ?? 0) + 1))
+  }
+  return counts
 }
 
 // Есть ли в описании хоть какой-то текст
@@ -224,12 +249,6 @@ export default async function CategoryPage({ params, searchParams }: Args) {
   const selected = parseSelected(f)
   const filterActive = selected.size > 0
 
-  // Адрес с выбранными значениями фильтра
-  const toHref = (ids: Set<string>) =>
-    ids.size === 0
-      ? `/shop/${current.slug}`
-      : `/shop/${current.slug}?f=${encodeURIComponent(Array.from(ids).join(','))}`
-
   // Характеристики, которые действуют на эту категорию (и на её родителей).
   // Без категорий — действуют на весь магазин.
   const chainIds = new Set(chain.map((category) => String(category.id)))
@@ -245,7 +264,7 @@ export default async function CategoryPage({ params, searchParams }: Args) {
     return cats.length === 0 || cats.some((id) => chainIds.has(id))
   })
 
-  // Все товары категории со всеми подкатегориями: нужны для фильтра
+  // Все товары категории со всеми подкатегориями: нужны для фильтра и счётчиков
   const subtree = subtreeIds(String(current.id), all)
   const candidates = await payload.find({
     collection: 'products',
@@ -261,12 +280,12 @@ export default async function CategoryPage({ params, searchParams }: Args) {
   })
 
   // Показываем только значения, которые есть у товаров этой категории
-  const usedIds = usedValueIdsOf(candidates.docs)
+  const totalCounts = countValues(candidates.docs)
   const visibleChars = filterChars
     .map((characteristic) => ({
       characteristic,
       values: (characteristic.values ?? []).filter(
-        (value) => value.id && usedIds.has(String(value.id)),
+        (value) => value.id && (totalCounts.get(String(value.id)) ?? 0) > 0,
       ),
     }))
     .filter((item) => item.values.length > 0)
@@ -337,6 +356,84 @@ export default async function CategoryPage({ params, searchParams }: Args) {
   const photo = photoOf(current.image)
   const description = await descriptionFor(current.id, locale, current.description)
 
+  const filterForm = visibleChars.length > 0 ? (
+    <form method="get" action={`/shop/${current.slug}`}>
+      {visibleChars.map(({ characteristic, values }) => {
+        const charId = String(characteristic.id)
+        const title =
+          locale === 'ru' ? characteristic.name_ru || characteristic.name_uk : characteristic.name_uk
+        const chosenCount = values.filter((value) => selected.has(String(value.id))).length
+        // Счётчики этой характеристики с учётом выбора в остальных
+        const facet = countForChar(candidates.docs, groups, charId)
+
+        return (
+          <div key={charId} className="border-b border-black/10 py-4 dark:border-white/10">
+            {/* На телефоне характеристика свёрнута, на ПК всегда открыта */}
+            <input type="checkbox" id={`cf-${charId}`} className="peer hidden" />
+            <label
+              htmlFor={`cf-${charId}`}
+              className="flex cursor-pointer items-center justify-between text-sm font-medium md:pointer-events-none md:cursor-default"
+            >
+              <span>
+                {title}
+                {chosenCount > 0 ? ` · ${chosenCount}` : ''}
+              </span>
+              <span className="md:hidden">▼</span>
+            </label>
+
+            <ul className="mt-3 hidden flex-col gap-2 peer-checked:flex md:flex">
+              {values.map((value) => {
+                const id = String(value.id)
+                const isOn = selected.has(id)
+                const count = facet.get(id) ?? 0
+                const text =
+                  locale === 'ru'
+                    ? value.label_ru || value.label_uk || ''
+                    : value.label_uk || ''
+                return (
+                  <li key={id}>
+                    <label
+                      className={`flex cursor-pointer items-center gap-2 text-sm ${
+                        count === 0 && !isOn ? 'opacity-40' : ''
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        name="f"
+                        value={id}
+                        defaultChecked={isOn}
+                        className="h-4 w-4"
+                      />
+                      <span>{text}</span>
+                      <span className="ml-auto text-black/50 dark:text-white/50">({count})</span>
+                    </label>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )
+      })}
+
+      <div className="mt-6 flex flex-col gap-3">
+        <button
+          type="submit"
+          className="rounded border border-black bg-black px-4 py-2 text-sm text-white dark:border-white dark:bg-white dark:text-black"
+        >
+          {labels[locale].apply}
+        </button>
+        {filterActive ? (
+          <Link
+            href={`/shop/${current.slug}`}
+            className="text-center text-sm underline underline-offset-4"
+          >
+            {labels[locale].clear}
+          </Link>
+        ) : null}
+      </div>
+    </form>
+  ) : null
+
   return (
     <div>
       <nav aria-label="breadcrumb" className="mb-6 text-sm">
@@ -404,113 +501,90 @@ export default async function CategoryPage({ params, searchParams }: Args) {
         </ul>
       ) : null}
 
-      {/* Фильтр по характеристикам: обычные ссылки, работают без JavaScript */}
-      {visibleChars.length > 0 ? (
-        <div className="mb-10 flex flex-col gap-6">
-          {visibleChars.map(({ characteristic, values }) => (
-            <div key={String(characteristic.id)}>
-              <p className="mb-2 text-sm font-medium">
-                {locale === 'ru' ? characteristic.name_ru || characteristic.name_uk : characteristic.name_uk}
-              </p>
-              <ul className="flex flex-wrap gap-2">
-                {values.map((value) => {
-                  const id = String(value.id)
-                  const isOn = selected.has(id)
-                  const next = new Set(selected)
-                  if (isOn) next.delete(id)
-                  else next.add(id)
-                  const text =
-                    locale === 'ru'
-                      ? value.label_ru || value.label_uk || ''
-                      : value.label_uk || ''
-                  return (
-                    <li key={id}>
-                      <Link
-                        href={toHref(next)}
-                        className={`rounded-full border px-3 py-1 text-sm transition-colors ${
-                          isOn
-                            ? 'border-black bg-black text-white dark:border-white dark:bg-white dark:text-black'
-                            : 'border-black/30 hover:border-black dark:border-white/30 dark:hover:border-white'
-                        }`}
-                      >
-                        {text}
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          ))}
+      <div className="md:grid md:grid-cols-[16rem_minmax(0,1fr)] md:gap-10">
+        {/* Фильтр: на ПК слева всегда виден, на телефоне открывается по нажатию */}
+        {filterForm ? (
+          <aside className="mb-8 md:sticky md:top-24 md:mb-0 md:self-start">
+            <input type="checkbox" id="filter-toggle" className="peer hidden" />
+            <label
+              htmlFor="filter-toggle"
+              className="mb-4 flex w-full cursor-pointer items-center justify-between rounded border border-black/30 px-4 py-3 text-sm md:hidden dark:border-white/30"
+            >
+              <span>{labels[locale].filter}</span>
+              <span>▼</span>
+            </label>
+            <div className="hidden peer-checked:block md:block">{filterForm}</div>
+          </aside>
+        ) : null}
+
+        <div className="min-w-0">
           {filterActive ? (
-            <Link href={toHref(new Set())} className="w-fit text-sm underline underline-offset-4">
-              {labels[locale].clear}
-            </Link>
-          ) : null}
-        </div>
-      ) : null}
-
-      {filterActive ? (
-        <>
-          <p className="mb-4 text-sm">
-            {labels[locale].found}
-            {filtered.length}
-          </p>
-          {filtered.length > 0 ? (
-            <Grid className="mb-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filtered.map((product, index) => (
-                <ProductGridItem
-                  key={product.id}
-                  locale={locale}
-                  priority={index === 0}
-                  product={product}
-                />
-              ))}
-            </Grid>
+            <>
+              <p className="mb-4 text-sm">
+                {labels[locale].found}
+                {filtered.length}
+              </p>
+              {filtered.length > 0 ? (
+                <Grid className="mb-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filtered.map((product, index) => (
+                    <ProductGridItem
+                      key={product.id}
+                      locale={locale}
+                      priority={index === 0}
+                      product={product}
+                    />
+                  ))}
+                </Grid>
+              ) : (
+                <p className="mb-12">{labels[locale].noMatch}</p>
+              )}
+            </>
           ) : (
-            <p className="mb-12">{labels[locale].noMatch}</p>
-          )}
-        </>
-      ) : (
-        <>
-          {/* 1. Товары самой категории */}
-          {ownDocs.length > 0 ? (
-            <Grid className="mb-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {ownDocs.map((product, index) => (
-                <ProductGridItem
-                  key={product.id}
-                  locale={locale}
-                  priority={index === 0}
-                  product={product}
-                />
-              ))}
-            </Grid>
-          ) : visibleBlocks.length === 0 ? (
-            <p className="mb-4">{labels[locale].empty}</p>
-          ) : null}
+            <>
+              {/* 1. Товары самой категории */}
+              {ownDocs.length > 0 ? (
+                <Grid className="mb-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {ownDocs.map((product, index) => (
+                    <ProductGridItem
+                      key={product.id}
+                      locale={locale}
+                      priority={index === 0}
+                      product={product}
+                    />
+                  ))}
+                </Grid>
+              ) : visibleBlocks.length === 0 ? (
+                <p className="mb-4">{labels[locale].empty}</p>
+              ) : null}
 
-          {/* 2. Блоки подкатегорий с товарами */}
-          {visibleBlocks.map(({ child, products }) => (
-            <section key={String(child.id)} className="mb-12">
-              <div className="mb-4 flex items-baseline justify-between gap-4">
-                <h2 className="text-2xl font-medium">{child.title}</h2>
-                <Link href={`/shop/${child.slug}`} className="text-sm underline underline-offset-4">
-                  {labels[locale].all}
-                </Link>
-              </div>
-              <Grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {products.map((product) => (
-                  <ProductGridItem
-                    key={product.id}
-                    locale={locale}
-                    priority={false}
-                    product={product}
-                  />
-                ))}
-              </Grid>
-            </section>
-          ))}
-        </>
-      )}
+              {/* 2. Блоки подкатегорий с товарами */}
+              {visibleBlocks.map(({ child, products }) => (
+                <section key={String(child.id)} className="mb-12">
+                  <div className="mb-4 flex items-baseline justify-between gap-4">
+                    <h2 className="text-2xl font-medium">{child.title}</h2>
+                    <Link
+                      href={`/shop/${child.slug}`}
+                      className="text-sm underline underline-offset-4"
+                    >
+                      {labels[locale].all}
+                    </Link>
+                  </div>
+                  <Grid className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {products.map((product) => (
+                      <ProductGridItem
+                        key={product.id}
+                        locale={locale}
+                        priority={false}
+                        product={product}
+                      />
+                    ))}
+                  </Grid>
+                </section>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
