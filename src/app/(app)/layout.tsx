@@ -4,6 +4,7 @@ import { Header } from '@/components/Header'
 import { Providers } from '@/providers'
 import { InitTheme } from '@/providers/Theme/InitTheme'
 import { getCachedGlobal } from '@/utilities/getGlobals'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import type { ReactNode } from 'react'
 import './globals.css'
 
@@ -25,6 +26,7 @@ const Layout = async ({ children }: Args) => {
           <Header />
           <main className="flex-1">{children}</main>
           <Footer />
+          <SpeedInsights />
         </Providers>
       </body>
     </html>
