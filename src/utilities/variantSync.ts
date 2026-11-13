@@ -85,6 +85,37 @@ async function ensureOption(payload: Payload, typeId: string, v: any): Promise<s
   return String(created.id)
 }
 
+// Оставляем только существующие значения характеристик.
+// Призрачные ID (значения, которые уже удалили) отбрасываем.
+const cleanAttributes = (
+  stored: Stored,
+  chars: any[],
+): { cleaned: Stored; charById: Map<string, any> } => {
+  const charById = new Map<string, any>()
+  const cleaned: Stored = {}
+
+  for (const ch of chars) {
+    const charId = String(ch.id)
+    charById.set(charId, ch)
+
+    const validIds = new Set((ch.values ?? []).map((v: any) => String(v.id ?? '')))
+    const picked = [
+      ...new Set((Array.isArray(stored[charId]) ? stored[charId] : []).map(String)),
+    ].filter((valueId) => validIds.has(valueId))
+
+    if (picked.length > 0) cleaned[charId] = picked
+  }
+
+  return { cleaned, charById }
+}
+
+// Одинаковы ли два набора выбранных значений (порядок ключей не важен)
+const sameAttributes = (a: Stored, b: Stored): boolean => {
+  const keysA = Object.keys(a)
+  if (keysA.length !== Object.keys(b).length) return false
+  return keysA.every((key) => JSON.stringify(a[key]) === JSON.stringify(b[key]))
+}
+
 export async function syncVariants(payload: Payload, productId: string): Promise<SyncResult> {
   const product: any = await payload.findByID({
     collection: 'products',
@@ -99,19 +130,17 @@ export async function syncVariants(payload: Payload, productId: string): Promise
     return { status: 'skipped', reason: 'Спочатку заповніть артикул товару (наприклад SH-001)' }
   }
 
-  // Выбранные значения: { id характеристики: [id значений] }
+  // Выбранные значения из товара: { id характеристики: [id значений] }
   const stored: Stored =
     product.attributes && typeof product.attributes === 'object' ? product.attributes : {}
-  const variantIds = Object.keys(stored).filter(
-    (id) => Array.isArray(stored[id]) && stored[id].length > 1,
-  )
 
-  // Характеристики, где выбрано больше одного значения
-  const chars: any[] = variantIds.length
+  // Все характеристики, которые записаны в товаре
+  const storedIds = Object.keys(stored)
+  const chars: any[] = storedIds.length
     ? (
         await payload.find({
           collection: 'characteristics',
-          where: { id: { in: variantIds } },
+          where: { id: { in: storedIds } },
           limit: 100,
           depth: 0,
           pagination: false,
@@ -119,15 +148,24 @@ export async function syncVariants(payload: Payload, productId: string): Promise
         })
       ).docs
     : []
-  chars.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
+  // Очищаем список: только существующие характеристики и значения
+  const { cleaned, charById } = cleanAttributes(stored, chars)
+
+  // Вариант — только там, где после очистки выбрано два и больше значений
+  const variantChars = Object.keys(cleaned)
+    .filter((id) => cleaned[id].length > 1)
+    .map((id) => charById.get(id))
+    .filter((ch): ch is any => Boolean(ch))
+  variantChars.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
 
   const groups: { typeId: string; options: string[] }[] = []
-  for (const ch of chars) {
+  for (const ch of variantChars) {
     const typeId = await ensureType(payload, ch)
     const options: string[] = []
     for (const v of ch.values ?? []) {
       const valueId = String(v.id ?? '')
-      if (!valueId || !stored[String(ch.id)].includes(valueId)) continue
+      if (!valueId || !cleaned[String(ch.id)].includes(valueId)) continue
       options.push(await ensureOption(payload, typeId, v))
     }
     groups.push({ typeId, options })
@@ -138,15 +176,19 @@ export async function syncVariants(payload: Payload, productId: string): Promise
     return { status: 'skipped', reason: `Комбінацій забагато (${combos.length}). Максимум ${MAX_ROWS}` }
   }
 
-  // Товар: если вариантов нет — выключаем; если есть — включаем и записываем типы.
+  // Товар: записываем очищенные значения, а также типы вариантов.
   // Это делаем ДО создания строк, иначе плагин отклонит строку.
   // context.skipVariantSync не даёт этому сохранению запустить синхронизацию повторно
+  const attributesChanged = !sameAttributes(cleaned, stored)
   await payload.update({
     collection: 'products',
     id: productId,
-    data: groups.length
-      ? { enableVariants: true, variantTypes: groups.map((g) => g.typeId) }
-      : { enableVariants: false, variantTypes: [] },
+    data: {
+      ...(attributesChanged ? { attributes: cleaned } : {}),
+      ...(groups.length
+        ? { enableVariants: true, variantTypes: groups.map((g) => g.typeId) }
+        : { enableVariants: false, variantTypes: [] }),
+    },
     draft: product._status !== 'published',
     context: { skipVariantSync: true },
     overrideAccess: true,
