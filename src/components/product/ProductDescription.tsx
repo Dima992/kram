@@ -6,7 +6,6 @@ import { StockIndicator } from '@/components/product/StockIndicator'
 import { RichText } from '@/components/RichText'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
-import styles from './BuyGlow.module.css'
 import { VariantSelector } from './VariantSelector'
 
 const getVariantPrice = (variant: Variant, product: Product): number | null => {
@@ -167,7 +166,7 @@ function ProductDescriptionContent({ product }: { product: Product }) {
             onChange={(value) => setQuantity(Math.min(value, maxQuantity))}
           />
           <div
-            className={`${styles.glow} min-w-0 flex-1 [&_button]:w-full [&_button]:border-[#0b7a78] [&_button]:bg-[#0b7a78] [&_button]:text-white [&_button:hover]:opacity-90 [&_button:disabled]:cursor-not-allowed [&_button:disabled]:border-neutral-300 [&_button:disabled]:bg-neutral-300 [&_button:disabled]:text-neutral-500`}
+            className={`min-w-0 flex-1 [&_button]:w-full [&_button]:border-[#0b7a78] [&_button]:bg-[#0b7a78] [&_button]:text-white [&_button:hover]:opacity-90 [&_button:disabled]:cursor-not-allowed [&_button:disabled]:border-neutral-300 [&_button:disabled]:bg-neutral-300 [&_button:disabled]:text-neutral-500`}
           >
             <Suspense fallback={null}>
               <AddToCart product={product} quantity={effectiveQuantity} />
