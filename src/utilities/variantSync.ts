@@ -227,14 +227,9 @@ export async function syncVariants(payload: Payload, productId: string): Promise
       continue
     }
 
-    // Строка больше не нужна: удаляем, только если остаток нулевой
-    const stock = typeof d.inventory === 'number' ? d.inventory : 0
-    if (stock === 0) {
-      await payload.delete({ collection: 'variants', id: d.id, overrideAccess: true })
-      removed += 1
-    } else {
-      kept += 1
-    }
+        // Строка больше не нужна: её комбинации нет в текущем наборе. Удаляем, даже если есть остаток
+    await payload.delete({ collection: 'variants', id: d.id, overrideAccess: true })
+    removed += 1
   }
 
   // Создаём только недостающие комбинации, с остатком по умолчанию
