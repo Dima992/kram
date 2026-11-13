@@ -12,19 +12,17 @@ export function StickyBuyBar({ product }: Props) {
   const [show, setShow] = useState(false)
 
   useEffect(() => {
-    const update = () => {
-      const target = document.getElementById('buy-block')
-      if (!target) return
-      // Показываем полоску, только когда основная кнопка ушла за верх экрана
-      setShow(target.getBoundingClientRect().bottom < 0)
-    }
-    update()
-    window.addEventListener('scroll', update, { passive: true })
-    window.addEventListener('resize', update)
-    return () => {
-      window.removeEventListener('scroll', update)
-      window.removeEventListener('resize', update)
-    }
+    const target = document.getElementById('buy-block')
+    if (!target) return
+
+    // Браузер сам сообщает, когда основная кнопка уходит за верх экрана.
+    // Панель показываем только в этом случае. Расчёты на каждом скролле не нужны.
+    const observer = new IntersectionObserver(([entry]) => {
+      setShow(!entry.isIntersecting && entry.boundingClientRect.bottom < 0)
+    })
+    observer.observe(target)
+
+    return () => observer.disconnect()
   }, [])
 
   const image = product.gallery?.[0]?.image
