@@ -244,7 +244,7 @@ export default async function ProductPage({ params, searchParams }: Args) {
         <Button asChild variant="ghost" className="mb-4">
           <Link href="/shop">
             <ChevronLeftIcon />
-            All products
+            {locale === 'ru' ? 'Все товары' : 'Усі товари'}
           </Link>
         </Button>
         <div className="flex flex-col gap-12 rounded-lg border p-8 md:py-12 lg:flex-row lg:gap-8 bg-primary-foreground">
@@ -274,7 +274,7 @@ export default async function ProductPage({ params, searchParams }: Args) {
 
       {relatedProducts.length ? (
         <div className="container">
-          <RelatedProducts products={relatedProducts as Product[]} />
+          <RelatedProducts products={relatedProducts as Product[]} locale={locale} />
         </div>
       ) : (
         <></>
@@ -283,12 +283,14 @@ export default async function ProductPage({ params, searchParams }: Args) {
   )
 }
 
-function RelatedProducts({ products }: { products: Product[] }) {
+function RelatedProducts({ products, locale }: { products: Product[]; locale: Locale }) {
   if (!products.length) return null
 
   return (
     <div className="py-8">
-      <h2 className="mb-4 text-2xl font-bold">Related Products</h2>
+      <h2 className="mb-4 text-2xl font-bold">
+        {locale === 'ru' ? 'Похожие товары' : 'Схожі товари'}
+      </h2>
       <ul className="flex w-full gap-4 overflow-x-auto pt-1">
         {products.map((product) => (
           <li
