@@ -85,23 +85,6 @@ async function ensureOption(payload: Payload, typeId: string, v: any): Promise<s
   return String(created.id)
 }
 
-// Есть ли строка в заказах. Если проверка не удалась, считаем, что есть (так безопаснее)
-async function isInOrders(payload: Payload, variantID: string): Promise<boolean> {
-  try {
-    const found = await payload.find({
-      collection: 'orders',
-      where: { 'items.variant': { equals: variantID } } as any,
-      limit: 1,
-      depth: 0,
-      pagination: false,
-      overrideAccess: true,
-    })
-    return found.docs.length > 0
-  } catch {
-    return true
-  }
-}
-
 export async function syncVariants(payload: Payload, productId: string): Promise<SyncResult> {
   const product: any = await payload.findByID({
     collection: 'products',
@@ -202,9 +185,9 @@ export async function syncVariants(payload: Payload, productId: string): Promise
       continue
     }
 
-    // Строка больше не нужна: удаляем, только если остатка нет и её не покупали
+    // Строка больше не нужна: удаляем, только если остаток нулевой
     const stock = typeof d.inventory === 'number' ? d.inventory : 0
-    if (stock === 0 && !(await isInOrders(payload, String(d.id)))) {
+    if (stock === 0) {
       await payload.delete({ collection: 'variants', id: d.id, overrideAccess: true })
       removed += 1
     } else {
