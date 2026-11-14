@@ -3,6 +3,7 @@ import { GridTileImage } from '@/components/Grid/tile'
 import { Gallery } from '@/components/product/Gallery'
 import { ProductCharacteristics, type CharacteristicView } from '@/components/product/ProductCharacteristics'
 import { ProductDescription } from '@/components/product/ProductDescription'
+import { SizeChart } from '@/components/product/SizeChart'
 import { StickyBuyBar } from '@/components/product/StickyBuyBar'
 import { Button } from '@/components/ui/button'
 import type { Media, Product } from '@/payload-types'
@@ -204,6 +205,9 @@ export default async function ProductPage({ params, searchParams }: Args) {
   const gallery = orderGallery(getGallery(product), preferredOptionId)
   const characteristics = await buildCharacteristics(product, locale)
 
+  // Таблица размеров: выбирается в товаре (поле sizeChart)
+  const sizeChart = (product as Product & { sizeChart?: any }).sizeChart
+
   const metaImage = typeof product.meta?.image === 'object' ? product.meta?.image : undefined
   const hasStock = product.enableVariants
     ? product?.variants?.docs?.some((variant) => {
@@ -260,6 +264,7 @@ export default async function ProductPage({ params, searchParams }: Args) {
 
           <div className="contents lg:flex lg:basis-1/2 lg:flex-col lg:gap-6">
             <ProductDescription product={product} />
+            <SizeChart title={sizeChart?.title} table={sizeChart?.table} locale={locale} />
           </div>
         </div>
       </div>
