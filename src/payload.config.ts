@@ -27,6 +27,7 @@ import { GoogleCategories } from '@/collections/GoogleCategories'
 import { ImportSources } from '@/collections/ImportSources'
 import { Media } from '@/collections/Media'
 import { Pages } from '@/collections/Pages'
+import { SizeCharts } from '@/collections/SizeCharts'
 import { SupplierImportJobs } from '@/collections/SupplierImportJobs'
 import { SupplierImports } from '@/collections/SupplierImports'
 import { Users } from '@/collections/Users'
@@ -76,6 +77,7 @@ export default buildConfig({
     Pages,
     Categories,
     Characteristics,
+    SizeCharts,
     GoogleCategories,
     Media,
     Feeds,

@@ -76,6 +76,7 @@ export interface Config {
     pages: Page;
     categories: Category;
     characteristics: Characteristic;
+    'size-charts': SizeChart;
     'google-categories': GoogleCategory;
     media: Media;
     feeds: Feed;
@@ -116,6 +117,7 @@ export interface Config {
     pages: PagesSelect<false> | PagesSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     characteristics: CharacteristicsSelect<false> | CharacteristicsSelect<true>;
+    'size-charts': SizeChartsSelect<false> | SizeChartsSelect<true>;
     'google-categories': GoogleCategoriesSelect<false> | GoogleCategoriesSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     feeds: FeedsSelect<false> | FeedsSelect<true>;
@@ -1371,6 +1373,38 @@ export interface Characteristic {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "size-charts".
+ */
+export interface SizeChart {
+  id: string;
+  /**
+   * Наприклад: Плаття. Покупець цього не бачить.
+   */
+  adminName: string;
+  /**
+   * Наприклад: Таблиця розмірів: плаття
+   */
+  title?: string | null;
+  table?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "feeds".
  */
 export interface Feed {
@@ -1546,6 +1580,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'characteristics';
         value: string | Characteristic;
+      } | null)
+    | ({
+        relationTo: 'size-charts';
+        value: string | SizeChart;
       } | null)
     | ({
         relationTo: 'google-categories';
@@ -1898,6 +1936,17 @@ export interface CharacteristicsSelect<T extends boolean = true> {
         googleValue?: T;
         id?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "size-charts_select".
+ */
+export interface SizeChartsSelect<T extends boolean = true> {
+  adminName?: T;
+  title?: T;
+  table?: T;
   updatedAt?: T;
   createdAt?: T;
 }

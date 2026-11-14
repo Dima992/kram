@@ -429,6 +429,16 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       relationTo: 'categories',
     },
     {
+      name: 'sizeChart',
+      type: 'relationship',
+      relationTo: 'size-charts',
+      label: 'Таблиця розмірів',
+      admin: {
+        position: 'sidebar',
+        description: 'Оберіть таблицю для типу товару. Якщо порожньо, на сайті таблиці не буде.',
+      },
+    },
+    {
       name: 'baseCurrency',
       type: 'select',
       defaultValue: 'UAH',
