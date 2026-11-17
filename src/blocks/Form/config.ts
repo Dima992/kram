@@ -1,4 +1,5 @@
 import type { Block } from 'payload'
+import { adminLabel } from '@/utilities/adminLabel'
 
 import {
   FixedToolbarFeature,
@@ -20,7 +21,7 @@ export const FormBlock: Block = {
     {
       name: 'enableIntro',
       type: 'checkbox',
-      label: 'Enable Intro Content',
+      label: adminLabel('Показувати вступний текст', 'Показывать вступительный текст'),
     },
     {
       name: 'introContent',
@@ -38,14 +39,14 @@ export const FormBlock: Block = {
           ]
         },
       }),
-      label: 'Intro Content',
+      label: adminLabel('Вступний текст', 'Вступительный текст'),
     },
   ],
   graphQL: {
     singularName: 'FormBlock',
   },
   labels: {
-    plural: 'Form Blocks',
-    singular: 'Form Block',
+    plural: adminLabel('Блоки форм', 'Блоки форм'),
+    singular: adminLabel('Блок форми', 'Блок формы'),
   },
 }

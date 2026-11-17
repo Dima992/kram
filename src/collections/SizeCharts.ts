@@ -1,13 +1,14 @@
 import {
-    EXPERIMENTAL_TableFeature,
-    FixedToolbarFeature,
-    HeadingFeature,
-    lexicalEditor,
+  EXPERIMENTAL_TableFeature,
+  FixedToolbarFeature,
+  HeadingFeature,
+  lexicalEditor,
 } from '@payloadcms/richtext-lexical'
 import { revalidateTag } from 'next/cache'
 import type { CollectionConfig } from 'payload'
 
 import { adminOnly } from '@/access/adminOnly'
+import { adminLabel } from '@/utilities/adminLabel'
 
 // После любого изменения сетки обновляем страницы товаров
 const refreshProducts = () => {
@@ -23,7 +24,7 @@ export const SizeCharts: CollectionConfig = {
     update: adminOnly,
   },
   admin: {
-    group: 'Content',
+    group: adminLabel('Контент', 'Контент'),
     useAsTitle: 'adminName',
     defaultColumns: ['adminName', 'updatedAt'],
   },
@@ -36,25 +37,31 @@ export const SizeCharts: CollectionConfig = {
       name: 'adminName',
       type: 'text',
       required: true,
-      label: 'Назва для адмінки',
+      label: adminLabel('Назва для адмінки', 'Название для админки'),
       admin: {
-        description: 'Наприклад: Плаття. Покупець цього не бачить.',
+        description: adminLabel(
+          'Наприклад: Плаття. Покупець цього не бачить.',
+          'Например: Платья. Покупатель этого не видит.',
+        ),
       },
     },
     {
       name: 'title',
       type: 'text',
       localized: true,
-      label: 'Заголовок (укр / рус)',
+      label: adminLabel('Заголовок (укр / рус)', 'Заголовок (укр. / рус.)'),
       admin: {
-        description: 'Наприклад: Таблиця розмірів: плаття',
+        description: adminLabel(
+          'Наприклад: Таблиця розмірів: плаття',
+          'Например: Таблица размеров: платья',
+        ),
       },
     },
     {
       name: 'table',
       type: 'richText',
       localized: true,
-      label: 'Таблиця розмірів',
+      label: adminLabel('Таблиця розмірів', 'Таблица размеров'),
       editor: lexicalEditor({
         features: ({ rootFeatures }) => [
           ...rootFeatures,

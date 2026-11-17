@@ -11,10 +11,15 @@ import type { CollectionConfig } from 'payload'
 import { slugField } from 'payload'
 
 import { adminOnly } from '@/access/adminOnly'
+import { adminLabel } from '@/utilities/adminLabel'
 import { transliterate } from '@/utilities/transliterate'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
+  labels: {
+    singular: adminLabel('Категорія', 'Категория'),
+    plural: adminLabel('Категорії', 'Категории'),
+  },
   access: {
     create: adminOnly,
     delete: adminOnly,
@@ -24,7 +29,7 @@ export const Categories: CollectionConfig = {
   admin: {
     // В выборе категории в товаре показываем полный путь
     useAsTitle: 'pathTitle',
-    group: 'Content',
+    group: adminLabel('Контент', 'Контент'),
     defaultColumns: ['pathTitle', 'title'],
   },
   hooks: {
@@ -36,8 +41,7 @@ export const Categories: CollectionConfig = {
       // Alt для фото категории: название категории (если alt пустой или это имя файла)
       async ({ doc, req }) => {
         try {
-          const imageId =
-            doc.image && typeof doc.image === 'object' ? doc.image.id : doc.image
+          const imageId = doc.image && typeof doc.image === 'object' ? doc.image.id : doc.image
           if (!imageId) return doc
 
           const media = await req.payload.findByID({
@@ -118,25 +122,32 @@ export const Categories: CollectionConfig = {
       type: 'text',
       required: true,
       localized: true, // Включаем перевод названия категории (UK / RU)
+      label: adminLabel('Назва категорії', 'Название категории'),
     },
     {
       name: 'pathTitle',
       type: 'text',
-      label: 'Повний шлях (автоматично)',
+      label: adminLabel('Повний шлях (автоматично)', 'Полный путь (автоматически)'),
       admin: {
         position: 'sidebar',
         readOnly: true,
-        description: 'Заповнюється сам при збереженні. Не редагуйте вручну.',
+        description: adminLabel(
+          'Заповнюється сам при збереженні. Не редагуйте вручну.',
+          'Заполняется автоматически при сохранении. Не редактируйте вручную.',
+        ),
       },
     },
     {
       name: 'parent',
       type: 'relationship',
       relationTo: 'categories',
-      label: 'Батьківська категорія',
+      label: adminLabel('Батьківська категорія', 'Родительская категория'),
       admin: {
         position: 'sidebar',
-        description: 'Порожньо — верхній рівень. Наприклад, «Шуби» можна вкласти в «Верхній одяг».',
+        description: adminLabel(
+          'Порожньо — верхній рівень. Наприклад, «Шуби» можна вкласти в «Верхній одяг».',
+          'Оставьте пустым для верхнего уровня. Например, «Шубы» можно вложить в «Верхнюю одежду».',
+        ),
       },
       // Нельзя выбрать саму категорию в качестве родителя
       filterOptions: ({ id }) => {
@@ -152,7 +163,13 @@ export const Categories: CollectionConfig = {
             return 'Категорія не може бути вкладена сама в себе'
           }
           const doc = await req.payload
-            .findByID({ collection: 'categories', id: currentId, depth: 0, overrideAccess: true, req })
+            .findByID({
+              collection: 'categories',
+              id: currentId,
+              depth: 0,
+              overrideAccess: true,
+              req,
+            })
             .catch(() => null)
           if (!doc || !doc.parent) return true
           currentId = typeof doc.parent === 'object' ? doc.parent.id : doc.parent
@@ -164,26 +181,31 @@ export const Categories: CollectionConfig = {
       type: 'tabs',
       tabs: [
         {
-          label: 'Опис і фото',
+          label: adminLabel('Опис і фото', 'Описание и фото'),
           fields: [
             {
               name: 'image',
               type: 'upload',
               relationTo: 'media',
-              label: 'Фото категорії',
+              label: adminLabel('Фото категорії', 'Фото категории'),
               admin: {
-                description:
+                description: adminLabel(
                   'Рекомендовано 1200×600 або більше. На сайті фото обрізається під рамку: точку фокуса виберіть у редакторі фото.',
+                  'Рекомендуется 1200×600 или больше. На сайте фото обрезается по рамке: выберите точку фокуса в редакторе фото.',
+                ),
               },
             },
             {
               name: 'description',
               type: 'richText',
               localized: true,
-              label: 'Опис категорії',
+              label: adminLabel('Опис категорії', 'Описание категории'),
               editor: lexicalEditor(),
               admin: {
-                description: 'Кілька речень для покупців. Також використовується для SEO, якщо поле порожнє.',
+                description: adminLabel(
+                  'Кілька речень для покупців. Також використовується для SEO, якщо поле порожнє.',
+                  'Несколько предложений для покупателей. Также используется для SEO, если поле не заполнено.',
+                ),
               },
             },
           ],

@@ -1,16 +1,20 @@
-import type { Field } from 'payload';
+import type { Field } from 'payload'
 
-import { deepMerge } from '@/utilities/deepMerge';
+import { deepMerge } from '@/utilities/deepMerge'
+import { adminLabel } from '@/utilities/adminLabel'
 
 export type LinkAppearances = 'default' | 'outline'
 
-export const appearanceOptions: Record<LinkAppearances, { label: string; value: string }> = {
+export const appearanceOptions: Record<
+  LinkAppearances,
+  { label: Record<'uk' | 'ru', string>; value: string }
+> = {
   default: {
-    label: 'Default',
+    label: adminLabel('Звичайний', 'Обычный'),
     value: 'default',
   },
   outline: {
-    label: 'Outline',
+    label: adminLabel('Контурний', 'Контурный'),
     value: 'outline',
   },
 }
@@ -25,6 +29,7 @@ export const link: LinkType = ({ appearances, disableLabel = false, overrides = 
   const linkResult: Field = {
     name: 'link',
     type: 'group',
+    label: adminLabel('Посилання', 'Ссылка'),
     admin: {
       hideGutter: true,
     },
@@ -42,11 +47,11 @@ export const link: LinkType = ({ appearances, disableLabel = false, overrides = 
             defaultValue: 'reference',
             options: [
               {
-                label: 'Internal link',
+                label: adminLabel('Внутрішнє посилання', 'Внутренняя ссылка'),
                 value: 'reference',
               },
               {
-                label: 'Custom URL',
+                label: adminLabel('Власна URL-адреса', 'Свой URL-адрес'),
                 value: 'custom',
               },
             ],
@@ -60,7 +65,7 @@ export const link: LinkType = ({ appearances, disableLabel = false, overrides = 
               },
               width: '50%',
             },
-            label: 'Open in new tab',
+            label: adminLabel('Відкрити в новій вкладці', 'Открыть в новой вкладке'),
           },
         ],
       },
@@ -74,7 +79,7 @@ export const link: LinkType = ({ appearances, disableLabel = false, overrides = 
       admin: {
         condition: (_, siblingData) => siblingData?.type === 'reference',
       },
-      label: 'Document to link to',
+      label: adminLabel('Документ для посилання', 'Документ для ссылки'),
       maxDepth: 1,
       relationTo: ['pages'],
       required: true,
@@ -85,7 +90,7 @@ export const link: LinkType = ({ appearances, disableLabel = false, overrides = 
       admin: {
         condition: (_, siblingData) => siblingData?.type === 'custom',
       },
-      label: 'Custom URL',
+      label: adminLabel('Власна URL-адреса', 'Свой URL-адрес'),
       localized: true, // Локализация для внешних произвольных ссылок
       required: true,
     },
@@ -110,7 +115,7 @@ export const link: LinkType = ({ appearances, disableLabel = false, overrides = 
           admin: {
             width: '50%',
           },
-          label: 'Label',
+          label: adminLabel('Текст посилання', 'Текст ссылки'),
           localized: true, // Включаем мультиязычность текста ссылки (UK / RU)
           required: true,
         },
@@ -131,7 +136,7 @@ export const link: LinkType = ({ appearances, disableLabel = false, overrides = 
       name: 'appearance',
       type: 'select',
       admin: {
-        description: 'Choose how the link should be rendered.',
+        description: adminLabel('Виберіть вигляд посилання.', 'Выберите оформление ссылки.'),
       },
       defaultValue: 'default',
       options: appearanceOptionsToUse,
