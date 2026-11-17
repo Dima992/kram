@@ -1,5 +1,4 @@
 import { GlobalConfig } from 'payload'
-import { adminLabel } from '@/utilities/adminLabel'
 
 export interface SettingsGlobal {
   siteName: string
@@ -12,17 +11,17 @@ export interface SettingsGlobal {
 
 export const Settings: GlobalConfig = {
   slug: 'settings',
-  label: adminLabel('Налаштування', 'Настройки'),
+  label: 'Settings',
   fields: [
     {
       name: 'siteName',
-      label: adminLabel('Назва сайту', 'Название сайта'),
+      label: 'Site Name',
       type: 'text',
       required: true,
     },
     {
       name: 'aiSettings',
-      label: adminLabel('Налаштування ШІ', 'Настройки ИИ'),
+      label: 'AI Settings',
       type: 'group',
       admin: {
         hidden: true,
@@ -30,19 +29,19 @@ export const Settings: GlobalConfig = {
       fields: [
         {
           name: 'aiProvider',
-          label: adminLabel('Постачальник ШІ', 'Поставщик ИИ'),
+          label: 'AI Provider',
           type: 'select',
           options: ['openai', 'gemini', 'anthropic'],
           defaultValue: 'openai',
         },
         {
           name: 'apiKey',
-          label: adminLabel('Ключ API', 'Ключ API'),
+          label: 'API Key',
           type: 'text',
         },
         {
           name: 'aiEnabled',
-          label: adminLabel('Увімкнути функції ШІ', 'Включить функции ИИ'),
+          label: 'Enable AI Features',
           type: 'checkbox',
           defaultValue: false,
         },

@@ -8,7 +8,6 @@ import {
 } from '@payloadcms/richtext-lexical'
 
 import { linkGroup } from '../../fields/linkGroup'
-import { adminLabel } from '@/utilities/adminLabel'
 
 export const CallToAction: Block = {
   slug: 'cta',
@@ -37,7 +36,7 @@ export const CallToAction: Block = {
     }),
   ],
   labels: {
-    plural: adminLabel('Заклики до дії', 'Призывы к действию'),
-    singular: adminLabel('Заклик до дії', 'Призыв к действию'),
+    plural: 'Calls to Action',
+    singular: 'Call to Action',
   },
 }

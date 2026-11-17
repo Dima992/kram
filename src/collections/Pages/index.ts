@@ -21,14 +21,9 @@ import {
 } from '@payloadcms/plugin-seo/fields'
 import { slugField } from 'payload'
 import { revalidateDelete, revalidatePage } from './hooks/revalidatePage'
-import { adminLabel } from '@/utilities/adminLabel'
 
 export const Pages: CollectionConfig = {
   slug: 'pages',
-  labels: {
-    singular: adminLabel('Сторінка', 'Страница'),
-    plural: adminLabel('Сторінки', 'Страницы'),
-  },
   access: {
     create: adminOnly,
     delete: adminOnly,
@@ -36,7 +31,7 @@ export const Pages: CollectionConfig = {
     update: adminOnly,
   },
   admin: {
-    group: adminLabel('Контент', 'Контент'),
+    group: 'Content',
     defaultColumns: ['title', 'slug', 'updatedAt'],
     livePreview: {
       url: ({ data, req }) =>
@@ -60,12 +55,10 @@ export const Pages: CollectionConfig = {
       type: 'text',
       required: true,
       localized: true, // Локализация заголовка (UK / RU)
-      label: adminLabel('Назва сторінки', 'Название страницы'),
     },
     {
       name: 'publishedOn',
       type: 'date',
-      label: adminLabel('Дата публікації', 'Дата публикации'),
       admin: {
         date: {
           pickerAppearance: 'dayAndTime',
@@ -88,7 +81,7 @@ export const Pages: CollectionConfig = {
       tabs: [
         {
           fields: [hero],
-          label: adminLabel('Обкладинка', 'Обложка'),
+          label: 'Hero',
         },
         {
           fields: [
@@ -109,7 +102,7 @@ export const Pages: CollectionConfig = {
               required: true,
             },
           ],
-          label: adminLabel('Контент', 'Контент'),
+          label: 'Content',
         },
         {
           name: 'meta',

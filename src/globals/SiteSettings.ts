@@ -1,18 +1,16 @@
 import { adminOnly } from '@/access/adminOnly'
-import { adminLabel } from '@/utilities/adminLabel'
 import { getPublicSiteURL } from '@/utilities/getPublicSiteURL'
 import { revalidateTag } from 'next/cache'
 import type { GlobalConfig } from 'payload'
 
 export const SiteSettings: GlobalConfig = {
   slug: 'site-settings',
-  label: adminLabel('Налаштування сайту', 'Настройки сайта'),
   access: {
     read: adminOnly,
     update: adminOnly,
   },
   admin: {
-    group: adminLabel('Налаштування', 'Настройки'),
+    group: 'Settings',
   },
   hooks: {
     beforeChange: [
@@ -71,209 +69,116 @@ export const SiteSettings: GlobalConfig = {
       type: 'tabs',
       tabs: [
         {
-          label: adminLabel('Аналітика та серверні події', 'Аналитика и серверные события'),
+          label: 'Аналітика та серверні події',
           fields: [
-            {
-              name: 'ga4MeasurementId',
-              type: 'text',
-              label: adminLabel('Ідентифікатор GA4', 'Идентификатор GA4'),
-            },
-            {
-              name: 'ga4ApiSecret',
-              type: 'text',
-              label: adminLabel('Секретний ключ API GA4', 'Секретный ключ API GA4'),
-            },
-            {
-              name: 'fbPixelId',
-              type: 'text',
-              label: adminLabel('Ідентифікатор пікселя Meta', 'Идентификатор пикселя Meta'),
-            },
-            {
-              name: 'fbCapiToken',
-              type: 'text',
-              label: adminLabel('Токен API конверсій Meta', 'Токен API конверсий Meta'),
-            },
-            {
-              name: 'tikTokPixelId',
-              type: 'text',
-              label: adminLabel('Ідентифікатор пікселя TikTok', 'Идентификатор пикселя TikTok'),
-            },
-            {
-              name: 'tikTokEventsApiToken',
-              type: 'text',
-              label: adminLabel('Токен API подій TikTok', 'Токен API событий TikTok'),
-            },
-            {
-              name: 'googleTagManagerId',
-              type: 'text',
-              label: adminLabel(
-                'Ідентифікатор Google Tag Manager',
-                'Идентификатор Google Tag Manager',
-              ),
-            },
+            { name: 'ga4MeasurementId', type: 'text', label: 'GA4 Measurement ID' },
+            { name: 'ga4ApiSecret', type: 'text', label: 'GA4 API Secret' },
+            { name: 'fbPixelId', type: 'text', label: 'Meta Pixel ID' },
+            { name: 'fbCapiToken', type: 'text', label: 'Meta Conversions API Token' },
+            { name: 'tikTokPixelId', type: 'text', label: 'TikTok Pixel ID' },
+            { name: 'tikTokEventsApiToken', type: 'text', label: 'TikTok Events API Token' },
+            { name: 'googleTagManagerId', type: 'text', label: 'Google Tag Manager ID' },
           ],
         },
         {
-          label: adminLabel('Сповіщення (Telegram)', 'Уведомления (Telegram)'),
+          label: 'Сповіщення (Telegram)',
           fields: [
-            {
-              name: 'telegramBotToken',
-              type: 'text',
-              label: adminLabel('Токен бота Telegram', 'Токен бота Telegram'),
-            },
+            { name: 'telegramBotToken', type: 'text', label: 'Telegram Bot Token' },
             {
               name: 'telegramChatId',
               type: 'text',
-              label: adminLabel('ID чату Telegram', 'ID чата Telegram'),
-              admin: {
-                description: adminLabel(
-                  'Для кількох чатів вкажіть ID через кому.',
-                  'Для нескольких чатов укажите ID через запятую.',
-                ),
-              },
+              label: 'Telegram Chat ID',
+              admin: { description: 'Для кількох чатів вкажіть ID через кому.' },
             },
           ],
         },
         {
-          label: adminLabel('Оплата (LiqPay)', 'Оплата (LiqPay)'),
+          label: 'Оплата (LiqPay)',
           fields: [
-            {
-              name: 'liqpayPublicKey',
-              type: 'text',
-              label: adminLabel('Публічний ключ LiqPay', 'Публичный ключ LiqPay'),
-            },
-            {
-              name: 'liqpayPrivateKey',
-              type: 'text',
-              label: adminLabel('Приватний ключ LiqPay', 'Приватный ключ LiqPay'),
-            },
+            { name: 'liqpayPublicKey', type: 'text', label: 'LiqPay Public Key' },
+            { name: 'liqpayPrivateKey', type: 'text', label: 'LiqPay Private Key' },
           ],
         },
         {
-          label: adminLabel('Доставка', 'Доставка'),
+          label: 'Доставка',
           fields: [
-            {
-              name: 'novaPoshtaApiKey',
-              type: 'text',
-              label: adminLabel('Ключ API Нової пошти', 'Ключ API Новой почты'),
-            },
+            { name: 'novaPoshtaApiKey', type: 'text', label: 'Нова Пошта API Key' },
             {
               name: 'ukrposhtaApiToken',
               type: 'text',
-              label: adminLabel('Укрпошта: токен API (eCom)', 'Укрпочта: токен API (eCom)'),
+              label: 'Укрпошта: токен API (eCom)',
               admin: {
-                description: adminLabel(
+                description:
                   'Вставте лише значення токена, без слова Bearer. Використовується для списку відділень Укрпошти.',
-                  'Вставьте только значение токена, без слова Bearer. Используется для списка отделений Укрпочты.',
-                ),
               },
             },
           ],
         },
         {
-          label: adminLabel('Оплата (Stripe)', 'Оплата (Stripe)'),
+          label: 'Оплата (Stripe)',
           fields: [
-            {
-              name: 'stripeSecretKey',
-              type: 'text',
-              label: adminLabel('Секретний ключ Stripe', 'Секретный ключ Stripe'),
-            },
-            {
-              name: 'stripePublishableKey',
-              type: 'text',
-              label: adminLabel('Публічний ключ Stripe', 'Публичный ключ Stripe'),
-            },
-            {
-              name: 'stripeWebhookSecret',
-              type: 'text',
-              label: adminLabel('Секрет вебхука Stripe', 'Секрет вебхука Stripe'),
-            },
+            { name: 'stripeSecretKey', type: 'text', label: 'Stripe Secret Key' },
+            { name: 'stripePublishableKey', type: 'text', label: 'Stripe Publishable Key' },
+            { name: 'stripeWebhookSecret', type: 'text', label: 'Stripe Webhook Secret' },
           ],
         },
         {
-          label: adminLabel('Курси валют', 'Курсы валют'),
+          label: 'Курси валют',
           fields: [
             {
               name: 'usdRate',
               type: 'number',
-              label: adminLabel('Курс USD (НБУ), грн', 'Курс USD (НБУ), грн'),
-              admin: {
-                readOnly: true,
-                description: adminLabel(
-                  'Оновлюється автоматично раз на день.',
-                  'Обновляется автоматически раз в день.',
-                ),
-              },
+              label: 'Курс USD (НБУ), грн',
+              admin: { readOnly: true, description: 'Оновлюється автоматично раз на день.' },
             },
             {
               name: 'eurRate',
               type: 'number',
-              label: adminLabel('Курс EUR (НБУ), грн', 'Курс EUR (НБУ), грн'),
-              admin: {
-                readOnly: true,
-                description: adminLabel(
-                  'Оновлюється автоматично раз на день.',
-                  'Обновляется автоматически раз в день.',
-                ),
-              },
+              label: 'Курс EUR (НБУ), грн',
+              admin: { readOnly: true, description: 'Оновлюється автоматично раз на день.' },
             },
             {
               name: 'ratesUpdatedAt',
               type: 'text',
-              label: adminLabel('Курс оновлено', 'Курс обновлен'),
+              label: 'Курс оновлено',
               admin: { readOnly: true },
             },
           ],
         },
         {
-          label: adminLabel('Логотип', 'Логотип'),
+          label: 'Логотип',
           fields: [
             {
               name: 'logo',
               type: 'upload',
               relationTo: 'media',
-              label: adminLabel('Логотип сайту', 'Логотип сайта'),
+              label: 'Логотип сайту',
               admin: {
-                description: adminLabel(
-                  'Необов’язково. Рекомендована ширина — 400–600 пікселів, PNG або WebP. Якщо поле порожнє, показується стандартний логотип.',
-                  'Необязательно. Рекомендуемая ширина — 400–600 пикселей, PNG или WebP. Если поле пустое, показывается стандартный логотип.',
-                ),
+                description:
+                  'Необов’язково. Краще 400–600 пікселів завширшки, PNG або WebP. Якщо поле порожнє, показується стандартний логотип.',
               },
             },
           ],
         },
         {
-          label: adminLabel('Інше', 'Другое'),
+          label: 'Інше',
           fields: [
             {
               name: 'siteURL',
               type: 'text',
-              label: adminLabel('Публічна URL-адреса сайту', 'Публичный URL-адрес сайта'),
+              label: 'Публічна URL-адреса сайту',
               admin: {
-                description: adminLabel(
+                description:
                   'Основна адреса магазину (наприклад, https://example.com). Використовується для посилань товарів і фідів.',
-                  'Основной адрес магазина (например, https://example.com). Используется в ссылках на товары и фидах.',
-                ),
               },
             },
-            { name: 'siteName', type: 'text', label: adminLabel('Назва сайту', 'Название сайта') },
-            {
-              name: 'companyName',
-              type: 'text',
-              label: adminLabel('Назва компанії', 'Название компании'),
-            },
-            {
-              name: 'previewSecret',
-              type: 'text',
-              label: adminLabel(
-                'Секрет попереднього перегляду',
-                'Секрет предварительного просмотра',
-              ),
-            },
+            { name: 'siteName', type: 'text', label: 'Назва сайту' },
+            { name: 'companyName', type: 'text', label: 'Назва компанії' },
+            { name: 'previewSecret', type: 'text', label: 'Preview Secret' },
           ],
         },
         {
-          label: adminLabel('Інтеграції API', 'Интеграции API'),
+          label: 'API інтеграції',
           fields: [
             {
               name: 'apiKeys',

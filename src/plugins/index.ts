@@ -23,7 +23,6 @@ import { ProductsCollection } from '@/collections/Products'
 import { VariantsCollection } from '@/collections/Variants'
 import { Page, Product } from '@/payload-types'
 import { getServerSideURL } from '@/utilities/getURL'
-import { adminLabel } from '@/utilities/adminLabel'
 
 const SITE_NAME = 'Крамниця'
 const TITLE_MAX = 60
@@ -189,9 +188,7 @@ const generateImage: GenerateImage<Product | Page> = ({ doc }) => {
   const first = gallery.find((item) => item.mediaType !== 'youtube' && item.image)
   const image = categoryImage ?? first?.image
   if (!image) return ''
-  return typeof image === 'object'
-    ? (image as { id: string | number }).id
-    : (image as string | number)
+  return typeof image === 'object' ? (image as { id: string | number }).id : (image as string | number)
 }
 
 const generateURL: GenerateURL<Product | Page> = async ({ doc, req }) => {
@@ -222,7 +219,7 @@ export const plugins: Plugin[] = [
         update: isAdmin,
       },
       admin: {
-        group: adminLabel('Контент', 'Контент'),
+        group: 'Content',
       },
     },
     formOverrides: {
@@ -233,7 +230,7 @@ export const plugins: Plugin[] = [
         create: isAdmin,
       },
       admin: {
-        group: adminLabel('Контент', 'Контент'),
+        group: 'Content',
       },
       fields: ({ defaultFields }) => {
         return defaultFields.map((field) => {
@@ -349,9 +346,7 @@ export const plugins: Plugin[] = [
             confirmOrder: async (args: Parameters<typeof adapter.confirmOrder>[0]) => {
               const siteAdapter = await getSiteStripeAdapter(args.req.payload)
               if (!siteAdapter) {
-                args.req.payload.logger.warn(
-                  'Stripe confirmation skipped: secret key is not configured',
-                )
+                args.req.payload.logger.warn('Stripe confirmation skipped: secret key is not configured')
                 throw new Error('Stripe is not configured')
               }
               return siteAdapter.confirmOrder(args)

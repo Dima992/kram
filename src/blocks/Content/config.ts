@@ -8,29 +8,27 @@ import {
 } from '@payloadcms/richtext-lexical'
 
 import { link } from '@/fields/link'
-import { adminLabel } from '@/utilities/adminLabel'
 
 const columnFields: Field[] = [
   {
     name: 'size',
     type: 'select',
-    label: adminLabel('Розмір колонки', 'Размер колонки'),
     defaultValue: 'oneThird',
     options: [
       {
-        label: adminLabel('Одна третина', 'Одна треть'),
+        label: 'One Third',
         value: 'oneThird',
       },
       {
-        label: adminLabel('Половина', 'Половина'),
+        label: 'Half',
         value: 'half',
       },
       {
-        label: adminLabel('Дві третини', 'Две трети'),
+        label: 'Two Thirds',
         value: 'twoThirds',
       },
       {
-        label: adminLabel('На всю ширину', 'На всю ширину'),
+        label: 'Full',
         value: 'full',
       },
     ],
@@ -53,7 +51,6 @@ const columnFields: Field[] = [
   {
     name: 'enableLink',
     type: 'checkbox',
-    label: adminLabel('Додати посилання', 'Добавить ссылку'),
   },
   link({
     overrides: {
@@ -67,15 +64,10 @@ const columnFields: Field[] = [
 export const Content: Block = {
   slug: 'content',
   interfaceName: 'ContentBlock',
-  labels: {
-    singular: adminLabel('Текстовий блок', 'Текстовый блок'),
-    plural: adminLabel('Текстові блоки', 'Текстовые блоки'),
-  },
   fields: [
     {
       name: 'columns',
       type: 'array',
-      label: adminLabel('Колонки', 'Колонки'),
       admin: {
         initCollapsed: true,
       },

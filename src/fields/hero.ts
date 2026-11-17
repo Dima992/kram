@@ -8,7 +8,6 @@ import {
 } from '@payloadcms/richtext-lexical'
 
 import { linkGroup } from './linkGroup'
-import { adminLabel } from '@/utilities/adminLabel'
 
 export const hero: Field = {
   name: 'hero',
@@ -18,22 +17,22 @@ export const hero: Field = {
       name: 'type',
       type: 'select',
       defaultValue: 'lowImpact',
-      label: adminLabel('Тип обкладинки', 'Тип обложки'),
+      label: 'Type',
       options: [
         {
-          label: adminLabel('Немає', 'Нет'),
+          label: 'None',
           value: 'none',
         },
         {
-          label: adminLabel('Великий банер', 'Большой баннер'),
+          label: 'High Impact',
           value: 'highImpact',
         },
         {
-          label: adminLabel('Середній банер', 'Средний баннер'),
+          label: 'Medium Impact',
           value: 'mediumImpact',
         },
         {
-          label: adminLabel('Малий банер', 'Маленький баннер'),
+          label: 'Low Impact',
           value: 'lowImpact',
         },
       ],
@@ -62,7 +61,6 @@ export const hero: Field = {
     {
       name: 'media',
       type: 'upload',
-      label: adminLabel('Медіафайл', 'Медиафайл'),
       admin: {
         condition: (_, { type } = {}) => ['highImpact', 'mediumImpact'].includes(type),
       },

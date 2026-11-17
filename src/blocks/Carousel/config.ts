@@ -1,5 +1,4 @@
 import type { Block } from 'payload'
-import { adminLabel } from '@/utilities/adminLabel'
 
 export const Carousel: Block = {
   slug: 'carousel',
@@ -10,11 +9,11 @@ export const Carousel: Block = {
       defaultValue: 'collection',
       options: [
         {
-          label: adminLabel('Колекція', 'Коллекция'),
+          label: 'Collection',
           value: 'collection',
         },
         {
-          label: adminLabel('Вибрати вручну', 'Выбрать вручную'),
+          label: 'Individual Selection',
           value: 'selection',
         },
       ],
@@ -26,10 +25,10 @@ export const Carousel: Block = {
         condition: (_, siblingData) => siblingData.populateBy === 'collection',
       },
       defaultValue: 'products',
-      label: adminLabel('Що показувати', 'Что показывать'),
+      label: 'Collections To Show',
       options: [
         {
-          label: adminLabel('Товари', 'Товары'),
+          label: 'Products',
           value: 'products',
         },
       ],
@@ -41,7 +40,7 @@ export const Carousel: Block = {
         condition: (_, siblingData) => siblingData.populateBy === 'collection',
       },
       hasMany: true,
-      label: adminLabel('Категорії', 'Категории'),
+      label: 'Categories To Show',
       relationTo: 'categories',
     },
     {
@@ -52,7 +51,7 @@ export const Carousel: Block = {
         step: 1,
       },
       defaultValue: 10,
-      label: adminLabel('Кількість товарів', 'Количество товаров'),
+      label: 'Limit',
     },
     {
       name: 'selectedDocs',
@@ -61,7 +60,7 @@ export const Carousel: Block = {
         condition: (_, siblingData) => siblingData.populateBy === 'selection',
       },
       hasMany: true,
-      label: adminLabel('Вибрані товари', 'Выбранные товары'),
+      label: 'Selection',
       relationTo: ['products'],
     },
     {
@@ -69,14 +68,11 @@ export const Carousel: Block = {
       type: 'relationship',
       admin: {
         condition: (_, siblingData) => siblingData.populateBy === 'collection',
-        description: adminLabel(
-          'Заповнюється автоматично після читання.',
-          'Заполняется автоматически после загрузки.',
-        ),
+        description: 'This field is auto-populated after-read',
         disabled: true,
       },
       hasMany: true,
-      label: adminLabel('Завантажені документи', 'Загруженные документы'),
+      label: 'Populated Docs',
       relationTo: ['products'],
     },
     {
@@ -84,19 +80,16 @@ export const Carousel: Block = {
       type: 'number',
       admin: {
         condition: (_, siblingData) => siblingData.populateBy === 'collection',
-        description: adminLabel(
-          'Заповнюється автоматично після читання.',
-          'Заполняется автоматически после загрузки.',
-        ),
+        description: 'This field is auto-populated after-read',
         disabled: true,
         step: 1,
       },
-      label: adminLabel('Кількість завантажених документів', 'Количество загруженных документов'),
+      label: 'Populated Docs Total',
     },
   ],
   interfaceName: 'CarouselBlock',
   labels: {
-    plural: adminLabel('Каруселі', 'Карусели'),
-    singular: adminLabel('Карусель', 'Карусель'),
+    plural: 'Carousels',
+    singular: 'Carousel',
   },
 }

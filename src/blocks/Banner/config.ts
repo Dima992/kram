@@ -1,5 +1,4 @@
 import type { Block } from 'payload'
-import { adminLabel } from '@/utilities/adminLabel'
 
 import {
   FixedToolbarFeature,
@@ -15,10 +14,10 @@ export const Banner: Block = {
       type: 'select',
       defaultValue: 'info',
       options: [
-        { label: adminLabel('Інформація', 'Информация'), value: 'info' },
-        { label: adminLabel('Попередження', 'Предупреждение'), value: 'warning' },
-        { label: adminLabel('Помилка', 'Ошибка'), value: 'error' },
-        { label: adminLabel('Успіх', 'Успех'), value: 'success' },
+        { label: 'Info', value: 'info' },
+        { label: 'Warning', value: 'warning' },
+        { label: 'Error', value: 'error' },
+        { label: 'Success', value: 'success' },
       ],
       required: true,
     },
