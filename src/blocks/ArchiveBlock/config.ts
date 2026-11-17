@@ -1,4 +1,5 @@
 import type { Block } from 'payload'
+import { adminLabel } from '@/utilities/adminLabel'
 
 import {
   FixedToolbarFeature,
@@ -24,7 +25,7 @@ export const Archive: Block = {
           ]
         },
       }),
-      label: 'Intro Content',
+      label: adminLabel('Вступний текст', 'Вступительный текст'),
     },
     {
       name: 'populateBy',
@@ -32,11 +33,11 @@ export const Archive: Block = {
       defaultValue: 'collection',
       options: [
         {
-          label: 'Collection',
+          label: adminLabel('Колекція', 'Коллекция'),
           value: 'collection',
         },
         {
-          label: 'Individual Selection',
+          label: adminLabel('Вибрати вручну', 'Выбрать вручную'),
           value: 'selection',
         },
       ],
@@ -48,10 +49,10 @@ export const Archive: Block = {
         condition: (_, siblingData) => siblingData.populateBy === 'collection',
       },
       defaultValue: 'products',
-      label: 'Collections To Show',
+      label: adminLabel('Що показувати', 'Что показывать'),
       options: [
         {
-          label: 'Products',
+          label: adminLabel('Товари', 'Товары'),
           value: 'products',
         },
       ],
@@ -63,7 +64,7 @@ export const Archive: Block = {
         condition: (_, siblingData) => siblingData.populateBy === 'collection',
       },
       hasMany: true,
-      label: 'Categories To Show',
+      label: adminLabel('Категорії', 'Категории'),
       relationTo: 'categories',
     },
     {
@@ -74,7 +75,7 @@ export const Archive: Block = {
         step: 1,
       },
       defaultValue: 10,
-      label: 'Limit',
+      label: adminLabel('Кількість товарів', 'Количество товаров'),
     },
     {
       name: 'selectedDocs',
@@ -83,12 +84,12 @@ export const Archive: Block = {
         condition: (_, siblingData) => siblingData.populateBy === 'selection',
       },
       hasMany: true,
-      label: 'Selection',
+      label: adminLabel('Вибрані товари', 'Выбранные товары'),
       relationTo: ['products'],
     },
   ],
   labels: {
-    plural: 'Archives',
-    singular: 'Archive',
+    plural: adminLabel('Архіви', 'Архивы'),
+    singular: adminLabel('Архів', 'Архив'),
   },
 }

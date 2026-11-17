@@ -1,6 +1,7 @@
 import { getStoredRates } from '@/utilities/exchangeRates'
 import type { CollectionOverride } from '@payloadcms/plugin-ecommerce/types'
 import type { CollectionBeforeChangeHook } from 'payload'
+import { adminLabel } from '@/utilities/adminLabel'
 
 type Currency = 'UAH' | 'USD' | 'EUR'
 
@@ -96,21 +97,24 @@ export const VariantsCollection: CollectionOverride = ({ defaultCollection }) =>
     {
       name: 'basePrice',
       type: 'number',
-      label: 'Ціна варіанта',
+      label: adminLabel('Ціна варіанта', 'Цена варианта'),
       admin: {
         position: 'sidebar',
-        description: 'Необов’язково. 0 або порожньо — використовується ціна товару.',
+        description: adminLabel(
+          'Необов’язково. 0 або порожньо — використовується ціна товару.',
+          'Необязательно. Если указать 0 или оставить пустым, используется цена товара.',
+        ),
       },
     },
     {
       name: 'baseCurrency',
       type: 'select',
       defaultValue: 'UAH',
-      label: 'Валюта ціни варіанта',
+      label: adminLabel('Валюта ціни варіанта', 'Валюта цены варианта'),
       options: [
-        { label: 'Гривня (UAH)', value: 'UAH' },
-        { label: 'Долар (USD)', value: 'USD' },
-        { label: 'Євро (EUR)', value: 'EUR' },
+        { label: adminLabel('Гривня (UAH)', 'Гривна (UAH)'), value: 'UAH' },
+        { label: adminLabel('Долар (USD)', 'Доллар (USD)'), value: 'USD' },
+        { label: adminLabel('Євро (EUR)', 'Евро (EUR)'), value: 'EUR' },
       ],
       admin: {
         position: 'sidebar',
@@ -119,7 +123,7 @@ export const VariantsCollection: CollectionOverride = ({ defaultCollection }) =>
     {
       name: 'sku',
       type: 'text',
-      label: 'Артикул варианта',
+      label: adminLabel('Артикул варіанта', 'Артикул варианта'),
       admin: {
         position: 'sidebar',
       },

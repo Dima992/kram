@@ -10,13 +10,18 @@ import { fileURLToPath } from 'url'
 
 import { adminOnly } from '@/access/adminOnly'
 import { deleteUnusedMedia, listUnusedMedia, UNUSED_MIN_AGE_DAYS } from '@/utilities/unusedMedia'
+import { adminLabel } from '@/utilities/adminLabel'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 export const Media: CollectionConfig = {
+  labels: {
+    singular: adminLabel('Медіафайл', 'Медиафайл'),
+    plural: adminLabel('Медіафайли', 'Медиафайлы'),
+  },
   admin: {
-    group: 'Content',
+    group: adminLabel('Контент', 'Контент'),
     // Панель «Невикористані фото» над списком фото в админке
     components: {
       beforeListTable: ['@/components/admin/UnusedMediaPanel#UnusedMediaPanel'],
@@ -67,12 +72,14 @@ export const Media: CollectionConfig = {
       // Описание фото для людей и поисковиков. Заполняется автоматически из названия товара.
       name: 'alt',
       type: 'text',
+      label: adminLabel('Альтернативний текст', 'Альтернативный текст'),
       required: false,
       localized: true,
     },
     {
       name: 'caption',
       type: 'richText',
+      label: adminLabel('Підпис', 'Подпись'),
       localized: true,
       editor: lexicalEditor({
         features: ({ rootFeatures }) => {

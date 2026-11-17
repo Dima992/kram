@@ -24,6 +24,7 @@ import { YouTube } from '@/blocks/YouTube/config'
 import { getStoredRates } from '@/utilities/exchangeRates'
 import { generatePreviewPath } from '@/utilities/generatePreviewPath'
 import { transliterate } from '@/utilities/transliterate'
+import { adminLabel } from '@/utilities/adminLabel'
 import { autoGenerateAlt } from './hooks/autoGenerateAlt'
 
 const SITE_NAME = 'Крамниця'
@@ -124,8 +125,13 @@ const hideCurrencyFields = (fields: Field[]): Field[] =>
 
 export const ProductsCollection: CollectionOverride = ({ defaultCollection }) => ({
   ...defaultCollection,
+  labels: {
+    singular: adminLabel('Товар', 'Товар'),
+    plural: adminLabel('Товари', 'Товары'),
+  },
   admin: {
     ...defaultCollection?.admin,
+    group: adminLabel('Контент', 'Контент'),
     defaultColumns: ['title', 'basePrice', 'baseCurrency', 'priceInUAH', '_status'],
     livePreview: {
       url: ({ data, req }) =>
@@ -161,7 +167,13 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     meta: true,
   },
   fields: [
-    { name: 'title', type: 'text', required: true, localized: true },
+    {
+      name: 'title',
+      type: 'text',
+      label: adminLabel('Назва товару', 'Название товара'),
+      required: true,
+      localized: true,
+    },
     {
       type: 'tabs',
       tabs: [
@@ -182,12 +194,13 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
                   ]
                 },
               }),
-              label: false,
+              label: adminLabel('Опис товару', 'Описание товара'),
               required: false,
             },
             {
               name: 'gallery',
               type: 'array',
+              label: adminLabel('Галерея', 'Галерея'),
               minRows: 1,
               admin: {
                 components: {
@@ -198,15 +211,17 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
                 {
                   name: 'mediaType',
                   type: 'select',
+                  label: adminLabel('Тип медіа', 'Тип медиа'),
                   defaultValue: 'image',
                   options: [
-                    { label: 'Фото', value: 'image' },
-                    { label: 'Відео YouTube', value: 'youtube' },
+                    { label: adminLabel('Фото', 'Фото'), value: 'image' },
+                    { label: adminLabel('Відео YouTube', 'Видео YouTube'), value: 'youtube' },
                   ],
                 },
                 {
                   name: 'image',
                   type: 'upload',
+                  label: adminLabel('Зображення', 'Изображение'),
                   relationTo: 'media',
                   admin: {
                     condition: (_, siblingData) => siblingData?.mediaType !== 'youtube',
@@ -215,7 +230,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
                 {
                   name: 'youtubeUrl',
                   type: 'text',
-                  label: 'Посилання на відео YouTube',
+                  label: adminLabel('Посилання на відео YouTube', 'Ссылка на видео YouTube'),
                   admin: {
                     condition: (_, siblingData) => siblingData?.mediaType === 'youtube',
                   },
@@ -223,6 +238,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
                 {
                   name: 'variantOption',
                   type: 'relationship',
+                  label: adminLabel('Варіант товару', 'Вариант товара'),
                   relationTo: 'variantOptions',
                   admin: {
                     condition: (data) => {
@@ -268,10 +284,11 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
               name: 'layout',
               localized: true,
               type: 'blocks',
+              label: adminLabel('Блоки контенту', 'Блоки контента'),
               blocks: [CallToAction, Content, MediaBlock, YouTube],
             },
           ],
-          label: 'Content',
+          label: adminLabel('Контент', 'Контент'),
         },
         {
           fields: [
@@ -285,8 +302,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
                       (nestedField) =>
                         nestedField.type === 'row' &&
                         nestedField.fields.some(
-                          (priceField) =>
-                            'name' in priceField && priceField.name === 'priceInUAH',
+                          (priceField) => 'name' in priceField && priceField.name === 'priceInUAH',
                         ),
                     )
                   ),
@@ -314,7 +330,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
               relationTo: 'products',
             },
           ],
-          label: 'Product Details',
+          label: adminLabel('Деталі товару', 'Детали товара'),
         },
         {
           // Отдельная вкладка для характеристик (галочки по основной категории)
@@ -322,7 +338,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
             {
               name: 'attributes',
               type: 'json',
-              label: 'Характеристики',
+              label: adminLabel('Характеристики', 'Характеристики'),
               admin: {
                 components: {
                   Field: '@/components/admin/CharacteristicsField#CharacteristicsField',
@@ -337,7 +353,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
               },
             },
           ],
-          label: 'Характеристики',
+          label: adminLabel('Характеристики', 'Характеристики'),
         },
         {
           // Вкладка Google: категория для фида и поля, которых нет в характеристиках
@@ -347,33 +363,42 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
               name: 'googleCategory',
               type: 'relationship',
               relationTo: 'google-categories',
-              label: 'Google-категорія',
+              label: adminLabel('Категорія Google', 'Категория Google'),
               admin: {
-                description: 'Выберите категорию из списка. От неё зависят поля, которые Google ждёт для этого товара.',
+                description: adminLabel(
+                  'Виберіть категорію зі списку. Від неї залежать поля, які Google очікує для цього товару.',
+                  'Выберите категорию из списка. От неё зависят поля, которые Google ожидает для этого товара.',
+                ),
               },
             },
             {
               name: 'googleAgeGroup',
               type: 'select',
               defaultValue: 'adult',
-              label: 'Вікова група (age_group)',
+              label: adminLabel('Вікова група (age_group)', 'Возрастная группа (age_group)'),
               options: [
-                { label: 'Дорослі (adult)', value: 'adult' },
-                { label: 'Діти (kids)', value: 'kids' },
+                { label: adminLabel('Дорослі (adult)', 'Взрослые (adult)'), value: 'adult' },
+                { label: adminLabel('Діти (kids)', 'Дети (kids)'), value: 'kids' },
               ],
               admin: {
-                description: 'Для женской одежды обычно «Дорослі».',
+                description: adminLabel(
+                  'Для жіночого одягу зазвичай «Дорослі».',
+                  'Для женской одежды обычно «Взрослые».',
+                ),
               },
             },
             {
               name: 'googleCondition',
               type: 'select',
               defaultValue: 'new',
-              label: 'Стан (condition)',
+              label: adminLabel('Стан (condition)', 'Состояние (condition)'),
               options: [
-                { label: 'Нове (new)', value: 'new' },
-                { label: 'Б/у (used)', value: 'used' },
-                { label: 'Відновлене (refurbished)', value: 'refurbished' },
+                { label: adminLabel('Нове (new)', 'Новое (new)'), value: 'new' },
+                { label: adminLabel('Б/в (used)', 'Б/у (used)'), value: 'used' },
+                {
+                  label: adminLabel('Відновлене (refurbished)', 'Восстановленное (refurbished)'),
+                  value: 'refurbished',
+                },
               ],
             },
             {
@@ -432,84 +457,104 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       name: 'sizeChart',
       type: 'relationship',
       relationTo: 'size-charts',
-      label: 'Таблиця розмірів',
+      label: adminLabel('Таблиця розмірів', 'Таблица размеров'),
       admin: {
         position: 'sidebar',
-        description: 'Оберіть таблицю для типу товару. Якщо порожньо, на сайті таблиці не буде.',
+        description: adminLabel(
+          'Оберіть таблицю для типу товару. Якщо порожньо, на сайті таблиці не буде.',
+          'Выберите таблицу для типа товара. Если оставить пустым, таблица не будет показана на сайте.',
+        ),
       },
     },
     {
       name: 'baseCurrency',
       type: 'select',
+      label: adminLabel('Валюта ціни', 'Валюта цены'),
       defaultValue: 'UAH',
       options: [
-        { label: 'Гривня (UAH)', value: 'UAH' },
-        { label: 'Долар (USD)', value: 'USD' },
-        { label: 'Євро (EUR)', value: 'EUR' },
+        { label: adminLabel('Гривня (UAH)', 'Гривна (UAH)'), value: 'UAH' },
+        { label: adminLabel('Долар (USD)', 'Доллар (USD)'), value: 'USD' },
+        { label: adminLabel('Євро (EUR)', 'Евро (EUR)'), value: 'EUR' },
       ],
       admin: {
         position: 'sidebar',
-        description:
-          'Валюта, в якій вводите ціну. Якщо вводите в гривнях, залишайте UAH. Для USD та EUR магазин сам перераховує ціну в гривні.',
+        description: adminLabel(
+          'Валюта, у якій вводите ціну. Якщо вводите в гривнях, залишайте UAH. Для USD та EUR магазин сам перераховує ціну в гривні.',
+          'Валюта, в которой вводится цена. Для гривен оставьте UAH. Цены в USD и EUR магазин автоматически пересчитает в гривны.',
+        ),
       },
     },
     {
       name: 'basePrice',
       type: 'number',
+      label: adminLabel('Базова ціна', 'Базовая цена'),
       required: true,
       admin: {
         position: 'sidebar',
-        description: 'Ціна у вибраній базовій валюті',
+        description: adminLabel(
+          'Ціна у вибраній базовій валюті',
+          'Цена в выбранной базовой валюте',
+        ),
       },
     },
     {
       name: 'priceInUAH',
       type: 'number',
+      label: adminLabel('Ціна у гривнях', 'Цена в гривнах'),
       admin: {
         position: 'sidebar',
         readOnly: true,
-        description: 'Розрахована ціна в грн за курсом НБУ (покупцю показується ця)',
+        description: adminLabel(
+          'Розрахована ціна в грн за курсом НБУ (покупцю показується ця)',
+          'Рассчитанная цена в грн по курсу НБУ (показывается покупателю)',
+        ),
       },
     },
     {
       name: 'stockStatus',
       type: 'select',
       defaultValue: 'inStock',
-      label: 'Статус наявності',
+      label: adminLabel('Статус наявності', 'Статус наличия'),
       options: [
-        { label: 'В наявності', value: 'inStock' },
-        { label: 'Під замовлення', value: 'backorder' },
-        { label: 'Немає в наявності', value: 'outOfStock' },
+        { label: adminLabel('В наявності', 'В наличии'), value: 'inStock' },
+        { label: adminLabel('Під замовлення', 'Под заказ'), value: 'backorder' },
+        { label: adminLabel('Немає в наявності', 'Нет в наличии'), value: 'outOfStock' },
       ],
       admin: {
         position: 'sidebar',
-        description: 'Поки що тільки для адмінки: на сайті статус покажемо на наступному кроці.',
+        description: adminLabel(
+          'Поки що тільки для адмінки: на сайті статус покажемо на наступному кроці.',
+          'Пока только для админки: статус на сайте появится позже.',
+        ),
       },
     },
     {
       name: 'backorderDays',
       type: 'number',
-      label: 'Строк доставки під замовлення (днів)',
+      label: adminLabel('Строк доставки під замовлення (днів)', 'Срок доставки под заказ (дней)'),
       admin: {
         position: 'sidebar',
         condition: (data) => data?.stockStatus === 'backorder',
-        description: 'Скільки днів чекати товар.',
+        description: adminLabel('Скільки днів чекати товар.', 'Сколько дней ждать товар.'),
       },
     },
     {
       name: 'decrementOnOrder',
       type: 'checkbox',
       defaultValue: false,
-      label: 'Віднімати кількість при замовленні',
+      label: adminLabel('Віднімати кількість при замовленні', 'Уменьшать остаток после заказа'),
       admin: {
         position: 'sidebar',
-        description: 'Поки що тільки позначка. Логіку додамо на етапі 2в.',
+        description: adminLabel(
+          'Поки що тільки позначка. Логіку додамо пізніше.',
+          'Пока это только отметка. Логика будет добавлена позже.',
+        ),
       },
     },
     {
       name: 'internalNote',
       type: 'textarea',
-      label: 'Нотатка (тільки для адмінки)',
+      label: adminLabel('Нотатка (тільки для адмінки)', 'Заметка (только для админки)'),
       access: {
         read: adminOnlyFieldAccess,
         create: adminOnlyFieldAccess,
@@ -517,27 +562,35 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       },
       admin: {
         position: 'sidebar',
-        description: 'Для себе: нагадування, що перевірити. На сайті не показується.',
+        description: adminLabel(
+          'Для себе: нагадування, що перевірити. На сайті не показується.',
+          'Для себя: напоминание, что проверить. На сайте не отображается.',
+        ),
       },
     },
     {
       name: 'excludeFromFeed',
       type: 'checkbox',
       defaultValue: false,
-      label: 'Виключити з усіх рекламних фідів',
+      label: adminLabel('Виключити з усіх рекламних фідів', 'Исключить из всех рекламных фидов'),
       admin: {
         position: 'sidebar',
-        description:
+        description: adminLabel(
           'Виключає товар з усіх фідів. Щоб виключити його лише з одного фіда, налаштуйте це у самому фіді.',
+          'Исключает товар из всех фидов. Чтобы исключить его только из одного фида, настройте это в самом фиде.',
+        ),
       },
     },
     {
       name: 'brand',
       type: 'text',
-      label: 'Бренд для фідів',
+      label: adminLabel('Бренд для фідів', 'Бренд для фидов'),
       admin: {
         position: 'sidebar',
-        description: 'Бренд товару. Якщо поле порожнє, використовується бренд за замовчуванням у фіді.',
+        description: adminLabel(
+          'Бренд товару. Якщо поле порожнє, використовується бренд за замовчуванням у фіді.',
+          'Бренд товара. Если поле пустое, используется бренд по умолчанию в фиде.',
+        ),
       },
     },
     {
@@ -546,13 +599,16 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       label: 'GTIN / штрихкод',
       admin: {
         position: 'sidebar',
-        description: 'Глобальний номер товару, наприклад EAN або UPC.',
+        description: adminLabel(
+          'Глобальний номер товару, наприклад EAN або UPC.',
+          'Глобальный номер товара, например EAN или UPC.',
+        ),
       },
     },
     {
       name: 'mpn',
       type: 'text',
-      label: 'MPN / артикул виробника',
+      label: adminLabel('MPN / артикул виробника', 'MPN / артикул производителя'),
       admin: {
         position: 'sidebar',
       },
@@ -563,8 +619,10 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       label: 'Артикул (SKU)',
       admin: {
         position: 'sidebar',
-        description:
-          'Базовый артикул товара, например SH-001. От него получают номера варианты (SH-001-1, SH-001-2).',
+        description: adminLabel(
+          'Базовий артикул товару, наприклад SH-001. Від нього утворюються артикули варіантів (SH-001-1, SH-001-2).',
+          'Базовый артикул товара, например SH-001. От него формируются артикулы вариантов (SH-001-1, SH-001-2).',
+        ),
       },
     },
     {
@@ -587,7 +645,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     {
       name: 'supplierSKU',
       type: 'text',
-      label: 'Артикул постачальника',
+      label: adminLabel('Артикул постачальника', 'Артикул поставщика'),
       admin: {
         position: 'sidebar',
       },
@@ -603,7 +661,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     {
       name: 'supplierName',
       type: 'text',
-      label: 'Постачальник',
+      label: adminLabel('Постачальник', 'Поставщик'),
       admin: {
         position: 'sidebar',
       },

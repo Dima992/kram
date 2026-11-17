@@ -1,4 +1,5 @@
 import type { Block } from 'payload'
+import { adminLabel } from '@/utilities/adminLabel'
 
 export const ThreeItemGrid: Block = {
   slug: 'threeItemGrid',
@@ -10,7 +11,7 @@ export const ThreeItemGrid: Block = {
         isSortable: true,
       },
       hasMany: true,
-      label: 'Products to show',
+      label: adminLabel('Товари для показу', 'Товары для отображения'),
       maxRows: 3,
       minRows: 3,
       relationTo: 'products',
@@ -18,7 +19,7 @@ export const ThreeItemGrid: Block = {
   ],
   interfaceName: 'ThreeItemGridBlock',
   labels: {
-    plural: 'Three Item Grids',
-    singular: 'Three Item Grid',
+    plural: adminLabel('Сітки з трьох товарів', 'Сетки из трех товаров'),
+    singular: adminLabel('Сітка з трьох товарів', 'Сетка из трех товаров'),
   },
 }

@@ -2,9 +2,11 @@ import type { GlobalConfig } from 'payload'
 
 import { adminOnly } from '@/access/adminOnly'
 import { link } from '@/fields/link'
+import { adminLabel } from '@/utilities/adminLabel'
 
 export const Footer: GlobalConfig = {
   slug: 'footer',
+  label: adminLabel('Підвал сайту', 'Подвал сайта'),
   access: {
     read: () => true,
     update: adminOnly,
@@ -12,7 +14,7 @@ export const Footer: GlobalConfig = {
   fields: [
     {
       name: 'navItems',
-      label: 'Ссылки колонки «Информация»',
+      label: adminLabel('Посилання колонки «Інформація»', 'Ссылки колонки «Информация»'),
       type: 'array',
       fields: [
         link({
@@ -22,28 +24,34 @@ export const Footer: GlobalConfig = {
     },
     {
       name: 'contacts',
-      label: 'Контакты',
+      label: adminLabel('Контакти', 'Контакты'),
       type: 'group',
       fields: [
         {
           name: 'phones',
-          label: 'Телефоны',
+          label: adminLabel('Телефони', 'Телефоны'),
           type: 'array',
           fields: [
             {
               name: 'label',
-              label: 'Подпись (необязательно, например, Основной)',
+              label: adminLabel(
+                'Підпис (необов’язково, наприклад, Основний)',
+                'Подпись (необязательно, например, Основной)',
+              ),
               type: 'text',
             },
             {
               name: 'number',
-              label: 'Номер (например, +380962063144)',
+              label: adminLabel(
+                'Номер (наприклад, +380962063144)',
+                'Номер (например, +380962063144)',
+              ),
               type: 'text',
               required: true,
             },
             {
               name: 'enabled',
-              label: 'Показывать на сайте',
+              label: adminLabel('Показувати на сайті', 'Показывать на сайте'),
               type: 'checkbox',
               defaultValue: true,
             },
@@ -51,49 +59,58 @@ export const Footer: GlobalConfig = {
         },
         {
           name: 'emails',
-          label: 'Эл. почта',
+          label: adminLabel('Ел. пошта', 'Эл. почта'),
           type: 'array',
           fields: [
             {
               name: 'email',
-              label: 'Адрес (например, info@kramnyca.com.ua)',
+              label: adminLabel(
+                'Адреса (наприклад, info@kramnyca.com.ua)',
+                'Адрес (например, info@kramnyca.com.ua)',
+              ),
               type: 'email',
               required: true,
             },
             {
               name: 'enabled',
-              label: 'Показывать на сайте',
+              label: adminLabel('Показувати на сайті', 'Показывать на сайте'),
               type: 'checkbox',
               defaultValue: true,
             },
           ],
         },
-         {
+        {
           name: 'address',
-          label: 'Адрес магазина',
+          label: adminLabel('Адреса магазину', 'Адрес магазина'),
           type: 'text',
           localized: true,
         },
         {
           name: 'other',
-          label: 'Другое (любые дополнительные контакты)',
+          label: adminLabel(
+            'Інше (будь-які додаткові контакти)',
+            'Другое (любые дополнительные контакты)',
+          ),
           type: 'array',
           fields: [
             {
               name: 'label',
-              label: 'Название (например, График работы)',
+              label: adminLabel(
+                'Назва (наприклад, Графік роботи)',
+                'Название (например, График работы)',
+              ),
               type: 'text',
               required: true,
             },
             {
               name: 'value',
-              label: 'Значение',
+              label: adminLabel('Значення', 'Значение'),
               type: 'text',
               required: true,
             },
             {
               name: 'enabled',
-              label: 'Показывать на сайте',
+              label: adminLabel('Показувати на сайті', 'Показывать на сайте'),
               type: 'checkbox',
               defaultValue: true,
             },
@@ -103,12 +120,12 @@ export const Footer: GlobalConfig = {
     },
     {
       name: 'socials',
-      label: 'Соцсети',
+      label: adminLabel('Соцмережі', 'Соцсети'),
       type: 'array',
       fields: [
         {
           name: 'platform',
-          label: 'Соцсеть',
+          label: adminLabel('Соцмережа', 'Соцсеть'),
           type: 'select',
           required: true,
           options: [
@@ -121,12 +138,12 @@ export const Footer: GlobalConfig = {
             { label: 'LinkedIn', value: 'linkedin' },
             { label: 'Pinterest', value: 'pinterest' },
             { label: 'TikTok', value: 'tiktok' },
-            { label: 'Другое', value: 'other' },
+            { label: adminLabel('Інше', 'Другое'), value: 'other' },
           ],
         },
         {
           name: 'customName',
-          label: 'Название соцсети',
+          label: adminLabel('Назва соцмережі', 'Название соцсети'),
           type: 'text',
           admin: {
             condition: (_, siblingData) => siblingData?.platform === 'other',
@@ -134,13 +151,13 @@ export const Footer: GlobalConfig = {
         },
         {
           name: 'url',
-          label: 'Ссылка (вставьте полностью)',
+          label: adminLabel('Посилання (вставте повністю)', 'Ссылка (вставьте полностью)'),
           type: 'text',
           required: true,
         },
         {
           name: 'enabled',
-          label: 'Показывать на сайте',
+          label: adminLabel('Показувати на сайті', 'Показывать на сайте'),
           type: 'checkbox',
           defaultValue: true,
         },
@@ -148,29 +165,34 @@ export const Footer: GlobalConfig = {
     },
     {
       name: 'paymentMethods',
-      label: 'Способы оплаты (логотипы в футере)',
+      label: adminLabel(
+        'Способи оплати (логотипи в підвалі)',
+        'Способы оплаты (логотипы в подвале)',
+      ),
       type: 'array',
       admin: {
-        description:
-          'Загружайте логотип в формате SVG (лучше) или PNG с прозрачным фоном. PNG: ширина 240 px, высота 80 px, файл до 100 КБ. JPG не загружайте (белый фон). Галочка «Показывать» выключена по умолчанию: включите её, когда подключите оплату. Порядок меняется перетаскиванием.',
+        description: adminLabel(
+          'Завантажуйте логотип у форматі SVG (краще) або PNG із прозорим фоном. PNG: ширина 240 px, висота 80 px, файл до 100 КБ. JPG не завантажуйте (білий фон). Прапорець «Показувати» вимкнений за замовчуванням: увімкніть його після підключення оплати. Порядок змінюється перетягуванням.',
+          'Загружайте логотип в формате SVG (предпочтительно) или PNG с прозрачным фоном. PNG: ширина 240 px, высота 80 px, файл до 100 КБ. JPG не загружайте (белый фон). Флажок «Показывать» выключен по умолчанию: включите его после подключения оплаты. Порядок меняется перетаскиванием.',
+        ),
       },
       fields: [
         {
           name: 'name',
-          label: 'Название (например, Visa)',
+          label: adminLabel('Назва (наприклад, Visa)', 'Название (например, Visa)'),
           type: 'text',
           required: true,
         },
         {
           name: 'logo',
-          label: 'Логотип',
+          label: adminLabel('Логотип', 'Логотип'),
           type: 'upload',
           relationTo: 'media',
           required: true,
         },
         {
           name: 'enabled',
-          label: 'Показывать на сайте',
+          label: adminLabel('Показувати на сайті', 'Показывать на сайте'),
           type: 'checkbox',
           defaultValue: false,
         },
