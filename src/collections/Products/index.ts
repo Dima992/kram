@@ -21,10 +21,10 @@ import { CallToAction } from '@/blocks/CallToAction/config'
 import { Content } from '@/blocks/Content/config'
 import { MediaBlock } from '@/blocks/MediaBlock/config'
 import { YouTube } from '@/blocks/YouTube/config'
+import { adminLabel } from '@/utilities/adminLabel'
 import { getStoredRates } from '@/utilities/exchangeRates'
 import { generatePreviewPath } from '@/utilities/generatePreviewPath'
 import { transliterate } from '@/utilities/transliterate'
-import { adminLabel } from '@/utilities/adminLabel'
 import { autoGenerateAlt } from './hooks/autoGenerateAlt'
 
 const SITE_NAME = 'Крамниця'
@@ -400,6 +400,22 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
                   value: 'refurbished',
                 },
               ],
+            },
+            {
+              name: 'googleGender',
+              type: 'select',
+              label: adminLabel('Стать (gender)', 'Пол (gender)'),
+              options: [
+                { label: adminLabel('Жіноча (female)', 'Женский (female)'), value: 'female' },
+                { label: adminLabel('Чоловіча (male)', 'Мужской (male)'), value: 'male' },
+                { label: adminLabel('Унісекс (unisex)', 'Унисекс (unisex)'), value: 'unisex' },
+              ],
+              admin: {
+                description: adminLabel(
+                  'Для жіночого одягу зазвичай «Жіноча». Для постільного та теплиць залиште порожнім.',
+                  'Для женской одежды обычно «Женский». Для постельного белья и теплиц оставьте пустым.',
+                ),
+              },
             },
             {
               name: 'googleStatus',

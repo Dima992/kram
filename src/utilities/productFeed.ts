@@ -43,6 +43,7 @@ type FeedItem = {
   mpn?: string
   googleCategoryID?: string
   productType?: string
+  gender?: string
   attributes: Record<string, string>
   ageGroup: string
   hasIdentifiers: boolean
@@ -50,6 +51,9 @@ type FeedItem = {
 
 // Имя тега Google: только латиница, цифры и подчёркивание (например color, weight)
 const TAG_PATTERN = /^[a-z][a-z0-9_]*$/
+
+// Эти теги Google выводятся из карточки товара, а не из характеристик
+const CARD_TAGS = new Set(['age_group', 'gender', 'condition'])
 
 const xmlEscape = (value: string) =>
   value
@@ -76,6 +80,16 @@ const idOf = (value: unknown): string =>
 
 const hasPrice = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value) && value > 0
+
+// Подпись значения характеристики на языке фида (украинский или русский).
+// Если подписи для этого языка нет, возвращаем пустую строку, а не текст другого языка
+function labelFor(
+  value: { label_uk?: string | null; label_ru?: string | null } | undefined,
+  language: string,
+): string {
+  const text = language === 'ru' ? value?.label_ru : value?.label_uk
+  return text?.trim() ?? ''
+}
 
 function richTextToPlainText(value: unknown): string {
   if (!value || typeof value !== 'object') return ''
@@ -158,6 +172,12 @@ function getVariantImageURL(
   return undefined
 }
 
+// Пол из карточки товара (английский код: female, male или unisex)
+function genderOf(product: Product): string | undefined {
+  const value = (product as unknown as { googleGender?: string | null }).googleGender
+  return value?.trim() || undefined
+}
+
 // Самая глубокая категория товара: у «Шуб» глубина больше, чем у «Жіночий одяг»
 function pickDeepestCategory(product: Product): FeedCategory | undefined {
   const categories = ((product.categories ?? []) as unknown as (string | FeedCategory)[]).filter(
@@ -180,11 +200,12 @@ function pickDeepestCategory(product: Product): FeedCategory | undefined {
   }, undefined)
 }
 
-// Google-значения характеристик, выбранных у самого товара.
+// Значения характеристик, выбранных у самого товара (материал и т.п.), на языке фида.
 // skipCharIDs — характеристики, которые уже заданы вариантом (их пропускаем)
 function getGoogleAttributes(
   product: Product,
   characteristics: FeedCharacteristic[],
+  language: string,
   skipCharIDs: Set<string> = new Set(),
 ): Record<string, string> {
   const stored = (product.attributes ?? {}) as Record<string, unknown>
@@ -192,7 +213,8 @@ function getGoogleAttributes(
 
   for (const characteristic of characteristics) {
     const attribute = characteristic.googleAttribute
-    if (!attribute || !TAG_PATTERN.test(attribute) || result[attribute]) continue
+    if (!attribute || !TAG_PATTERN.test(attribute) || CARD_TAGS.has(attribute)) continue
+    if (result[attribute]) continue
     if (skipCharIDs.has(String(characteristic.id))) continue
 
     const selectedRaw = stored[String(characteristic.id)]
@@ -200,9 +222,9 @@ function getGoogleAttributes(
 
     for (const valueID of selectedIDs) {
       const value = (characteristic.values ?? []).find((item) => String(item.id) === valueID)
-      const googleValue = value?.googleValue?.trim()
-      if (googleValue) {
-        result[attribute] = googleValue
+      const text = labelFor(value, language)
+      if (text) {
+        result[attribute] = text
         break
       }
     }
@@ -214,7 +236,7 @@ function getGoogleAttributes(
 const optionIDsOf = (variant: VariantRow): string[] =>
   (Array.isArray(variant.options) ? (variant.options as unknown[]) : []).map(idOf)
 
-// Подписи значений варианта, например ['Білий', 'M']
+// Подписи значений варианта, например ['Білий', 'M'] (уже на языке фида)
 function variantLabels(variant: VariantRow, lookup: FeedOptionLookup): string[] {
   return optionIDsOf(variant)
     .map((optionID) => lookup[optionID]?.label.trim())
@@ -231,12 +253,13 @@ function variantLink(productURL: string, optionIDs: string[], lookup: FeedOption
   return `${productURL}?${valueIDs.map((valueID) => `v=${encodeURIComponent(valueID)}`).join('&')}`
 }
 
-// Google-значения характеристик варианта: связь по ID значения, без сравнения текста.
-// Варианты без связи (созданы вручную) в фид Google-атрибуты не получают
+// Google-значения характеристик варианта (цвет, размер) на языке фида.
+// Связь по ID значения, без сравнения текста. Варианты без связи в фид атрибуты не получают
 function getVariantAttributes(
   variant: VariantRow,
   lookup: FeedOptionLookup,
   characteristics: FeedCharacteristic[],
+  language: string,
 ): Record<string, string> {
   const result: Record<string, string> = {}
 
@@ -246,11 +269,13 @@ function getVariantAttributes(
 
     const characteristic = characteristics.find((item) => String(item.id) === info.characteristicID)
     const attribute = characteristic?.googleAttribute
-    if (!characteristic || !attribute || !TAG_PATTERN.test(attribute)) continue
+    if (!characteristic || !attribute || !TAG_PATTERN.test(attribute) || CARD_TAGS.has(attribute)) {
+      continue
+    }
 
     const value = (characteristic.values ?? []).find((item) => String(item.id) === info.valueID)
-    const googleValue = value?.googleValue?.trim()
-    if (googleValue) result[attribute] = googleValue
+    const text = labelFor(value, language)
+    if (text) result[attribute] = text
   }
 
   return result
@@ -274,12 +299,13 @@ function buildItems(
   characteristics: FeedCharacteristic[],
   lookup: FeedOptionLookup,
 ): FeedItem[] {
+  const language = feed.language
   const title = product.title?.trim()
   const slug = product.slug?.trim()
   const imageURL = getImageURL(product, baseURL)
   if (!title || !slug || !imageURL) return []
 
-  const localePrefix = feed.language === 'uk' ? '' : `/${feed.language}`
+  const localePrefix = language === 'uk' ? '' : `/${language}`
   const productURL = `${baseURL}${localePrefix}/products/${encodeURIComponent(slug)}`
   const description = richTextToPlainText(product.description)
   if (!description) return []
@@ -301,8 +327,10 @@ function buildItems(
   const deepest = pickDeepestCategory(product)
   const productType = deepest?.pathTitle?.trim() || deepest?.title?.trim() || undefined
 
+  // Возраст, состояние и пол — из карточки товара, английские коды
   const ageGroup = product.googleAgeGroup || 'adult'
   const condition = product.googleCondition || 'new'
+  const gender = genderOf(product)
 
   const common = {
     description,
@@ -315,6 +343,7 @@ function buildItems(
     productType,
     ageGroup,
     condition,
+    gender,
   }
 
   const variants = (product.variants?.docs ?? []).filter(
@@ -333,7 +362,7 @@ function buildItems(
         link: productURL,
         price: product.priceInUAH,
         availability: productAvailability(product.stockStatus),
-        attributes: getGoogleAttributes(product, characteristics),
+        attributes: getGoogleAttributes(product, characteristics, language),
       },
     ]
   }
@@ -365,21 +394,20 @@ function buildItems(
         link: variantLink(productURL, optionIDs, lookup),
         price,
         availability: variantAvailability(variant, product.stockStatus),
-        // Пол и материал — из товара; цвет и размер — из варианта
+        // Материал — из товара; цвет и размер — из варианта
         attributes: {
-          ...getGoogleAttributes(product, characteristics, variantCharIDs),
-          ...getVariantAttributes(variant, lookup, characteristics),
+          ...getGoogleAttributes(product, characteristics, language, variantCharIDs),
+          ...getVariantAttributes(variant, lookup, characteristics, language),
         },
       },
     ]
   })
 }
 
-// Все теги из характеристик: выводим любой тег с заполненным значением.
-// age_group выводим отдельно (из карточки товара)
+// Все теги из характеристик с заполненным значением (возраст, пол и состояние сюда не попадают)
 const renderAttributes = (attributes: Record<string, string>): string =>
   Object.entries(attributes)
-    .filter(([tag, value]) => TAG_PATTERN.test(tag) && tag !== 'age_group' && value)
+    .filter(([tag, value]) => TAG_PATTERN.test(tag) && !CARD_TAGS.has(tag) && value)
     .map(([tag, value]) => `      <g:${tag}>${xmlEscape(value)}</g:${tag}>\n`)
     .join('')
 
@@ -398,6 +426,7 @@ const renderItem = (item: FeedItem): string => `    <item>
       ${item.mpn ? `<g:mpn>${xmlEscape(item.mpn)}</g:mpn>` : ''}
       ${item.googleCategoryID ? `<g:google_product_category>${item.googleCategoryID}</g:google_product_category>` : ''}
       ${item.productType ? `<g:product_type>${xmlEscape(item.productType)}</g:product_type>` : ''}
+      ${item.gender ? `<g:gender>${xmlEscape(item.gender)}</g:gender>` : ''}
       <g:age_group>${xmlEscape(item.ageGroup)}</g:age_group>
 ${renderAttributes(item.attributes)}      <g:identifier_exists>${item.hasIdentifiers ? 'true' : 'false'}</g:identifier_exists>
     </item>
