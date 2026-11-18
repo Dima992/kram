@@ -158,26 +158,13 @@ export const Characteristics: CollectionConfig = {
               type: 'text',
               required: true,
               label: adminLabel('Укр', 'Укр.'),
-              admin: { width: '34%' },
+              admin: { width: '50%' },
             },
             {
               name: 'label_ru',
               type: 'text',
               label: adminLabel('Рус', 'Рус.'),
-              admin: { width: '33%' },
-            },
-            {
-              // Код для Google, латиницей (уходит в фид, покупатель его не видит)
-              name: 'googleValue',
-              type: 'text',
-              label: adminLabel('Значення для Google', 'Значение для Google'),
-              admin: {
-                width: '33%',
-                description: adminLabel(
-                  'Код для Google латиницею: female, male, unisex, adult, wool тощо.',
-                  'Код для Google латиницей: female, male, unisex, adult, wool и т. д.',
-                ),
-              },
+              admin: { width: '50%' },
             },
           ],
         },
