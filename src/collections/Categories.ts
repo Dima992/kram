@@ -14,6 +14,43 @@ import { adminOnly } from '@/access/adminOnly'
 import { adminLabel } from '@/utilities/adminLabel'
 import { transliterate } from '@/utilities/transliterate'
 
+// Собирает полный путь категории на одном языке: родитель → подкатегория.
+// Названия читаем на нужном языке. Если их нет, Payload подставит базовый язык
+const buildPath = async (
+  req: any,
+  startParentId: unknown,
+  ownTitle: string,
+  locale: 'uk' | 'ru',
+): Promise<string> => {
+  const names: string[] = [ownTitle]
+  let parentId = startParentId
+  let guard = 0
+
+  while (parentId && guard < 10) {
+    // Без req: иначе сохранение может сменить язык на базовый
+    const parent: any = await req.payload
+      .findByID({
+        collection: 'categories',
+        id: parentId,
+        locale,
+        depth: 0,
+        overrideAccess: true,
+      })
+      .catch(() => null)
+    if (!parent) break
+
+    names.unshift(parent.title || '')
+    parentId = parent.parent
+      ? typeof parent.parent === 'object'
+        ? parent.parent.id
+        : parent.parent
+      : null
+    guard++
+  }
+
+  return names.filter(Boolean).join(' → ')
+}
+
 export const Categories: CollectionConfig = {
   slug: 'categories',
   labels: {
@@ -38,6 +75,60 @@ export const Categories: CollectionConfig = {
       () => {
         revalidatePath('/shop', 'layout')
       },
+
+      // Полный путь на каждом языке: записываем отдельно для uk и ru
+      async ({ doc, req, context }) => {
+        // Наша собственная запись пути не запускает этот хук снова
+        if ((context as Record<string, unknown> | undefined)?.skipPathSync) return doc
+
+        try {
+          const parentId = doc.parent
+            ? typeof doc.parent === 'object'
+              ? doc.parent.id
+              : doc.parent
+            : null
+
+          // Название категории на каждом языке
+          const ownUK = typeof doc.title === 'string' ? doc.title.trim() : ''
+          const current: any = await req.payload
+            .findByID({
+              collection: 'categories',
+              id: doc.id,
+              locale: 'ru',
+              depth: 0,
+              overrideAccess: true,
+            })
+            .catch(() => null)
+          const ownRU = (typeof current?.title === 'string' ? current.title.trim() : '') || ownUK
+
+          const pathUK = await buildPath(req, parentId, ownUK, 'uk')
+          const pathRU = await buildPath(req, parentId, ownRU, 'ru')
+
+          await req.payload.update({
+            collection: 'categories',
+            id: doc.id,
+            locale: 'uk',
+            data: { pathTitle: pathUK },
+            context: { skipPathSync: true },
+            overrideAccess: true,
+            req,
+          })
+
+          await req.payload.update({
+            collection: 'categories',
+            id: doc.id,
+            locale: 'ru',
+            data: { pathTitle: pathRU },
+            context: { skipPathSync: true },
+            overrideAccess: true,
+            req,
+          })
+        } catch (err) {
+          req.payload.logger.error({ err }, 'Category path skipped')
+        }
+        return doc
+      },
+
       // Alt для фото категории: название категории (если alt пустой или это имя файла)
       async ({ doc, req }) => {
         try {
@@ -76,45 +167,6 @@ export const Categories: CollectionConfig = {
         revalidatePath('/shop', 'layout')
       },
     ],
-    // Собираем полный путь: родитель → подкатегория (по украинским названиям)
-    beforeChange: [
-      async ({ data, req }) => {
-        const doc = data as any
-        const names: string[] = [typeof doc?.title === 'string' ? doc.title : '']
-
-        let parentId = doc?.parent
-          ? typeof doc.parent === 'object'
-            ? doc.parent.id
-            : doc.parent
-          : null
-        let guard = 0
-
-        while (parentId && guard < 10) {
-          // Поиск родителя без req: иначе он меняет язык всего сохранения на uk
-          const parent: any = await req.payload
-            .findByID({
-              collection: 'categories',
-              id: parentId,
-              locale: 'uk',
-              depth: 0,
-              overrideAccess: true,
-            })
-            .catch(() => null)
-          if (!parent) break
-
-          names.unshift(parent.title)
-          parentId = parent.parent
-            ? typeof parent.parent === 'object'
-              ? parent.parent.id
-              : parent.parent
-            : null
-          guard++
-        }
-
-        doc.pathTitle = names.filter(Boolean).join(' → ')
-        return doc
-      },
-    ],
   },
   fields: [
     {
@@ -127,6 +179,7 @@ export const Categories: CollectionConfig = {
     {
       name: 'pathTitle',
       type: 'text',
+      localized: true, // Полный путь на двух языках, заполняется сам
       label: adminLabel('Повний шлях (автоматично)', 'Полный путь (автоматически)'),
       admin: {
         position: 'sidebar',
