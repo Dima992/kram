@@ -51,6 +51,21 @@ const buildPath = async (
   return names.filter(Boolean).join(' → ')
 }
 
+// Название категории именно на одном языке, без подстановки другого языка
+const readOwnTitle = async (req: any, id: unknown, locale: 'uk' | 'ru'): Promise<string> => {
+  const doc: any = await req.payload
+    .findByID({
+      collection: 'categories',
+      id,
+      locale,
+      depth: 0,
+      fallbackLocale: false,
+      overrideAccess: true,
+    })
+    .catch(() => null)
+  return typeof doc?.title === 'string' ? doc.title.trim() : ''
+}
+
 export const Categories: CollectionConfig = {
   slug: 'categories',
   labels: {
@@ -88,21 +103,13 @@ export const Categories: CollectionConfig = {
               : doc.parent
             : null
 
-          // Название категории на каждом языке
-          const ownUK = typeof doc.title === 'string' ? doc.title.trim() : ''
-          const current: any = await req.payload
-            .findByID({
-              collection: 'categories',
-              id: doc.id,
-              locale: 'ru',
-              depth: 0,
-              overrideAccess: true,
-            })
-            .catch(() => null)
-          const ownRU = (typeof current?.title === 'string' ? current.title.trim() : '') || ownUK
+          // Названия читаем из базы для каждого языка отдельно.
+          // doc.title здесь зависит от того, в какой локали сохраняли, поэтому его не используем
+          const titleUK = await readOwnTitle(req, doc.id, 'uk')
+          const titleRU = (await readOwnTitle(req, doc.id, 'ru')) || titleUK
 
-          const pathUK = await buildPath(req, parentId, ownUK, 'uk')
-          const pathRU = await buildPath(req, parentId, ownRU, 'ru')
+          const pathUK = await buildPath(req, parentId, titleUK, 'uk')
+          const pathRU = await buildPath(req, parentId, titleRU, 'ru')
 
           await req.payload.update({
             collection: 'categories',
