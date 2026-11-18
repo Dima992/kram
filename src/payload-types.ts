@@ -388,14 +388,18 @@ export interface Product {
     | boolean
     | null;
   /**
-   * Выберите категорию из списка. От неё зависят поля, которые Google ждёт для этого товара.
+   * Виберіть категорію зі списку. Від неї залежать поля, які Google очікує для цього товару.
    */
   googleCategory?: (string | null) | GoogleCategory;
   /**
-   * Для женской одежды обычно «Дорослі».
+   * Для жіночого одягу зазвичай «Дорослі».
    */
   googleAgeGroup?: ('adult' | 'kids') | null;
   googleCondition?: ('new' | 'used' | 'refurbished') | null;
+  /**
+   * Для жіночого одягу зазвичай «Жіноча». Для постільного та теплиць залиште порожнім.
+   */
+  googleGender?: ('female' | 'male' | 'unisex') | null;
   meta?: {
     title?: string | null;
     /**
@@ -406,7 +410,11 @@ export interface Product {
   };
   categories?: (string | Category)[] | null;
   /**
-   * Валюта, в якій вводите ціну. Якщо вводите в гривнях, залишайте UAH. Для USD та EUR магазин сам перераховує ціну в гривні.
+   * Оберіть таблицю для типу товару. Якщо порожньо, на сайті таблиці не буде.
+   */
+  sizeChart?: (string | null) | SizeChart;
+  /**
+   * Валюта, у якій вводите ціну. Якщо вводите в гривнях, залишайте UAH. Для USD та EUR магазин сам перераховує ціну в гривні.
    */
   baseCurrency?: ('UAH' | 'USD' | 'EUR') | null;
   /**
@@ -426,7 +434,7 @@ export interface Product {
    */
   backorderDays?: number | null;
   /**
-   * Поки що тільки позначка. Логіку додамо на етапі 2в.
+   * Поки що тільки позначка. Логіку додамо пізніше.
    */
   decrementOnOrder?: boolean | null;
   /**
@@ -447,7 +455,7 @@ export interface Product {
   gtin?: string | null;
   mpn?: string | null;
   /**
-   * Базовый артикул товара, например SH-001. От него получают номера варианты (SH-001-1, SH-001-2).
+   * Базовий артикул товару, наприклад SH-001. Від нього утворюються артикули варіантів (SH-001-1, SH-001-2).
    */
   sku?: string | null;
   supplierSourceKey?: string | null;
@@ -593,7 +601,7 @@ export interface CallToActionBlock {
           url?: string | null;
           label: string;
           /**
-           * Choose how the link should be rendered.
+           * Виберіть вигляд посилання.
            */
           appearance?: ('default' | 'outline') | null;
         };
@@ -641,7 +649,7 @@ export interface Page {
             url?: string | null;
             label: string;
             /**
-             * Choose how the link should be rendered.
+             * Виберіть вигляд посилання.
              */
             appearance?: ('default' | 'outline') | null;
           };
@@ -711,7 +719,7 @@ export interface ContentBlock {
           url?: string | null;
           label: string;
           /**
-           * Choose how the link should be rendered.
+           * Виберіть вигляд посилання.
            */
           appearance?: ('default' | 'outline') | null;
         };
@@ -835,7 +843,7 @@ export interface CarouselBlock {
       }[]
     | null;
   /**
-   * This field is auto-populated after-read
+   * Заповнюється автоматично після читання.
    */
   populatedDocs?:
     | {
@@ -844,7 +852,7 @@ export interface CarouselBlock {
       }[]
     | null;
   /**
-   * This field is auto-populated after-read
+   * Заповнюється автоматично після читання.
    */
   populatedDocsTotal?: number | null;
   id?: string | null;
@@ -1119,17 +1127,49 @@ export interface GoogleCategory {
   name_uk: string;
   name_ru?: string | null;
   /**
-   * Номер из официального списка Google, например 2271 для платьев.
+   * Номер з офіційного списку Google, наприклад 2271 для суконь.
    */
   googleId: number;
   /**
-   * Например: Apparel & Accessories > Clothing > Dresses
+   * Наприклад: Apparel & Accessories > Clothing > Dresses
    */
   path: string;
   /**
-   * Теги Google маленькими латинскими буквами, по одному в строке: gender, color, size, material. Должны совпадать с Google-тегом в характеристиках.
+   * Теги Google малими латинськими літерами, по одному в рядку: gender, color, size, material. Мають збігатися з тегом Google у характеристиках.
    */
   requiredFields?: string[] | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "size-charts".
+ */
+export interface SizeChart {
+  id: string;
+  /**
+   * Наприклад: Плаття. Покупець цього не бачить.
+   */
+  adminName: string;
+  /**
+   * Наприклад: Таблиця розмірів: плаття
+   */
+  title?: string | null;
+  table?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1337,19 +1377,19 @@ export interface Characteristic {
    */
   name_uk: string;
   /**
-   * Если пусто, покажем украинское.
+   * Якщо порожньо, покажемо українську назву.
    */
   name_ru?: string | null;
   /**
-   * Например «Колір шуб». Показывается в карточке товара в скобках. Покупатель не видит.
+   * Наприклад «Колір шуб». Показується в картці товару в дужках. Покупець не бачить.
    */
   adminNote?: string | null;
   /**
-   * Чем меньше число, тем выше характеристика в карточке товара (1, 2, 3…).
+   * Що менше число, то вище характеристика в картці товару (1, 2, 3…).
    */
   order?: number | null;
   /**
-   * Название тега Google маленькими латинскими буквами, например gender, color, size, material, weight. Если в фид не нужно, оставьте пусто.
+   * Назва тегу Google малими латинськими літерами, наприклад gender, color, size, material, weight. Якщо для фіда не потрібен, залиште порожнім.
    */
   googleAttribute?: string | null;
   /**
@@ -1357,49 +1397,13 @@ export interface Characteristic {
    */
   categories?: (string | Category)[] | null;
   /**
-   * Варіанти, які можна буде вибрати в товарі галочками. Общие значения (S, M, 90 см) заполните в обоих полях одинаково.
+   * Варіанти, які можна буде вибрати в товарі галочками. Спільні значення (S, M, 90 см) заповніть в обох полях однаково.
    */
   values: {
     label_uk: string;
     label_ru?: string | null;
-    /**
-     * Код для Google латиницей: female, male, unisex, adult, wool и т. д.
-     */
-    googleValue?: string | null;
     id?: string | null;
   }[];
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "size-charts".
- */
-export interface SizeChart {
-  id: string;
-  /**
-   * Наприклад: Плаття. Покупець цього не бачить.
-   */
-  adminName: string;
-  /**
-   * Наприклад: Таблиця розмірів: плаття
-   */
-  title?: string | null;
-  table?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1933,7 +1937,6 @@ export interface CharacteristicsSelect<T extends boolean = true> {
     | {
         label_uk?: T;
         label_ru?: T;
-        googleValue?: T;
         id?: T;
       };
   updatedAt?: T;
@@ -2378,6 +2381,7 @@ export interface ProductsSelect<T extends boolean = true> {
   googleCategory?: T;
   googleAgeGroup?: T;
   googleCondition?: T;
+  googleGender?: T;
   meta?:
     | T
     | {
@@ -2386,6 +2390,7 @@ export interface ProductsSelect<T extends boolean = true> {
         description?: T;
       };
   categories?: T;
+  sizeChart?: T;
   baseCurrency?: T;
   basePrice?: T;
   priceInUAH?: T;
@@ -2670,7 +2675,7 @@ export interface Footer {
       }[]
     | null;
   /**
-   * Загружайте логотип в формате SVG (лучше) или PNG с прозрачным фоном. PNG: ширина 240 px, высота 80 px, файл до 100 КБ. JPG не загружайте (белый фон). Галочка «Показывать» выключена по умолчанию: включите её, когда подключите оплату. Порядок меняется перетаскиванием.
+   * Завантажуйте логотип у форматі SVG (краще) або PNG із прозорим фоном. PNG: ширина 240 px, висота 80 px, файл до 100 КБ. JPG не завантажуйте (білий фон). Прапорець «Показувати» вимкнений за замовчуванням: увімкніть його після підключення оплати. Порядок змінюється перетягуванням.
    */
   paymentMethods?:
     | {
@@ -2721,7 +2726,7 @@ export interface SiteSetting {
   eurRate?: number | null;
   ratesUpdatedAt?: string | null;
   /**
-   * Необов’язково. Краще 400–600 пікселів завширшки, PNG або WebP. Якщо поле порожнє, показується стандартний логотип.
+   * Необов’язково. Рекомендована ширина — 400–600 пікселів, PNG або WebP. Якщо поле порожнє, показується стандартний логотип.
    */
   logo?: (string | null) | Media;
   /**

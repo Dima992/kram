@@ -8,8 +8,7 @@ export type FeedCharacteristic = {
         id?: string | null
         label_uk?: string | null
         label_ru?: string | null
-        googleValue?: string | null
-      }[]
+         }[]
     | null
 }
 
