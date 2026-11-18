@@ -35,6 +35,7 @@ export const GoogleField: React.FC<{ path: string }> = () => {
   const { value: brandValue } = useField<string>({ path: 'brand' })
   const { value: gtinValue } = useField<string>({ path: 'gtin' })
   const { value: mpnValue } = useField<string>({ path: 'mpn' })
+  const { value: genderValue } = useField<string>({ path: 'googleGender' })
 
   const [category, setCategory] = useState<GoogleCategory | null>(null)
   const [chars, setChars] = useState<Characteristic[]>([])
@@ -108,6 +109,7 @@ export const GoogleField: React.FC<{ path: string }> = () => {
 
     // Поля самого товара
     if (conditionValue) result.add('condition')
+    if (genderValue) result.add('gender')
     if (ageGroupValue) result.add('age_group')
     if (brandValue) result.add('brand')
     if (gtinValue || mpnValue) result.add('gtin')
@@ -119,6 +121,7 @@ export const GoogleField: React.FC<{ path: string }> = () => {
     variantTypesValue,
     attributesValue,
     conditionValue,
+    genderValue,
     ageGroupValue,
     brandValue,
     gtinValue,
