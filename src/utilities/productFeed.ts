@@ -8,7 +8,8 @@ export type FeedCharacteristic = {
         id?: string | null
         label_uk?: string | null
         label_ru?: string | null
-         }[]
+        googleValue?: string | null
+      }[]
     | null
 }
 
@@ -235,10 +236,32 @@ function getGoogleAttributes(
 const optionIDsOf = (variant: VariantRow): string[] =>
   (Array.isArray(variant.options) ? (variant.options as unknown[]) : []).map(idOf)
 
-// Подписи значений варианта, например ['Білий', 'M'] (уже на языке фида)
-function variantLabels(variant: VariantRow, lookup: FeedOptionLookup): string[] {
+// Подписи значений варианта, например ['Білий', 'M'], на языке фида.
+// Берём подпись из характеристики (label_uk или label_ru), а не из справочника вариантов.
+// Если подписи на нужном языке нет, слово пропускаем: украинский текст в русский фид не попадёт
+function variantLabels(
+  variant: VariantRow,
+  lookup: FeedOptionLookup,
+  characteristics: FeedCharacteristic[],
+  language: string,
+): string[] {
   return optionIDsOf(variant)
-    .map((optionID) => lookup[optionID]?.label.trim())
+    .map((optionID) => {
+      const info = lookup[optionID]
+      if (!info) return ''
+
+      // Вариант создан вручную, без связи с характеристикой: подпись из справочника
+      // берём только для украинского фида, для русского её не добавляем
+      if (!info.valueID) return language === 'uk' ? info.label.trim() : ''
+
+      const characteristic = characteristics.find(
+        (item) => String(item.id) === info.characteristicID,
+      )
+      const value = (characteristic?.values ?? []).find(
+        (item) => String(item.id) === info.valueID,
+      )
+      return labelFor(value, language)
+    })
     .filter((label): label is string => Boolean(label))
 }
 
@@ -373,7 +396,7 @@ function buildItems(
     if (!hasPrice(price)) return []
 
     const optionIDs = optionIDsOf(variant)
-    const labels = variantLabels(variant, lookup)
+    const labels = variantLabels(variant, lookup, characteristics, language)
 
     // Характеристики, которые заданы вариантом (цвет, размер): из товара их не берём
     const variantCharIDs = new Set(
