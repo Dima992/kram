@@ -102,9 +102,10 @@ export async function GET(
       typeNameByID[String(type.id)] = type.name ?? ''
     }
 
-    // Значения вариантов: подпись, характеристика и ID значения характеристики
+    // Значения вариантов: подпись на языке фида, характеристика и ID значения характеристики
     const { docs: optionDocs } = await payload.find({
       collection: 'variantOptions',
+      locale: feed.language,
       limit: 5000,
       depth: 0,
       pagination: false,
