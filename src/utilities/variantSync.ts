@@ -54,10 +54,39 @@ async function ensureType(payload: Payload, ch: any): Promise<string> {
   return String(created.id)
 }
 
-// Значение внутри типа. Код v-<id значения> стабильный; подпись обновляется, если изменилась
+// Подписи значения на двух языках. Поле label локализовано: укр и рус хранятся отдельно.
+// Если русской подписи нет, русский язык не заполняем: в фиде её не будет, украинского текста не появится
+async function saveOptionLabels(
+  payload: Payload,
+  id: string,
+  labelUK: string,
+  labelRU: string,
+): Promise<void> {
+  await payload.update({
+    collection: 'variantOptions',
+    id,
+    locale: 'uk',
+    data: { label: labelUK },
+    overrideAccess: true,
+  } as any)
+
+  if (labelRU) {
+    await payload.update({
+      collection: 'variantOptions',
+      id,
+      locale: 'ru',
+      data: { label: labelRU },
+      overrideAccess: true,
+    } as any)
+  }
+}
+
+// Значение внутри типа. Код v-<id значения> стабильный; подписи обновляются на обоих языках
 async function ensureOption(payload: Payload, typeId: string, v: any): Promise<string> {
   const code = `v-${v.id}`
-  const label = v.label_uk || v.label_ru || ''
+  const labelUK = (v.label_uk || '').trim()
+  const labelRU = (v.label_ru || '').trim()
+
   const found = await payload.find({
     collection: 'variantOptions',
     where: { and: [{ variantType: { equals: typeId } }, { value: { equals: code } }] },
@@ -67,21 +96,17 @@ async function ensureOption(payload: Payload, typeId: string, v: any): Promise<s
   })
   const existing: any = found.docs[0]
   if (existing) {
-    if (existing.label !== label) {
-      await payload.update({
-        collection: 'variantOptions',
-        id: existing.id,
-        data: { label },
-        overrideAccess: true,
-      })
-    }
+    await saveOptionLabels(payload, String(existing.id), labelUK, labelRU)
     return String(existing.id)
   }
-  const created = await payload.create({
+
+  const created: any = await payload.create({
     collection: 'variantOptions',
-    data: { variantType: typeId, label, value: code },
+    locale: 'uk',
+    data: { variantType: typeId, label: labelUK, value: code },
     overrideAccess: true,
-  })
+  } as any)
+  await saveOptionLabels(payload, String(created.id), labelUK, labelRU)
   return String(created.id)
 }
 
@@ -212,7 +237,7 @@ export async function syncVariants(payload: Payload, productId: string): Promise
   const takenKeys = new Set<string>()
   let last = 0
   let removed = 0
-  let kept = 0
+  const kept = 0
 
   for (const d of existing) {
     const sku = typeof d.sku === 'string' ? d.sku : ''
@@ -227,7 +252,7 @@ export async function syncVariants(payload: Payload, productId: string): Promise
       continue
     }
 
-        // Строка больше не нужна: её комбинации нет в текущем наборе. Удаляем, даже если есть остаток
+    // Строка больше не нужна: её комбинации нет в текущем наборе. Удаляем, даже если есть остаток
     await payload.delete({ collection: 'variants', id: d.id, overrideAccess: true })
     removed += 1
   }

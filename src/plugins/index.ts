@@ -22,8 +22,8 @@ import { Orders } from '@/collections/Orders'
 import { ProductsCollection } from '@/collections/Products'
 import { VariantsCollection } from '@/collections/Variants'
 import { Page, Product } from '@/payload-types'
-import { getServerSideURL } from '@/utilities/getURL'
 import { adminLabel } from '@/utilities/adminLabel'
+import { getServerSideURL } from '@/utilities/getURL'
 
 const SITE_NAME = 'Крамниця'
 const TITLE_MAX = 60
@@ -382,8 +382,12 @@ export const plugins: Plugin[] = [
       productsCollectionOverride: ProductsCollection,
       variants: {
         variantsCollectionOverride: VariantsCollection,
-        variantOptionsCollectionOverride: ({ defaultCollection }: any) => ({
+         variantOptionsCollectionOverride: ({ defaultCollection }: any) => ({
           ...defaultCollection,
+          // Подпись значения хранится на двух языках (укр и рус)
+          fields: defaultCollection.fields.map((field: any) =>
+            field.name === 'label' ? { ...field, localized: true } : field,
+          ),
           hooks: {
             ...defaultCollection.hooks,
             beforeDelete: [...(defaultCollection.hooks?.beforeDelete ?? []), guardOptionDelete],
