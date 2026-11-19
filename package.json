@@ -105,13 +105,6 @@
   "engines": {
     "node": ">=20.18.1"
   },
-  "browserslist": [
-    "chrome >= 111",
-    "safari >= 15.4",
-    "firefox >= 115",
-    "edge >= 111",
-    "ios_saf >= 15.4"
-  ],
   "pnpm": {
     "onlyBuiltDependencies": [
       "sharp"
