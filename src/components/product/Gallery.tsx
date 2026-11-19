@@ -317,9 +317,10 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
             aria-label="Открыть фото крупно"
           >
             {currentImage ? (
-              <Media
+               <Media
                 priority={current === 0}
                 resource={currentImage}
+                imageSize="large"
                 fill
                 imgClassName="h-full w-full object-cover"
                 size="(min-width: 1024px) 50vw, 100vw"

@@ -9,6 +9,7 @@ export interface Props {
   fill?: boolean // for NextImage only
   height?: number
   htmlElement?: ElementType | null
+  imageSize?: 'large' | 'thumbnail' | 'square' // копия из медиатеки; по умолчанию оригинал
   imgClassName?: string
   onClick?: () => void
   onLoad?: () => void

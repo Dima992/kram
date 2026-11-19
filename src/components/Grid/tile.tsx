@@ -68,6 +68,7 @@ export const GridTileImage: React.FC<Props> = ({
           className={clsx('relative h-full w-full object-cover', {
             'transition duration-300 ease-in-out group-hover:scale-105': isInteractive,
           })}
+          imageSize="square"
           imgClassName="h-full w-full object-cover [object-position:var(--focal-x)_var(--focal-y)]"
           priority={priority}
           resource={media}
