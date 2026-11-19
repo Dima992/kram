@@ -12,11 +12,18 @@ import { cssVariables } from '@/cssVariables'
 
 const { breakpoints } = cssVariables
 
-export const Image: React.FC<MediaProps> = (props) => {
+// Размер копии из медиатеки, которую нужно взять (если она есть).
+// По умолчанию — оригинал, как работало раньше
+type ImageSize = 'large' | 'thumbnail' | 'square'
+
+type ExtendedProps = MediaProps & { imageSize?: ImageSize }
+
+export const Image: React.FC<ExtendedProps> = (props) => {
   const {
     alt: altFromProps,
     fill,
     height: heightFromProps,
+    imageSize,
     imgClassName,
     onClick,
     onLoad: onLoadFromProps,
@@ -38,15 +45,31 @@ export const Image: React.FC<MediaProps> = (props) => {
     const {
       alt: altFromResource,
       height: fullHeight,
+      sizes,
       url,
       width: fullWidth,
-    } = resource
+    } = resource as {
+      alt?: string | null
+      height?: number | null
+      sizes?: Partial<Record<ImageSize, { url?: string | null; width?: number | null; height?: number | null }>>
+      url?: string | null
+      width?: number | null
+    }
 
-    width = widthFromProps ?? fullWidth
-    height = heightFromProps ?? fullHeight
+    // Если просили конкретную копию и она есть — берём её. Иначе — оригинал
+    const copy = imageSize ? sizes?.[imageSize] : undefined
+
+    if (copy?.url) {
+      src = copy.url
+      width = widthFromProps ?? copy.width
+      height = heightFromProps ?? copy.height
+    } else {
+      src = url || ''
+      width = widthFromProps ?? fullWidth
+      height = heightFromProps ?? fullHeight
+    }
+
     alt = altFromResource ?? undefined
-
-    src = url || ''
   }
 
   // NOTE: this is used by the browser to determine which image to download at different screen sizes
