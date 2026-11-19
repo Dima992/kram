@@ -320,7 +320,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
                <Media
                 priority={current === 0}
                 resource={currentImage}
-                imageSize="large"
+                imageSize="thumbnail"
                 fill
                 imgClassName="h-full w-full object-cover"
                 size="(min-width: 1024px) 50vw, 100vw"
