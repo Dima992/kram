@@ -1,9 +1,8 @@
+import { adminLabel } from '@/utilities/adminLabel'
 import { getStoredRates } from '@/utilities/exchangeRates'
+import { calcVariantPrices } from '@/utilities/prices'
 import type { CollectionOverride } from '@payloadcms/plugin-ecommerce/types'
 import type { CollectionBeforeChangeHook } from 'payload'
-import { adminLabel } from '@/utilities/adminLabel'
-
-type Currency = 'UAH' | 'USD' | 'EUR'
 
 function hidePluginPriceFields(fields: any[]): any[] {
   return fields.map((field) => {
@@ -27,40 +26,35 @@ const idOf = (value: unknown): string | null => {
   return String(value)
 }
 
+// Считает цены варианта при каждом сохранении
 const fillVariantPrices: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
   if (!data) return data
 
   const current = data as Record<string, any>
   const original = (originalDoc || {}) as Record<string, any>
 
-  // Своя цена варианта. Пустая или 0 означает «берём цену товара»
-  const rawPrice = 'basePrice' in current ? current.basePrice : original.basePrice
-  const ownPrice = typeof rawPrice === 'number' && rawPrice > 0 ? rawPrice : 0
-  const ownCurrency = (current.baseCurrency ?? original.baseCurrency ?? 'UAH') as Currency
+  // Полные данные варианта: новые значения поверх старых
+  const merged = { ...original, ...current }
 
-  let amount = ownPrice
-  let currency: Currency = ownCurrency
-
-  if (ownPrice === 0) {
-    const productId = idOf(current.product ?? original.product)
-    if (productId) {
-      const product: any = await req.payload.findByID({
-        collection: 'products',
-        id: productId,
-        depth: 0,
-        req,
-      })
-      // Цена товара уже в гривнах (её считает хук товара)
-      if (typeof product?.priceInUAH === 'number' && product.priceInUAH > 0) {
-        amount = product.priceInUAH
-        currency = 'UAH'
-      }
-    }
+  // Товар нужен только если у варианта нет своей цены
+  let product: any = null
+  const productId = idOf(merged.product)
+  if (productId && !(Number(merged.basePrice) > 0)) {
+    product = await req.payload.findByID({
+      collection: 'products',
+      id: productId,
+      depth: 0,
+      req,
+    })
   }
 
+  // Курс берём из сохранённого хранилища (его обновляет крон)
+  const rates = await getStoredRates(req.payload)
+  const prices = calcVariantPrices({ item: merged, product, rates })
+
   // Цены нет ни у варианта, ни у товара: строка без цены
-  if (amount === 0) {
-    current.basePrice = 0
+  if (!prices) {
+    current.regularPriceUAH = 0
     current.priceInUAH = 0
     current.priceInUSD = 0
     current.priceInEUR = 0
@@ -70,19 +64,10 @@ const fillVariantPrices: CollectionBeforeChangeHook = async ({ data, originalDoc
     return data
   }
 
-  // Курс берём из сохранённого хранилища (его ежедневно обновляет крон)
-  const rates = await getStoredRates(req.payload)
-  const rateOf = (c: Currency) => (c === 'UAH' ? 1 : rates[c])
-  const baseRate = rateOf(currency)
-  if (!baseRate || !rates.USD || !rates.EUR) {
-    throw new Error('Курс валют недоступен, цену варианта не сохранено')
-  }
-
-  const priceInUAH = Math.ceil(amount * baseRate)
-
-  current.priceInUAH = priceInUAH
-  current.priceInUSD = Math.round((priceInUAH / rates.USD) * 100) / 100
-  current.priceInEUR = Math.round((priceInUAH / rates.EUR) * 100) / 100
+  current.regularPriceUAH = prices.regularPriceUAH
+  current.priceInUAH = prices.priceInUAH
+  current.priceInUSD = Math.round((prices.priceInUAH / rates.USD) * 100) / 100
+  current.priceInEUR = Math.round((prices.priceInUAH / rates.EUR) * 100) / 100
   current.priceInUAHEnabled = true
   current.priceInUSDEnabled = true
   current.priceInEUREnabled = true
@@ -118,6 +103,53 @@ export const VariantsCollection: CollectionOverride = ({ defaultCollection }) =>
       ],
       admin: {
         position: 'sidebar',
+      },
+    },
+    {
+      name: 'regularPriceUAH',
+      type: 'number',
+      label: adminLabel('Звичайна ціна (грн)', 'Обычная цена (грн)'),
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: adminLabel(
+          'Розраховується автоматично.',
+          'Рассчитывается автоматически.',
+        ),
+      },
+    },
+    {
+      name: 'salePriceUAH',
+      type: 'number',
+      label: adminLabel('Ціна зі знижкою (грн)', 'Цена со скидкой (грн)'),
+      admin: {
+        position: 'sidebar',
+        description: adminLabel(
+          'Для варіанта зі своєю ціною. Якщо своєї ціни немає, діє знижка товару.',
+          'Для варианта со своей ценой. Если своей цены нет, действует скидка товара.',
+        ),
+      },
+    },
+    {
+      name: 'saleStartsAt',
+      type: 'date',
+      label: adminLabel('Знижка з', 'Скидка с'),
+      admin: {
+        position: 'sidebar',
+        date: {
+          pickerAppearance: 'dayAndTime',
+        },
+      },
+    },
+    {
+      name: 'saleEndsAt',
+      type: 'date',
+      label: adminLabel('Знижка по', 'Скидка по'),
+      admin: {
+        position: 'sidebar',
+        date: {
+          pickerAppearance: 'dayAndTime',
+        },
       },
     },
     {

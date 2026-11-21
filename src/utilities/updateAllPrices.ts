@@ -1,17 +1,16 @@
-import { fetchNBURates, saveRates, type Rates } from '@/utilities/exchangeRates'
+import { fetchNBURates, saveRates } from '@/utilities/exchangeRates'
+import { calcPrices, calcRegularUAH } from '@/utilities/prices'
 import type { Payload } from 'payload'
 
 type Currency = 'UAH' | 'USD' | 'EUR'
-
-const rateOf = (rates: Rates, currency: Currency): number | undefined => {
-  if (currency === 'UAH') return 1
-  return rates[currency]
-}
 
 export async function updateAllPrices(payload: Payload) {
   const rates = await fetchNBURates()
   await saveRates(payload, rates)
 
+  const now = new Date()
+
+  // Товары: цена сейчас и обычная цена пересчитываются по датам скидки
   const { docs: products } = await payload.find({
     collection: 'products',
     pagination: false,
@@ -22,15 +21,13 @@ export async function updateAllPrices(payload: Payload) {
 
   let productsUpdated = 0
   for (const product of products) {
-    const currency = (product.baseCurrency || 'UAH') as Currency
-    const rate = rateOf(rates, currency) ?? 1
-    const priceInUAH = Math.ceil((product.basePrice || 0) * rate)
+    const next = calcPrices(product, rates, now)
 
-    if (product.priceInUAH !== priceInUAH) {
+    if (product.priceInUAH !== next.priceInUAH || product.regularPriceUAH !== next.regularPriceUAH) {
       await payload.update({
         collection: 'products',
         id: product.id,
-        data: { priceInUAH },
+        data: next,
         context: { disableRevalidate: true },
         overrideAccess: true,
       })
@@ -38,6 +35,7 @@ export async function updateAllPrices(payload: Payload) {
     }
   }
 
+  // Варианты: пока без своих скидок, цена считается как раньше (по базовой цене и курсу)
   const { docs: variants } = await payload.find({
     collection: 'variants',
     pagination: false,
@@ -53,10 +51,9 @@ export async function updateAllPrices(payload: Payload) {
     if (typeof item.basePrice !== 'number' || item.basePrice <= 0) continue
 
     const currency = (item.baseCurrency || 'UAH') as Currency
-    const rate = rateOf(rates, currency)
-    if (!rate) continue
+    if (currency !== 'UAH' && !rates[currency as 'USD' | 'EUR']) continue
 
-    const priceInUAH = Math.ceil(item.basePrice * rate)
+    const priceInUAH = calcRegularUAH(item, rates)
     const priceInUSD = Math.round((priceInUAH / rates.USD) * 100) / 100
     const priceInEUR = Math.round((priceInUAH / rates.EUR) * 100) / 100
 

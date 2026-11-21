@@ -422,9 +422,23 @@ export interface Product {
    */
   basePrice: number;
   /**
-   * Розрахована ціна в грн за курсом НБУ (покупцю показується ця)
+   * Ціна без знижки в грн за курсом НБУ
+   */
+  regularPriceUAH?: number | null;
+  /**
+   * Ціна, яку бачить покупець і яка йде в оплату. Оновлюється при збереженні.
    */
   priceInUAH?: number | null;
+  /**
+   * Нова ціна в гривнях. Якщо порожньо, знижки немає.
+   */
+  salePriceUAH?: number | null;
+  saleStartsAt?: string | null;
+  saleEndsAt?: string | null;
+  /**
+   * Розраховується автоматично.
+   */
+  discountPercent?: number | null;
   /**
    * Поки що тільки для адмінки: на сайті статус покажемо на наступному кроці.
    */
@@ -1109,6 +1123,16 @@ export interface Variant {
    */
   basePrice?: number | null;
   baseCurrency?: ('UAH' | 'USD' | 'EUR') | null;
+  /**
+   * Розраховується автоматично.
+   */
+  regularPriceUAH?: number | null;
+  /**
+   * Для варіанта зі своєю ціною. Якщо своєї ціни немає, діє знижка товару.
+   */
+  salePriceUAH?: number | null;
+  saleStartsAt?: string | null;
+  saleEndsAt?: string | null;
   sku?: string | null;
   updatedAt: string;
   createdAt: string;
@@ -2304,6 +2328,10 @@ export interface VariantsSelect<T extends boolean = true> {
   priceInEUR?: T;
   basePrice?: T;
   baseCurrency?: T;
+  regularPriceUAH?: T;
+  salePriceUAH?: T;
+  saleStartsAt?: T;
+  saleEndsAt?: T;
   sku?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -2393,7 +2421,12 @@ export interface ProductsSelect<T extends boolean = true> {
   sizeChart?: T;
   baseCurrency?: T;
   basePrice?: T;
+  regularPriceUAH?: T;
   priceInUAH?: T;
+  salePriceUAH?: T;
+  saleStartsAt?: T;
+  saleEndsAt?: T;
+  discountPercent?: T;
   stockStatus?: T;
   backorderDays?: T;
   decrementOnOrder?: T;
