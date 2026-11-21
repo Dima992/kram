@@ -4,7 +4,7 @@ import type { Product, Variant } from '@/payload-types'
 import { AddToCart } from '@/components/Cart/AddToCart'
 import { StockIndicator } from '@/components/product/StockIndicator'
 import { RichText } from '@/components/RichText'
-import { getSaleInfo, type SaleInfo } from '@/utilities/sale'
+import { formatSaleEnd, getSaleInfo, type SaleInfo } from '@/utilities/sale'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
 import { VariantSelector } from './VariantSelector'
@@ -36,9 +36,20 @@ const priceOfVariant = (variant: Variant, product: Product): Priced | null => {
   return amount > 0 ? { amount, sale: null } : null
 }
 
-// Показывает цену. Если есть скидка, старую цену зачёркивает и добавляет процент
-function PriceView({ amount, sale }: { amount: number; sale: SaleInfo | null }) {
+// Показывает цену. Если есть скидка, старую цену зачёркивает, добавляет процент и дату окончания
+function PriceView({
+  amount,
+  sale,
+  locale,
+}: {
+  amount: number
+  sale: SaleInfo | null
+  locale: 'uk' | 'ru'
+}) {
   if (!sale) return <>{formatPrice(amount)}</>
+
+  const endText = formatSaleEnd(sale.endsAt, locale)
+
   return (
     <>
       <s className="mr-2 text-lg font-normal text-neutral-600">{formatPrice(sale.oldPrice)}</s>
@@ -46,12 +57,18 @@ function PriceView({ amount, sale }: { amount: number; sale: SaleInfo | null }) 
       <span className="ml-3 rounded bg-[#0b7a78] px-2 py-0.5 align-middle text-sm font-medium text-white">
         -{sale.percent}%
       </span>
+      {endText && (
+        <span className="mt-1 block text-sm font-normal text-neutral-600">{endText}</span>
+      )}
     </>
   )
 }
 
 function ProductPrice({ product }: { product: Product }) {
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const locale = pathname.startsWith('/ru') ? 'ru' : 'uk'
+
   const variants = (product.variants?.docs ?? []).filter(
     (variant): variant is Variant => typeof variant === 'object' && variant !== null,
   )
@@ -62,7 +79,7 @@ function ProductPrice({ product }: { product: Product }) {
   if (hasVariants && selectedVariantID) {
     const selected = variants.find((variant) => String(variant.id) === selectedVariantID)
     const price = selected ? priceOfVariant(selected, product) : null
-    return price ? <PriceView amount={price.amount} sale={price.sale} /> : null
+    return price ? <PriceView amount={price.amount} sale={price.sale} locale={locale} /> : null
   }
 
   // Вариант не выбран: показываем наименьшую цену
@@ -78,7 +95,7 @@ function ProductPrice({ product }: { product: Product }) {
     return (
       <>
         {hasDifferentPrices && <span className="mr-2 text-base font-normal">від</span>}
-        <PriceView amount={lowest.amount} sale={lowest.sale} />
+        <PriceView amount={lowest.amount} sale={lowest.sale} locale={locale} />
       </>
     )
   }
@@ -86,7 +103,7 @@ function ProductPrice({ product }: { product: Product }) {
   // Товар без вариантов
   const sale = getSaleInfo(product)
   const amount = sale ? sale.newPrice : Number(product.priceInUAH) || 0
-  return amount > 0 ? <PriceView amount={amount} sale={sale} /> : null
+  return amount > 0 ? <PriceView amount={amount} sale={sale} locale={locale} /> : null
 }
 
 // Подсказка: показывается, пока вариант не выбран

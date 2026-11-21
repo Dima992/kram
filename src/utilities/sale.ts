@@ -10,6 +10,7 @@ export type SaleInfo = {
   oldPrice: number
   newPrice: number
   percent: number
+  endsAt: string | null
 }
 
 // Обычная цена: новое поле, а у старых товаров его ещё нет, тогда берём priceInUAH
@@ -43,5 +44,21 @@ export const getSaleInfo = (item: SaleFields, now: Date = new Date()): SaleInfo 
     oldPrice,
     newPrice,
     percent: Math.round(((oldPrice - newPrice) / oldPrice) * 100),
+    endsAt: item.saleEndsAt ?? null,
   }
+}
+
+// Строка «Діє до ...» или «Действует до ...». Если даты окончания нет, возвращает null.
+export const formatSaleEnd = (value: string | null | undefined, locale: 'uk' | 'ru'): string | null => {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+
+  const formatted = date.toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'uk-UA', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  })
+
+  return locale === 'ru' ? `Действует до ${formatted}` : `Діє до ${formatted}`
 }

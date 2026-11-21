@@ -2,8 +2,8 @@
 
 import { AddToCart } from '@/components/Cart/AddToCart'
 import type { Media, Product, Variant } from '@/payload-types'
-import { getSaleInfo, type SaleInfo } from '@/utilities/sale'
-import { useSearchParams } from 'next/navigation'
+import { formatSaleEnd, getSaleInfo, type SaleInfo } from '@/utilities/sale'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 
 type Props = {
@@ -35,6 +35,9 @@ const formatPrice = (amount: number) => `${amount.toLocaleString('uk-UA')} гр�
 // Цена внизу: та же, что на странице (выбранный вариант или товар)
 function BarPrice({ product }: { product: Product }) {
   const searchParams = useSearchParams()
+  const pathname = usePathname()
+  const locale = pathname.startsWith('/ru') ? 'ru' : 'uk'
+
   const variants = (product.variants?.docs ?? []).filter(
     (variant): variant is Variant => typeof variant === 'object' && variant !== null,
   )
@@ -45,16 +48,21 @@ function BarPrice({ product }: { product: Product }) {
   const price = selected ? priceOfVariant(selected, product) : priceOfProduct(product)
   if (!price) return null
 
+  const endText = price.sale ? formatSaleEnd(price.sale.endsAt, locale) : null
+
   return (
     <>
       {price.sale && (
-        <s className="mr-2 text-sm font-normal">{formatPrice(price.sale.oldPrice)}</s>
+        <s className="mr-2 text-sm font-normal opacity-60">{formatPrice(price.sale.oldPrice)}</s>
       )}
       {formatPrice(price.amount)}
       {price.sale && (
         <span className="ml-2 rounded bg-[#0b7a78] px-1.5 py-0.5 align-middle text-xs font-medium text-white">
           -{price.sale.percent}%
         </span>
+      )}
+      {endText && (
+        <span className="mt-0.5 block text-xs font-normal opacity-70">{endText}</span>
       )}
     </>
   )
