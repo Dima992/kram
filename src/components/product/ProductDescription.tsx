@@ -4,16 +4,10 @@ import type { Product, Variant } from '@/payload-types'
 import { AddToCart } from '@/components/Cart/AddToCart'
 import { StockIndicator } from '@/components/product/StockIndicator'
 import { RichText } from '@/components/RichText'
-import { getSaleInfo } from '@/utilities/sale'
+import { getSaleInfo, type SaleInfo } from '@/utilities/sale'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
 import { VariantSelector } from './VariantSelector'
-
-const getVariantPrice = (variant: Variant, product: Product): number | null => {
-  if (typeof variant.priceInUAH === 'number' && variant.priceInUAH > 0) return variant.priceInUAH
-  if (typeof product.priceInUAH === 'number' && product.priceInUAH > 0) return product.priceInUAH
-  return null
-}
 
 // Цена на странице товара: число и «грн» после него
 const formatPrice = (amount: number) => `${amount.toLocaleString('uk-UA')} грн`
@@ -21,6 +15,20 @@ const formatPrice = (amount: number) => `${amount.toLocaleString('uk-UA')} гр�
 const hintText = {
   uk: 'Оберіть варіант, щоб додати в кошик.',
   ru: 'Выберите вариант, чтобы добавить в корзину.',
+}
+
+// Показывает цену. Если передана скидка, старую цену зачёркивает и добавляет процент
+function PriceView({ amount, sale }: { amount: number; sale: SaleInfo | null }) {
+  if (!sale) return <>{formatPrice(amount)}</>
+  return (
+    <>
+      <s className="mr-2 text-lg font-normal text-neutral-400">{formatPrice(sale.oldPrice)}</s>
+      {formatPrice(sale.newPrice)}
+      <span className="ml-3 rounded bg-[#0b7a78] px-2 py-0.5 align-middle text-sm font-medium text-white">
+        -{sale.percent}%
+      </span>
+    </>
+  )
 }
 
 function ProductPrice({ product }: { product: Product }) {
@@ -31,44 +39,51 @@ function ProductPrice({ product }: { product: Product }) {
   const hasVariants = Boolean(product.enableVariants && variants.length > 0)
   const selectedVariantID = searchParams.get('variant')
 
+  // Скидка товара, если она действует сегодня
+  const sale = getSaleInfo(product)
+
+  // Цена варианта. Своя цена: без скидки (скидку на вариант добавим позже).
+  // Без своей цены: берём цену товара, со скидкой товара, если она действует.
+  const priceOf = (variant: Variant): { amount: number; sale: SaleInfo | null } | null => {
+    if (typeof variant.priceInUAH === 'number' && variant.priceInUAH > 0) {
+      return { amount: variant.priceInUAH, sale: null }
+    }
+    if (sale) return { amount: sale.newPrice, sale }
+    if (typeof product.priceInUAH === 'number' && product.priceInUAH > 0) {
+      return { amount: product.priceInUAH, sale: null }
+    }
+    return null
+  }
+
   if (hasVariants && selectedVariantID) {
     const selectedVariant = variants.find((variant) => String(variant.id) === selectedVariantID)
-    const amount = selectedVariant ? getVariantPrice(selectedVariant, product) : null
-    return amount !== null ? <>{formatPrice(amount)}</> : null
+    const price = selectedVariant ? priceOf(selectedVariant) : null
+    return price ? <PriceView amount={price.amount} sale={price.sale} /> : null
   }
 
   if (hasVariants) {
     const prices = variants
-      .map((variant) => getVariantPrice(variant, product))
-      .filter((price): price is number => price !== null)
+      .map((variant) => priceOf(variant))
+      .filter((price): price is { amount: number; sale: SaleInfo | null } => price !== null)
     if (prices.length === 0) return null
-    const lowest = Math.min(...prices)
-    const hasDifferentPrices = new Set(prices).size > 1
+
+    const lowest = prices.reduce((min, price) => (price.amount < min.amount ? price : min))
+    const hasDifferentPrices = new Set(prices.map((price) => price.amount)).size > 1
+
     return (
       <>
         {hasDifferentPrices && <span className="mr-2 text-base font-normal">від</span>}
-        {formatPrice(lowest)}
+        <PriceView amount={lowest.amount} sale={lowest.sale} />
       </>
     )
   }
 
-  // Товар без вариантов: если скидка действует, показываем старую и новую цену
-  const sale = getSaleInfo(product)
-  if (sale) {
-    return (
-      <>
-        <s className="mr-2 text-lg font-normal text-neutral-400">{formatPrice(sale.oldPrice)}</s>
-        {formatPrice(sale.newPrice)}
-        <span className="ml-3 rounded bg-[#0b7a78] px-2 py-0.5 align-middle text-sm font-medium text-white">
-          -{sale.percent}%
-        </span>
-      </>
-    )
-  }
+  // Товар без вариантов
+  if (sale) return <PriceView amount={sale.newPrice} sale={sale} />
 
   const amount =
     typeof product.priceInUAH === 'number' && product.priceInUAH > 0 ? product.priceInUAH : null
-  return amount !== null ? <>{formatPrice(amount)}</> : null
+  return amount !== null ? <PriceView amount={amount} sale={null} /> : null
 }
 
 // Подсказка: показывается, пока вариант не выбран
