@@ -31,20 +31,20 @@ export function StickyBuyBar({ product }: Props) {
   if (!show) return null
 
   return (
-    // Тёмная полоса с тенью: видна и на белой странице
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-neutral-800 bg-neutral-900 text-white shadow-[0_-8px_24px_rgba(0,0,0,0.25)]">
+    // bg-foreground и text-background берутся из темы: полоса всегда контрастна фону страницы
+    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-foreground/10 bg-foreground text-background shadow-[0_-8px_24px_rgba(0,0,0,0.25)]">
       <div className="container flex items-center gap-4 py-3">
         {imageUrl && (
           <img
             src={imageUrl}
             alt=""
-            className="h-14 w-14 shrink-0 rounded-md object-cover ring-1 ring-white/10"
+            className="h-14 w-14 shrink-0 rounded-md object-cover ring-1 ring-background/20"
           />
         )}
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-white">{product.title}</p>
-          <p className="mt-0.5 text-base font-bold text-[#5fd0cc]">
+          <p className="truncate text-sm font-medium">{product.title}</p>
+          <p className="mt-0.5 text-base font-bold">
             {product.priceInUAH?.toLocaleString('uk-UA')} грн
           </p>
         </div>
