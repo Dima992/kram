@@ -110,6 +110,23 @@ const fillVariantLabels = async ({ data, req }: { data: any; req: any }) => {
   return data
 }
 
+// Считает процент скидки: от цены в гривнах и цены со скидкой.
+// Если скидки нет или цена со скидкой не меньше обычной, процент пустой.
+const calculateDiscount = ({ data }: { data: any }) => {
+  if (!data || data.priceInUAH === undefined) return data
+
+  const price = Number(data.priceInUAH) || 0
+  const sale = Number(data.salePriceUAH) || 0
+
+  if (!price || !sale || sale >= price) {
+    data.discountPercent = null
+    return data
+  }
+
+  data.discountPercent = Math.round(((price - sale) / price) * 100)
+  return data
+}
+
 // Прячем из админки поля цен в USD и EUR (покупатель видит только гривны).
 // Поля не удаляем: плагин магазина может их использовать.
 const hideCurrencyFields = (fields: Field[]): Field[] =>
@@ -527,6 +544,50 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       },
     },
     {
+      name: 'salePriceUAH',
+      type: 'number',
+      label: adminLabel('Ціна зі знижкою (грн)', 'Цена со скидкой (грн)'),
+      admin: {
+        position: 'sidebar',
+        description: adminLabel(
+          'Нова ціна в гривнях. Якщо порожньо, знижки немає.',
+          'Новая цена в гривнах. Если пусто, скидки нет.',
+        ),
+      },
+    },
+    {
+      name: 'saleStartsAt',
+      type: 'date',
+      label: adminLabel('Знижка з', 'Скидка с'),
+      admin: {
+        position: 'sidebar',
+        date: {
+          pickerAppearance: 'dayAndTime',
+        },
+      },
+    },
+    {
+      name: 'saleEndsAt',
+      type: 'date',
+      label: adminLabel('Знижка по', 'Скидка по'),
+      admin: {
+        position: 'sidebar',
+        date: {
+          pickerAppearance: 'dayAndTime',
+        },
+      },
+    },
+    {
+      name: 'discountPercent',
+      type: 'number',
+      label: adminLabel('Знижка, %', 'Скидка, %'),
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: adminLabel('Розраховується автоматично.', 'Рассчитывается автоматически.'),
+      },
+    },
+    {
       name: 'stockStatus',
       type: 'select',
       defaultValue: 'inStock',
@@ -770,6 +831,9 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
 
         return data
       },
+
+      // Процент скидки (идёт после расчёта цены в гривнах)
+      ({ data }) => calculateDiscount({ data }),
     ],
   },
 })
