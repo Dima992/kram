@@ -24,6 +24,7 @@ import { YouTube } from '@/blocks/YouTube/config'
 import { adminLabel } from '@/utilities/adminLabel'
 import { getStoredRates } from '@/utilities/exchangeRates'
 import { generatePreviewPath } from '@/utilities/generatePreviewPath'
+import { isSaleActive } from '@/utilities/sale'
 import { transliterate } from '@/utilities/transliterate'
 import { autoGenerateAlt } from './hooks/autoGenerateAlt'
 
@@ -110,20 +111,48 @@ const fillVariantLabels = async ({ data, req }: { data: any; req: any }) => {
   return data
 }
 
-// Считает процент скидки: от цены в гривнах и цены со скидкой.
-// Если скидки нет или цена со скидкой не меньше обычной, процент пустой.
-const calculateDiscount = ({ data }: { data: any }) => {
-  if (!data || data.priceInUAH === undefined) return data
+// Цены в гривнах при каждом сохранении:
+// regularPriceUAH: обычная цена (из базовой цены и курса)
+// priceInUAH: цена, которая действует сейчас (скидочная, если скидка идёт, иначе обычная)
+const applyPrices = async ({ data, req }: { data: any; req: any }) => {
+  // Если базовую цену не передали (например, при создании вариантов), не пересчитываем
+  if (!data || data.basePrice === undefined) return data
 
-  const price = Number(data.priceInUAH) || 0
+  if (!data.basePrice) {
+    data.regularPriceUAH = 0
+    data.priceInUAH = 0
+    return data
+  }
+
+  const currency = data.baseCurrency || 'UAH'
+  let regular = data.basePrice
+
+  if (currency !== 'UAH') {
+    const rates = await getStoredRates(req.payload)
+    const rate = currency === 'USD' ? rates.USD : rates.EUR
+    regular = Math.ceil(data.basePrice * rate)
+  }
+
+  data.regularPriceUAH = regular
+  const onSale = isSaleActive({ ...data, regularPriceUAH: regular })
+  data.priceInUAH = onSale ? Number(data.salePriceUAH) : regular
+
+  return data
+}
+
+// Процент скидки: от обычной цены и цены со скидкой
+const calculateDiscount = ({ data }: { data: any }) => {
+  if (!data) return data
+
+  const regular = Number(data.regularPriceUAH) || 0
   const sale = Number(data.salePriceUAH) || 0
 
-  if (!price || !sale || sale >= price) {
+  if (!regular || !sale || sale >= regular) {
     data.discountPercent = null
     return data
   }
 
-  data.discountPercent = Math.round(((price - sale) / price) * 100)
+  data.discountPercent = Math.round(((regular - sale) / regular) * 100)
   return data
 }
 
@@ -180,6 +209,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
     baseCurrency: true,
     basePrice: true,
     priceInUAH: true,
+    regularPriceUAH: true,
     inventory: true,
     meta: true,
   },
@@ -531,15 +561,28 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       },
     },
     {
-      name: 'priceInUAH',
+      name: 'regularPriceUAH',
       type: 'number',
-      label: adminLabel('Ціна у гривнях', 'Цена в гривнах'),
+      label: adminLabel('Звичайна ціна (грн)', 'Обычная цена (грн)'),
       admin: {
         position: 'sidebar',
         readOnly: true,
         description: adminLabel(
-          'Розрахована ціна в грн за курсом НБУ (покупцю показується ця)',
-          'Рассчитанная цена в грн по курсу НБУ (показывается покупателю)',
+          'Ціна без знижки в грн за курсом НБУ',
+          'Цена без скидки в грн по курсу НБУ',
+        ),
+      },
+    },
+    {
+      name: 'priceInUAH',
+      type: 'number',
+      label: adminLabel('Ціна зараз (грн)', 'Цена сейчас (грн)'),
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: adminLabel(
+          'Ціна, яку бачить покупець і яка йде в оплату. Оновлюється при збереженні.',
+          'Цена, которую видит покупатель и которая идёт в оплату. Обновляется при сохранении.',
         ),
       },
     },
@@ -811,28 +854,10 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       // Название варианта в каждую строку галереи (для подписей в админке)
       ({ data, req }) => fillVariantLabels({ data, req }),
 
-      async ({ data, req }) => {
-        // Если цену не передали (например, при создании вариантов), не пересчитываем
-        if (data?.basePrice === undefined) return data
-        if (!data?.basePrice) {
-          data.priceInUAH = 0
-          return data
-        }
+      // Обычная цена и цена, которая действует сейчас
+      ({ data, req }) => applyPrices({ data, req }),
 
-        const currency = data?.baseCurrency || 'UAH'
-        if (currency === 'UAH') {
-          data.priceInUAH = data.basePrice
-          return data
-        }
-
-        const rates = await getStoredRates(req.payload)
-        const rate = currency === 'USD' ? rates.USD : rates.EUR
-        data.priceInUAH = Math.ceil(data.basePrice * rate)
-
-        return data
-      },
-
-      // Процент скидки (идёт после расчёта цены в гривнах)
+      // Процент скидки (после расчёта цен)
       ({ data }) => calculateDiscount({ data }),
     ],
   },

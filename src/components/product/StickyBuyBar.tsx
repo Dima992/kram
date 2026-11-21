@@ -2,6 +2,7 @@
 
 import { AddToCart } from '@/components/Cart/AddToCart'
 import type { Media, Product } from '@/payload-types'
+import { getSaleInfo } from '@/utilities/sale'
 import { useEffect, useState } from 'react'
 
 type Props = {
@@ -28,6 +29,10 @@ export function StickyBuyBar({ product }: Props) {
   const image = product.gallery?.[0]?.image
   const imageUrl = typeof image === 'object' && image ? (image as Media).url : undefined
 
+  // Скидка товара, если она действует сегодня
+  const sale = getSaleInfo(product)
+  const amount = sale ? sale.newPrice : product.priceInUAH
+
   if (!show) return null
 
   return (
@@ -45,7 +50,17 @@ export function StickyBuyBar({ product }: Props) {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{product.title}</p>
           <p className="mt-0.5 text-base font-bold">
-            {product.priceInUAH?.toLocaleString('uk-UA')} грн
+            {sale && (
+              <s className="mr-2 text-sm font-normal opacity-60">
+                {sale.oldPrice.toLocaleString('uk-UA')} грн
+              </s>
+            )}
+            {amount?.toLocaleString('uk-UA')} грн
+            {sale && (
+              <span className="ml-2 rounded bg-[#0b7a78] px-1.5 py-0.5 align-middle text-xs font-medium text-white">
+                -{sale.percent}%
+              </span>
+            )}
           </p>
         </div>
 
