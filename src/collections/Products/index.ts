@@ -24,7 +24,7 @@ import { YouTube } from '@/blocks/YouTube/config'
 import { adminLabel } from '@/utilities/adminLabel'
 import { getStoredRates } from '@/utilities/exchangeRates'
 import { generatePreviewPath } from '@/utilities/generatePreviewPath'
-import { isSaleActive } from '@/utilities/sale'
+import { calcPrices } from '@/utilities/prices'
 import { transliterate } from '@/utilities/transliterate'
 import { autoGenerateAlt } from './hooks/autoGenerateAlt'
 
@@ -111,31 +111,19 @@ const fillVariantLabels = async ({ data, req }: { data: any; req: any }) => {
   return data
 }
 
-// Цены в гривнах при каждом сохранении:
-// regularPriceUAH: обычная цена (из базовой цены и курса)
-// priceInUAH: цена, которая действует сейчас (скидочная, если скидка идёт, иначе обычная)
+// Цены в гривнах при каждом сохранении: обычная и та, что действует сейчас.
+// Расчёт делает общий файл prices.ts (тот же, что использует крон).
 const applyPrices = async ({ data, req }: { data: any; req: any }) => {
   // Если базовую цену не передали (например, при создании вариантов), не пересчитываем
   if (!data || data.basePrice === undefined) return data
 
-  if (!data.basePrice) {
-    data.regularPriceUAH = 0
-    data.priceInUAH = 0
-    return data
-  }
-
+  // Курс нужен только для USD и EUR, для гривен его не читаем
   const currency = data.baseCurrency || 'UAH'
-  let regular = data.basePrice
+  const rates = currency === 'UAH' ? { USD: 0, EUR: 0 } : await getStoredRates(req.payload)
 
-  if (currency !== 'UAH') {
-    const rates = await getStoredRates(req.payload)
-    const rate = currency === 'USD' ? rates.USD : rates.EUR
-    regular = Math.ceil(data.basePrice * rate)
-  }
-
-  data.regularPriceUAH = regular
-  const onSale = isSaleActive({ ...data, regularPriceUAH: regular })
-  data.priceInUAH = onSale ? Number(data.salePriceUAH) : regular
+  const prices = calcPrices(data, rates)
+  data.regularPriceUAH = prices.regularPriceUAH
+  data.priceInUAH = prices.priceInUAH
 
   return data
 }

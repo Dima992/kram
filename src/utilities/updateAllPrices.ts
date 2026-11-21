@@ -1,5 +1,5 @@
 import { fetchNBURates, saveRates } from '@/utilities/exchangeRates'
-import { calcPrices, calcVariantPrices } from '@/utilities/prices'
+import { calcCurrencyPrices, calcPrices, calcVariantPrices } from '@/utilities/prices'
 import type { Payload } from 'payload'
 
 // Достаём id из связи (бывает либо id, либо объект с id)
@@ -47,7 +47,7 @@ export async function updateAllPrices(payload: Payload) {
     }
   }
 
-  // Варианты: со своей ценой (считаем по ней и её скидке) или без неё (берём цену товара)
+  // Варианты: со своей ценой или без неё (берём цену товара)
   const { docs: variants } = await payload.find({
     collection: 'variants',
     pagination: false,
@@ -66,19 +66,15 @@ export async function updateAllPrices(payload: Payload) {
     const prices = calcVariantPrices({ item, product, rates, now })
     if (!prices) continue
 
-    const priceInUAH = prices.priceInUAH
-    const priceInUSD = Math.round((priceInUAH / rates.USD) * 100) / 100
-    const priceInEUR = Math.round((priceInUAH / rates.EUR) * 100) / 100
+    const converted = calcCurrencyPrices(prices.priceInUAH, rates)
 
-    if (item.priceInUAH !== priceInUAH || item.regularPriceUAH !== prices.regularPriceUAH) {
+    if (item.priceInUAH !== converted.priceInUAH || item.regularPriceUAH !== prices.regularPriceUAH) {
       await payload.update({
         collection: 'variants',
         id: variant.id,
         data: {
           regularPriceUAH: prices.regularPriceUAH,
-          priceInUAH,
-          priceInUSD,
-          priceInEUR,
+          ...converted,
         },
         context: { disableRevalidate: true },
         overrideAccess: true,

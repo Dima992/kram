@@ -1,6 +1,6 @@
 import { adminLabel } from '@/utilities/adminLabel'
 import { getStoredRates } from '@/utilities/exchangeRates'
-import { calcVariantPrices } from '@/utilities/prices'
+import { calcCurrencyPrices, calcVariantPrices } from '@/utilities/prices'
 import type { CollectionOverride } from '@payloadcms/plugin-ecommerce/types'
 import type { CollectionBeforeChangeHook } from 'payload'
 
@@ -64,10 +64,11 @@ const fillVariantPrices: CollectionBeforeChangeHook = async ({ data, originalDoc
     return data
   }
 
+  const converted = calcCurrencyPrices(prices.priceInUAH, rates)
   current.regularPriceUAH = prices.regularPriceUAH
-  current.priceInUAH = prices.priceInUAH
-  current.priceInUSD = Math.round((prices.priceInUAH / rates.USD) * 100) / 100
-  current.priceInEUR = Math.round((prices.priceInUAH / rates.EUR) * 100) / 100
+  current.priceInUAH = converted.priceInUAH
+  current.priceInUSD = converted.priceInUSD
+  current.priceInEUR = converted.priceInEUR
   current.priceInUAHEnabled = true
   current.priceInUSDEnabled = true
   current.priceInEUREnabled = true

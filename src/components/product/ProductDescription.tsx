@@ -4,6 +4,7 @@ import type { Product, Variant } from '@/payload-types'
 import { AddToCart } from '@/components/Cart/AddToCart'
 import { StockIndicator } from '@/components/product/StockIndicator'
 import { RichText } from '@/components/RichText'
+import { priceOfVariant, type Priced } from '@/utilities/displayPrice'
 import { formatSaleEnd, getSaleInfo, type SaleInfo } from '@/utilities/sale'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
@@ -15,25 +16,6 @@ const formatPrice = (amount: number) => `${amount.toLocaleString('uk-UA')} гр�
 const hintText = {
   uk: 'Оберіть варіант, щоб додати в кошик.',
   ru: 'Выберите вариант, чтобы добавить в корзину.',
-}
-
-type Priced = { amount: number; sale: SaleInfo | null }
-
-// Цена и скидка варианта.
-// Своя цена (basePrice заполнен): считаем по полям варианта.
-// Своей цены нет: берём цену товара вместе с его скидкой.
-const priceOfVariant = (variant: Variant, product: Product): Priced | null => {
-  if (Number(variant.basePrice) > 0) {
-    const sale = getSaleInfo(variant)
-    const amount = sale ? sale.newPrice : Number(variant.priceInUAH) || 0
-    return amount > 0 ? { amount, sale } : null
-  }
-
-  const productSale = getSaleInfo(product)
-  if (productSale) return { amount: productSale.newPrice, sale: productSale }
-
-  const amount = Number(product.priceInUAH) || 0
-  return amount > 0 ? { amount, sale: null } : null
 }
 
 // Показывает цену. Если есть скидка, старую цену зачёркивает, добавляет процент и дату окончания

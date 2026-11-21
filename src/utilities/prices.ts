@@ -68,3 +68,10 @@ export const calcVariantPrices = ({
     priceInUAH: currentUAH(regularPriceUAH, product, now),
   }
 }
+
+// Цены варианта в трёх валютах по курсу НБУ (одно место для расчёта долларов и евро)
+export const calcCurrencyPrices = (priceInUAH: number, rates: Rates) => ({
+  priceInUAH,
+  priceInUSD: Math.round((priceInUAH / rates.USD) * 100) / 100,
+  priceInEUR: Math.round((priceInUAH / rates.EUR) * 100) / 100,
+})
