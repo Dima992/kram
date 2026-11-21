@@ -4,6 +4,7 @@ import type { Product, Variant } from '@/payload-types'
 import { AddToCart } from '@/components/Cart/AddToCart'
 import { StockIndicator } from '@/components/product/StockIndicator'
 import { RichText } from '@/components/RichText'
+import { getSaleInfo } from '@/utilities/sale'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
 import { VariantSelector } from './VariantSelector'
@@ -47,6 +48,20 @@ function ProductPrice({ product }: { product: Product }) {
       <>
         {hasDifferentPrices && <span className="mr-2 text-base font-normal">від</span>}
         {formatPrice(lowest)}
+      </>
+    )
+  }
+
+  // Товар без вариантов: если скидка действует, показываем старую и новую цену
+  const sale = getSaleInfo(product)
+  if (sale) {
+    return (
+      <>
+        <s className="mr-2 text-lg font-normal text-neutral-400">{formatPrice(sale.oldPrice)}</s>
+        {formatPrice(sale.newPrice)}
+        <span className="ml-3 rounded bg-[#0b7a78] px-2 py-0.5 align-middle text-sm font-medium text-white">
+          -{sale.percent}%
+        </span>
       </>
     )
   }
