@@ -351,10 +351,17 @@ const findProductBySlug = async (slug: string, draft: boolean, locale: Locale) =
         ...(draft ? [] : [{ _status: { equals: 'published' } }]),
       ],
     },
+    // Поля варианта, которые нужны для цены и скидки. Без них скидка варианта не видна на сайте
     populate: {
       variants: {
         title: true,
+        basePrice: true,
+        baseCurrency: true,
         priceInUAH: true,
+        regularPriceUAH: true,
+        salePriceUAH: true,
+        saleStartsAt: true,
+        saleEndsAt: true,
         inventory: true,
         options: true,
       },
