@@ -1,8 +1,16 @@
 import { fetchNBURates, saveRates } from '@/utilities/exchangeRates'
-import { calcPrices, calcRegularUAH } from '@/utilities/prices'
+import { calcPrices, calcVariantPrices } from '@/utilities/prices'
 import type { Payload } from 'payload'
 
-type Currency = 'UAH' | 'USD' | 'EUR'
+// Достаём id из связи (бывает либо id, либо объект с id)
+const idOf = (value: unknown): string | null => {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'object') {
+    const id = (value as { id?: unknown }).id
+    return id === undefined || id === null ? null : String(id)
+  }
+  return String(value)
+}
 
 export async function updateAllPrices(payload: Payload) {
   const rates = await fetchNBURates()
@@ -10,7 +18,7 @@ export async function updateAllPrices(payload: Payload) {
 
   const now = new Date()
 
-  // Товары: цена сейчас и обычная цена пересчитываются по датам скидки
+  // Товары: цена сейчас и обычная цена по датам скидки
   const { docs: products } = await payload.find({
     collection: 'products',
     pagination: false,
@@ -19,9 +27,13 @@ export async function updateAllPrices(payload: Payload) {
     overrideAccess: true,
   })
 
+  // Свежие цены товаров: по ним потом считаем варианты без своей цены
+  const productPrices = new Map<string, Record<string, any>>()
   let productsUpdated = 0
+
   for (const product of products) {
     const next = calcPrices(product, rates, now)
+    productPrices.set(String(product.id), { ...product, ...next })
 
     if (product.priceInUAH !== next.priceInUAH || product.regularPriceUAH !== next.regularPriceUAH) {
       await payload.update({
@@ -35,33 +47,39 @@ export async function updateAllPrices(payload: Payload) {
     }
   }
 
-  // Варианты: пока без своих скидок, цена считается как раньше (по базовой цене и курсу)
+  // Варианты: со своей ценой (считаем по ней и её скидке) или без неё (берём цену товара)
   const { docs: variants } = await payload.find({
     collection: 'variants',
     pagination: false,
     depth: 0,
     draft: true,
     overrideAccess: true,
-    where: { basePrice: { exists: true } },
   })
 
   let variantsUpdated = 0
+
   for (const variant of variants) {
-    const item = variant as typeof variant & { basePrice?: number | null; baseCurrency?: string }
-    if (typeof item.basePrice !== 'number' || item.basePrice <= 0) continue
+    const item = variant as Record<string, any>
+    const productId = idOf(item.product)
+    const product = productId ? (productPrices.get(productId) ?? null) : null
 
-    const currency = (item.baseCurrency || 'UAH') as Currency
-    if (currency !== 'UAH' && !rates[currency as 'USD' | 'EUR']) continue
+    const prices = calcVariantPrices({ item, product, rates, now })
+    if (!prices) continue
 
-    const priceInUAH = calcRegularUAH(item, rates)
+    const priceInUAH = prices.priceInUAH
     const priceInUSD = Math.round((priceInUAH / rates.USD) * 100) / 100
     const priceInEUR = Math.round((priceInUAH / rates.EUR) * 100) / 100
 
-    if (item.priceInUAH !== priceInUAH) {
+    if (item.priceInUAH !== priceInUAH || item.regularPriceUAH !== prices.regularPriceUAH) {
       await payload.update({
         collection: 'variants',
-        id: item.id,
-        data: { priceInUAH, priceInUSD, priceInEUR },
+        id: variant.id,
+        data: {
+          regularPriceUAH: prices.regularPriceUAH,
+          priceInUAH,
+          priceInUSD,
+          priceInEUR,
+        },
         context: { disableRevalidate: true },
         overrideAccess: true,
       })

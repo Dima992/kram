@@ -140,9 +140,43 @@ const applyPrices = async ({ data, req }: { data: any; req: any }) => {
   return data
 }
 
-// Процент скидки: от обычной цены и цены со скидкой
+// После сохранения товара пересчитываем варианты без своей цены: они берут цену товара
+const syncVariantPrices = async ({ doc, req }: { doc: any; req: any }) => {
+  if (!doc?.id) return doc
+
+  try {
+    const { docs: variants } = await req.payload.find({
+      collection: 'variants',
+      where: { product: { equals: doc.id } },
+      pagination: false,
+      depth: 0,
+      draft: true,
+      req,
+    })
+
+    for (const variant of variants as any[]) {
+      // Варианты со своей ценой не трогаем
+      if (Number(variant.basePrice) > 0) continue
+
+      await req.payload.update({
+        collection: 'variants',
+        id: variant.id,
+        data: { product: doc.id },
+        context: { disableRevalidate: true },
+        req,
+      })
+    }
+  } catch (error) {
+    req.payload.logger.error({ err: error, msg: 'Не удалось пересчитать варианты товара' })
+  }
+
+  return doc
+}
+
+// Процент скидки: от обычной цены и цены со скидкой.
+// Если поле цены со скидкой не пришло (например, крон обновляет только цены), не трогаем процент.
 const calculateDiscount = ({ data }: { data: any }) => {
-  if (!data) return data
+  if (!data || !('salePriceUAH' in data)) return data
 
   const regular = Number(data.regularPriceUAH) || 0
   const sale = Number(data.salePriceUAH) || 0
@@ -834,6 +868,9 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
         }
         return doc
       },
+
+      // Варианты без своей цены: пересчитываем после сохранения товара
+      ({ doc, req }) => syncVariantPrices({ doc, req }),
 
       // Альты фото: после сохранения, на двух языках
       autoGenerateAlt,
