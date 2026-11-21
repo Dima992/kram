@@ -17,7 +17,26 @@ const hintText = {
   ru: 'Выберите вариант, чтобы добавить в корзину.',
 }
 
-// Показывает цену. Если передана скидка, старую цену зачёркивает и добавляет процент
+type Priced = { amount: number; sale: SaleInfo | null }
+
+// Цена и скидка варианта.
+// Своя цена (basePrice заполнен): считаем по полям варианта.
+// Своей цены нет: берём цену товара вместе с его скидкой.
+const priceOfVariant = (variant: Variant, product: Product): Priced | null => {
+  if (Number(variant.basePrice) > 0) {
+    const sale = getSaleInfo(variant)
+    const amount = sale ? sale.newPrice : Number(variant.priceInUAH) || 0
+    return amount > 0 ? { amount, sale } : null
+  }
+
+  const productSale = getSaleInfo(product)
+  if (productSale) return { amount: productSale.newPrice, sale: productSale }
+
+  const amount = Number(product.priceInUAH) || 0
+  return amount > 0 ? { amount, sale: null } : null
+}
+
+// Показывает цену. Если есть скидка, старую цену зачёркивает и добавляет процент
 function PriceView({ amount, sale }: { amount: number; sale: SaleInfo | null }) {
   if (!sale) return <>{formatPrice(amount)}</>
   return (
@@ -39,32 +58,18 @@ function ProductPrice({ product }: { product: Product }) {
   const hasVariants = Boolean(product.enableVariants && variants.length > 0)
   const selectedVariantID = searchParams.get('variant')
 
-  // Скидка товара, если она действует сегодня
-  const sale = getSaleInfo(product)
-
-  // Цена варианта. Своя цена: без скидки (скидку на вариант добавим позже).
-  // Без своей цены: берём цену товара, со скидкой товара, если она действует.
-  const priceOf = (variant: Variant): { amount: number; sale: SaleInfo | null } | null => {
-    if (typeof variant.priceInUAH === 'number' && variant.priceInUAH > 0) {
-      return { amount: variant.priceInUAH, sale: null }
-    }
-    if (sale) return { amount: sale.newPrice, sale }
-    if (typeof product.priceInUAH === 'number' && product.priceInUAH > 0) {
-      return { amount: product.priceInUAH, sale: null }
-    }
-    return null
-  }
-
+  // Выбран конкретный вариант
   if (hasVariants && selectedVariantID) {
-    const selectedVariant = variants.find((variant) => String(variant.id) === selectedVariantID)
-    const price = selectedVariant ? priceOf(selectedVariant) : null
+    const selected = variants.find((variant) => String(variant.id) === selectedVariantID)
+    const price = selected ? priceOfVariant(selected, product) : null
     return price ? <PriceView amount={price.amount} sale={price.sale} /> : null
   }
 
+  // Вариант не выбран: показываем наименьшую цену
   if (hasVariants) {
     const prices = variants
-      .map((variant) => priceOf(variant))
-      .filter((price): price is { amount: number; sale: SaleInfo | null } => price !== null)
+      .map((variant) => priceOfVariant(variant, product))
+      .filter((price): price is Priced => price !== null)
     if (prices.length === 0) return null
 
     const lowest = prices.reduce((min, price) => (price.amount < min.amount ? price : min))
@@ -79,11 +84,9 @@ function ProductPrice({ product }: { product: Product }) {
   }
 
   // Товар без вариантов
-  if (sale) return <PriceView amount={sale.newPrice} sale={sale} />
-
-  const amount =
-    typeof product.priceInUAH === 'number' && product.priceInUAH > 0 ? product.priceInUAH : null
-  return amount !== null ? <PriceView amount={amount} sale={null} /> : null
+  const sale = getSaleInfo(product)
+  const amount = sale ? sale.newPrice : Number(product.priceInUAH) || 0
+  return amount > 0 ? <PriceView amount={amount} sale={sale} /> : null
 }
 
 // Подсказка: показывается, пока вариант не выбран
