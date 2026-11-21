@@ -1,12 +1,63 @@
 'use client'
 
 import { AddToCart } from '@/components/Cart/AddToCart'
-import type { Media, Product } from '@/payload-types'
-import { getSaleInfo } from '@/utilities/sale'
-import { useEffect, useState } from 'react'
+import type { Media, Product, Variant } from '@/payload-types'
+import { getSaleInfo, type SaleInfo } from '@/utilities/sale'
+import { useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
 
 type Props = {
   product: Product
+}
+
+type Priced = { amount: number; sale: SaleInfo | null }
+
+// Цена товара: со скидкой товара, если она идёт, иначе обычная
+const priceOfProduct = (product: Product): Priced | null => {
+  const sale = getSaleInfo(product)
+  if (sale) return { amount: sale.newPrice, sale }
+  const amount = Number(product.priceInUAH) || 0
+  return amount > 0 ? { amount, sale: null } : null
+}
+
+// Цена варианта: со своей ценой считаем по его полям, без своей берём цену товара
+const priceOfVariant = (variant: Variant, product: Product): Priced | null => {
+  if (Number(variant.basePrice) > 0) {
+    const sale = getSaleInfo(variant)
+    const amount = sale ? sale.newPrice : Number(variant.priceInUAH) || 0
+    return amount > 0 ? { amount, sale } : null
+  }
+  return priceOfProduct(product)
+}
+
+const formatPrice = (amount: number) => `${amount.toLocaleString('uk-UA')} грн`
+
+// Цена внизу: та же, что на странице (выбранный вариант или товар)
+function BarPrice({ product }: { product: Product }) {
+  const searchParams = useSearchParams()
+  const variants = (product.variants?.docs ?? []).filter(
+    (variant): variant is Variant => typeof variant === 'object' && variant !== null,
+  )
+  const selected = product.enableVariants
+    ? variants.find((variant) => String(variant.id) === searchParams.get('variant'))
+    : undefined
+
+  const price = selected ? priceOfVariant(selected, product) : priceOfProduct(product)
+  if (!price) return null
+
+  return (
+    <>
+      {price.sale && (
+        <s className="mr-2 text-sm font-normal opacity-60">{formatPrice(price.sale.oldPrice)}</s>
+      )}
+      {formatPrice(price.amount)}
+      {price.sale && (
+        <span className="ml-2 rounded bg-[#0b7a78] px-1.5 py-0.5 align-middle text-xs font-medium text-white">
+          -{price.sale.percent}%
+        </span>
+      )}
+    </>
+  )
 }
 
 export function StickyBuyBar({ product }: Props) {
@@ -29,10 +80,6 @@ export function StickyBuyBar({ product }: Props) {
   const image = product.gallery?.[0]?.image
   const imageUrl = typeof image === 'object' && image ? (image as Media).url : undefined
 
-  // Скидка товара, если она действует сегодня
-  const sale = getSaleInfo(product)
-  const amount = sale ? sale.newPrice : product.priceInUAH
-
   if (!show) return null
 
   return (
@@ -50,17 +97,9 @@ export function StickyBuyBar({ product }: Props) {
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{product.title}</p>
           <p className="mt-0.5 text-base font-bold">
-            {sale && (
-              <s className="mr-2 text-sm font-normal opacity-60">
-                {sale.oldPrice.toLocaleString('uk-UA')} грн
-              </s>
-            )}
-            {amount?.toLocaleString('uk-UA')} грн
-            {sale && (
-              <span className="ml-2 rounded bg-[#0b7a78] px-1.5 py-0.5 align-middle text-xs font-medium text-white">
-                -{sale.percent}%
-              </span>
-            )}
+            <Suspense fallback={null}>
+              <BarPrice product={product} />
+            </Suspense>
           </p>
         </div>
 
