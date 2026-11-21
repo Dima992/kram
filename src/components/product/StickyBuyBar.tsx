@@ -48,7 +48,7 @@ function BarPrice({ product }: { product: Product }) {
   return (
     <>
       {price.sale && (
-        <s className="mr-2 text-sm font-normal opacity-60">{formatPrice(price.sale.oldPrice)}</s>
+        <s className="mr-2 text-sm font-normal">{formatPrice(price.sale.oldPrice)}</s>
       )}
       {formatPrice(price.amount)}
       {price.sale && (

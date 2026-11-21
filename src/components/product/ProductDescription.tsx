@@ -41,7 +41,7 @@ function PriceView({ amount, sale }: { amount: number; sale: SaleInfo | null }) 
   if (!sale) return <>{formatPrice(amount)}</>
   return (
     <>
-      <s className="mr-2 text-lg font-normal text-neutral-400">{formatPrice(sale.oldPrice)}</s>
+      <s className="mr-2 text-lg font-normal text-neutral-600">{formatPrice(sale.oldPrice)}</s>
       {formatPrice(sale.newPrice)}
       <span className="ml-3 rounded bg-[#0b7a78] px-2 py-0.5 align-middle text-sm font-medium text-white">
         -{sale.percent}%
