@@ -8,7 +8,8 @@ import type { Cart, Media as MediaType, Variant } from '@/payload-types'
 import { useCart } from '@payloadcms/plugin-ecommerce/client/react'
 import { ArrowLeft, Building2, CreditCard, ShieldCheck, ShoppingBag, Zap } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation
+import { ThankYou } from './ThankYou''
 import { useEffect, useState } from 'react'
 
 type Lang = 'ua' | 'ru'
@@ -406,7 +407,7 @@ export function UACheckoutPage() {
     if (createdOrderId) {
     return <ThankYou orderId={createdOrderId} lang={lang} liqpayPayment={liqpayPayment} />
   }
-  
+
   if (lines.length === 0) {
     return (
       <div className="w-full max-w-xl mx-auto px-4 py-16 text-center space-y-6">
