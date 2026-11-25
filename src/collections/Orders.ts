@@ -189,45 +189,53 @@ export const Orders: CollectionConfig = {
     },
   ],
 
-  // ХУК: Срабатывает ПОСЛЕ любого изменения заказа в админке
+  // ХУК: срабатывает ПОСЛЕ изменения заказа. Ошибки аналитики не должны откатывать заказ.
   hooks: {
     afterChange: [
       async ({ doc, previousDoc, req }) => {
-        // Проверяем: статус изменился с 'new' (Новий) на 'in_processing' (В обробці) или 'paid' (Оплачено)
+        // Статус изменился с «Новий» на «В обробці» или «Оплачено» (в том числе после оплаты LiqPay)
         const isConfirmedNow =
           previousDoc?.status === 'new' &&
           (doc?.status === 'in_processing' || doc?.status === 'paid')
 
         if (isConfirmedNow) {
-          console.log(`[Order Confirmed] Заказ #${doc.id} подтвержден менеджером!`)
+          try {
+            const items =
+              (doc.items as Order['items'])?.flatMap((item) => {
+                const productID =
+                  typeof item.product === 'object' && item.product
+                    ? item.product.id
+                    : item.product
 
-          const items =
-            (doc.items as Order['items'])?.flatMap((item) => {
-              const productID =
-                typeof item.product === 'object' && item.product
-                  ? item.product.id
-                  : item.product
+                return typeof productID === 'string'
+                  ? [{ id: productID, quantity: item.quantity }]
+                  : []
+              }) || []
 
-              return typeof productID === 'string'
-                ? [{ id: productID, quantity: item.quantity }]
-                : []
-            }) || []
-
-          await sendServerConversion(
-            req.payload,
-            {
-              eventId: `purchase_${doc.id}`,
-              name: 'Purchase',
-              orderId: String(doc.id),
-              value: doc.totalAmount ?? doc.amount ?? 0,
-              currency: 'UAH',
-              email: doc.customerEmail,
-              phone: doc.phone || doc.shippingAddress?.phone,
-              items,
-            },
-            req.headers,
-          )
+            await sendServerConversion(
+              req.payload,
+              {
+                eventId: `purchase_${doc.id}`,
+                name: 'Purchase',
+                orderId: String(doc.id),
+                value: doc.totalAmount ?? doc.amount ?? 0,
+                currency: 'UAH',
+                email: doc.customerEmail,
+                phone: doc.phone || doc.shippingAddress?.phone,
+                items,
+              },
+              req.headers,
+            )
+          } catch (error) {
+            // Заказ уже подтверждён. Аналитику просто логируем, без отката.
+            req.payload.logger.error(
+              { err: error, orderID: doc.id },
+              'Отправка Purchase в аналитику не удалась, заказ сохранён',
+            )
+          }
         }
+
+        return doc
       },
     ],
   },
