@@ -403,29 +403,10 @@ export function UACheckoutPage() {
     }
   }
 
-  if (createdOrderId) {
-    return (
-      <div className="w-full max-w-xl mx-auto px-4 py-16 text-center space-y-6">
-        <h1 className="text-2xl font-bold">{t.thanks}</h1>
-        <p className="text-sm text-muted-foreground">
-          {t.orderNumber} <strong>#{createdOrderId}</strong>
-        </p>
-        {liqpayPayment && (
-          <form action={liqpayPayment.checkoutUrl} method="POST">
-            <input type="hidden" name="data" value={liqpayPayment.data} />
-            <input type="hidden" name="signature" value={liqpayPayment.signature} />
-            <Button type="submit" className="bg-emerald-600 text-white hover:bg-emerald-700">
-              {t.payLiqpay}
-            </Button>
-          </form>
-        )}
-        <Link href="/" className="block text-sm underline text-muted-foreground hover:text-foreground">
-          {t.back}
-        </Link>
-      </div>
-    )
+    if (createdOrderId) {
+    return <ThankYou orderId={createdOrderId} lang={lang} liqpayPayment={liqpayPayment} />
   }
-
+  
   if (lines.length === 0) {
     return (
       <div className="w-full max-w-xl mx-auto px-4 py-16 text-center space-y-6">
