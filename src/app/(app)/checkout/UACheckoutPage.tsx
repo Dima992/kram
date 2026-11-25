@@ -8,9 +8,9 @@ import type { Cart, Media as MediaType, Variant } from '@/payload-types'
 import { useCart } from '@payloadcms/plugin-ecommerce/client/react'
 import { ArrowLeft, Building2, CreditCard, ShieldCheck, ShoppingBag, Zap } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation
-import { ThankYou } from './ThankYou''
+import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { ThankYou } from './ThankYou'
 
 type Lang = 'ua' | 'ru'
 type Mode = 'full' | 'quick'
