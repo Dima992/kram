@@ -193,6 +193,9 @@ const hideCurrencyFields = (fields: Field[]): Field[] =>
 
 export const ProductsCollection: CollectionOverride = ({ defaultCollection }) => ({
   ...defaultCollection,
+  // Черновики выключены: каждое сохранение сразу идёт на сайт.
+  // Скрыть товар можно галочкой «Скрыть от покупателя».
+  versions: false,
   labels: {
     singular: adminLabel('Товар', 'Товар'),
     plural: adminLabel('Товари', 'Товары'),
@@ -200,7 +203,7 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
   admin: {
     ...defaultCollection?.admin,
     group: adminLabel('Контент', 'Контент'),
-    defaultColumns: ['title', 'basePrice', 'baseCurrency', 'priceInUAH', '_status'],
+    defaultColumns: ['title', 'basePrice', 'baseCurrency', 'priceInUAH', 'hideFromShop'],
     livePreview: {
       url: ({ data, req }) =>
         generatePreviewPath({
@@ -724,6 +727,19 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       },
     },
     {
+      name: 'hideFromShop',
+      type: 'checkbox',
+      defaultValue: false,
+      label: adminLabel('Приховати від покупця', 'Скрыть от покупателя'),
+      admin: {
+        position: 'sidebar',
+        description: adminLabel(
+          'Товар залишається в адмінці, але не показується на сайті, в каталозі, пошуку, каруселі та фідах.',
+          'Товар остаётся в админке, но не показывается на сайте, в каталоге, поиске, карусели и фидах.',
+        ),
+      },
+    },
+    {
       name: 'brand',
       type: 'text',
       label: adminLabel('Бренд для фідів', 'Бренд для фидов'),
@@ -850,7 +866,8 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
       ...(defaultCollection?.hooks?.afterChange || []),
 
       ({ doc, req: { context } }) => {
-        if (!context.disableRevalidate && doc._status === 'published') {
+        // Черновиков нет, поэтому сбрасываем кэш при каждом сохранении
+        if (!context.disableRevalidate) {
           revalidateTag('products', { expire: 0 })
           revalidatePath('/shop', 'layout')
         }
