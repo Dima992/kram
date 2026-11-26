@@ -1,4 +1,4 @@
-import type { Product, CarouselBlock as CarouselBlockProps } from '@/payload-types'
+import type { CarouselBlock as CarouselBlockProps, Product } from '@/payload-types'
 
 import configPromise from '@payload-config'
 import { DefaultDocumentIDType, getPayload } from 'payload'
@@ -29,22 +29,27 @@ export const CarouselBlock: React.FC<
       collection: 'products',
       depth: 1,
       limit: limit || undefined,
-      ...(flattenedCategories && flattenedCategories.length > 0
-        ? {
-            where: {
-              categories: {
-                in: flattenedCategories,
-              },
-            },
-          }
-        : {}),
+      where: {
+        and: [
+          { _status: { equals: 'published' } },
+          { hideFromShop: { not_equals: true } },
+          ...(flattenedCategories && flattenedCategories.length > 0
+            ? [{ categories: { in: flattenedCategories } }]
+            : []),
+        ],
+      },
     })
 
     products = fetchedProducts.docs
   } else if (selectedDocs?.length) {
-    products = selectedDocs.map((post) => {
-      if (typeof post.value !== 'string') return post.value
-    }) as Product[]
+    products = selectedDocs
+      .map((post) => (typeof post.value === 'object' ? post.value : null))
+      .filter(
+        (product): product is Product =>
+          product !== null &&
+          product._status === 'published' &&
+          product.hideFromShop !== true,
+      )
   }
 
   if (!products?.length) return null
