@@ -179,9 +179,16 @@ export const Categories: CollectionConfig = {
     {
       name: 'title',
       type: 'text',
-      required: true,
       localized: true, // Включаем перевод названия категории (UK / RU)
       label: adminLabel('Назва категорії', 'Название категории'),
+      // Обязательно только украинское название. Русское может быть пустым,
+      // тогда на сайте покажется украинское
+      validate: (value: unknown, { req }: { req: any }) => {
+        const locale = req?.locale
+        if (locale && locale !== 'uk') return true
+        if (typeof value === 'string' && value.trim()) return true
+        return 'Это обязательное поле.'
+      },
     },
     {
       name: 'pathTitle',
