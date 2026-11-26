@@ -257,7 +257,8 @@ export async function syncVariants(payload: Payload, productId: string): Promise
     removed += 1
   }
 
-  // Создаём только недостающие комбинации, с остатком по умолчанию
+  // Создаём только недостающие комбинации, с остатком по умолчанию.
+  // draft: false — строка сразу публикуется, а не остаётся черновиком
   let created = 0
   for (const combo of combos) {
     if (takenKeys.has(keyOf(combo))) continue
@@ -270,6 +271,7 @@ export async function syncVariants(payload: Payload, productId: string): Promise
         sku: `${baseSku}-${String(last).padStart(2, '0')}`,
         inventory: DEFAULT_STOCK,
       } as any,
+      draft: false,
       overrideAccess: true,
     })
     created += 1
