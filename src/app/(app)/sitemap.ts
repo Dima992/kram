@@ -1,5 +1,4 @@
 import { getServerSideURL } from '@/utilities/getURL'
-import { visibleProductConditions } from '@/utilities/productVisibility'
 import configPromise from '@payload-config'
 import type { MetadataRoute } from 'next'
 import { getPayload } from 'payload'
@@ -16,7 +15,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       overrideAccess: false,
       pagination: false,
       select: { slug: true, updatedAt: true },
-      where: { and: visibleProductConditions },
+      where: { _status: { equals: 'published' } },
     }),
     payload.find({
       collection: 'products',
