@@ -195,7 +195,6 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
   ...defaultCollection,
   // Черновики включены, в истории храним 2 версии
   versions: {
-    ...defaultCollection?.versions,
     drafts: true,
     maxPerDoc: 2,
   },
