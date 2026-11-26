@@ -353,33 +353,35 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       </div>
 
       {/* Ряд миниатюр: выбранная всегда видна */}
-      <Carousel setApi={setApi} className="relative w-full" opts={{ align: 'start', loop: false }}>
-        <CarouselContent>
-          {gallery.map((item, i) => {
-            const image =
-              typeof item.image === 'object' && item.image ? item.image : undefined
-            const video =
-              item.mediaType === 'youtube' && item.youtubeUrl ? item.youtubeUrl : undefined
-            if (!image && !video) return null
+      <div className="relative w-full">
+        <Carousel setApi={setApi} className="w-full" opts={{ align: 'start', loop: false }}>
+          <CarouselContent>
+            {gallery.map((item, i) => {
+              const image =
+                typeof item.image === 'object' && item.image ? item.image : undefined
+              const video =
+                item.mediaType === 'youtube' && item.youtubeUrl ? item.youtubeUrl : undefined
+              if (!image && !video) return null
 
-            return (
-              <CarouselItem
-                className="basis-1/5"
-                key={`${item.id ?? i}`}
-                onClick={() => setCurrent(i)}
-              >
-                <div className="relative aspect-square w-full overflow-hidden rounded-md">
-                  <GridTileImage
-                    active={i === current}
-                    media={image}
-                    video={video}
-                    sizes="20vw"
-                  />
-                </div>
-              </CarouselItem>
-            )
-          })}
-        </CarouselContent>
+              return (
+                <CarouselItem
+                  className="basis-1/5"
+                  key={`${item.id ?? i}`}
+                  onClick={() => setCurrent(i)}
+                >
+                  <div className="relative aspect-square w-full overflow-hidden rounded-md">
+                    <GridTileImage
+                      active={i === current}
+                      media={image}
+                      video={video}
+                      sizes="20vw"
+                    />
+                  </div>
+                </CarouselItem>
+              )
+            })}
+          </CarouselContent>
+        </Carousel>
 
         {total > 5 && (
           <>
@@ -387,21 +389,21 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
               type="button"
               onClick={() => api?.scrollPrev()}
               aria-label="Прокрутить миниатюры влево"
-              className="absolute top-1/2 left-1 z-10 -translate-y-1/2 rounded-full bg-background/85 p-1.5 shadow hover:bg-background"
+              className="absolute top-1/2 left-1.5 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/75 text-white shadow-md hover:bg-black"
             >
-              <ChevronLeft className="size-4" />
+              <ChevronLeft className="size-5" />
             </button>
             <button
               type="button"
               onClick={() => api?.scrollNext()}
               aria-label="Прокрутить миниатюры вправо"
-              className="absolute top-1/2 right-1 z-10 -translate-y-1/2 rounded-full bg-background/85 p-1.5 shadow hover:bg-background"
+              className="absolute top-1/2 right-1.5 z-20 flex size-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/75 text-white shadow-md hover:bg-black"
             >
-              <ChevronRight className="size-4" />
+              <ChevronRight className="size-5" />
             </button>
           </>
         )}
-      </Carousel>
+      </div>
 
       {/* Большой просмотр: и фото, и видео. Стрелки и закрытие работают для обоих */}
       {open && (
