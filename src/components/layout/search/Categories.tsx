@@ -5,7 +5,7 @@ import { getPayload } from 'payload'
 import { Suspense } from 'react'
 
 import { nonEmptyCategoryIds } from '@/utilities/categoryTree'
-import { CategoryTree } from './Categories.client'
+import { CategoryTree, type TreeCategory } from './Categories.client'
 
 async function CategoryList() {
   const requestHeaders = await getHeaders()
@@ -25,7 +25,16 @@ async function CategoryList() {
 
   // Прячем категории, в которых нет товаров (ни своих, ни в подкатегориях)
   const nonEmpty = await nonEmptyCategoryIds(payload, categories.docs)
-  const visible = categories.docs.filter((c) => nonEmpty.has(String(c.id)))
+
+  // Пустое название превращаем в пустую строку, чтобы не было ошибки типов
+  const visible: TreeCategory[] = categories.docs
+    .filter((c) => nonEmpty.has(String(c.id)))
+    .map((c) => ({
+      id: c.id,
+      slug: c.slug,
+      title: c.title ?? '',
+      parent: c.parent,
+    }))
 
   return (
     <div>

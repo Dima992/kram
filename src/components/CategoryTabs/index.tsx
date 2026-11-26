@@ -31,10 +31,11 @@ async function List() {
   const nonEmpty = await nonEmptyCategoryIds(payload, categoriesData.docs)
   const visible = categoriesData.docs.filter((c) => nonEmpty.has(String(c.id)))
 
+  // Пустое название превращаем в пустую строку, чтобы не было ошибки типов
   const categories = visible.map((category) => {
     return {
       href: `/shop/${category.slug}`,
-      title: category.title,
+      title: category.title ?? '',
     }
   })
 
