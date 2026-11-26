@@ -1,205 +1,295 @@
-import { adminLabel } from '@/utilities/adminLabel'
-import { getStoredRates } from '@/utilities/exchangeRates'
-import { calcCurrencyPrices, calcVariantPrices } from '@/utilities/prices'
-import type { CollectionOverride } from '@payloadcms/plugin-ecommerce/types'
-import type { CollectionBeforeChangeHook } from 'payload'
+import type { CollectionAfterChangeHook, Payload } from 'payload'
 
-// Кэш курсов на 10 минут: при создании 48 вариантов курс читается один раз
-let ratesCache: { at: number; rates: Awaited<ReturnType<typeof getStoredRates>> } | null = null
-const RATES_TTL_MS = 10 * 60 * 1000
+// Остаток по умолчанию для новых вариантов (существующие строки не меняем)
+export const DEFAULT_STOCK = 100
+const MAX_ROWS = 200
 
-const getRatesCached = async (payload: any) => {
-  if (ratesCache && Date.now() - ratesCache.at < RATES_TTL_MS) return ratesCache.rates
-  const rates = await getStoredRates(payload)
-  ratesCache = { at: Date.now(), rates }
-  return rates
-}
+type Stored = Record<string, string[]>
 
-// Кэш товаров на 30 секунд: все варианты одного товара берут его из памяти
-const PRODUCT_TTL_MS = 30 * 1000
-const productCache = new Map<string, { at: number; product: any }>()
+export type SyncResult =
+  | { status: 'skipped'; reason: string }
+  | { status: 'ok'; created: number; removed: number; kept: number; existing: number }
 
-const getProductCached = async (payload: any, id: string, req: any) => {
-  const hit = productCache.get(id)
-  if (hit && Date.now() - hit.at < PRODUCT_TTL_MS) return hit.product
-  const product = await payload.findByID({
-    collection: 'products',
-    id,
+// Все комбинации: [[a, b], [x, y]] → [[a, x], [a, y], [b, x], [b, y]]
+const cartesian = (lists: string[][]): string[][] =>
+  lists.reduce<string[][]>(
+    (acc, list) => acc.flatMap((prefix) => list.map((item) => [...prefix, item])),
+    [[]],
+  )
+
+const idOf = (value: unknown): string =>
+  typeof value === 'object' && value !== null ? String((value as { id: unknown }).id) : String(value)
+
+// Ключ комбинации: порядок значений не важен
+const keyOf = (ids: unknown[]): string => ids.map(idOf).sort().join('|')
+
+// Тип варианта для характеристики. Имя char-<id> стабильное, заголовок для покупателя — публичный
+async function ensureType(payload: Payload, ch: any): Promise<string> {
+  const name = `char-${ch.id}`
+  const label = ch.name_uk || ''
+  const found = await payload.find({
+    collection: 'variantTypes',
+    where: { name: { equals: name } },
+    limit: 1,
     depth: 0,
-    req,
+    overrideAccess: true,
   })
-  productCache.set(id, { at: Date.now(), product })
-  return product
-}
-
-function hidePluginPriceFields(fields: any[]): any[] {
-  return fields.map((field) => {
-    if (field.type === 'row' || field.type === 'group' || field.type === 'collapsible') {
-      return { ...field, fields: hidePluginPriceFields(field.fields) }
+  const existing: any = found.docs[0]
+  if (existing) {
+    if (existing.label !== label) {
+      await payload.update({
+        collection: 'variantTypes',
+        id: existing.id,
+        data: { label },
+        overrideAccess: true,
+      })
     }
-    if ('name' in field && typeof field.name === 'string' && field.name.startsWith('priceIn')) {
-      return { ...field, admin: { ...field.admin, hidden: true } }
-    }
-    return field
+    return String(existing.id)
+  }
+  const created = await payload.create({
+    collection: 'variantTypes',
+    data: { name, label },
+    overrideAccess: true,
   })
+  return String(created.id)
 }
 
-// Достаём id из связи (бывает либо id, либо объект с id)
-const idOf = (value: unknown): string | null => {
-  if (value === null || value === undefined || value === '') return null
-  if (typeof value === 'object') {
-    const id = (value as { id?: unknown }).id
-    return id === undefined || id === null ? null : String(id)
+// Подписи значения на двух языках. Поле label локализовано: укр и рус хранятся отдельно.
+// Если русской подписи нет, русский язык не заполняем: в фиде её не будет, украинского текста не появится
+async function saveOptionLabels(
+  payload: Payload,
+  id: string,
+  labelUK: string,
+  labelRU: string,
+): Promise<void> {
+  await payload.update({
+    collection: 'variantOptions',
+    id,
+    locale: 'uk',
+    data: { label: labelUK },
+    overrideAccess: true,
+  } as any)
+
+  if (labelRU) {
+    await payload.update({
+      collection: 'variantOptions',
+      id,
+      locale: 'ru',
+      data: { label: labelRU },
+      overrideAccess: true,
+    } as any)
   }
-  return String(value)
 }
 
-// Новые варианты сразу публикуются, а не остаются черновиками.
-// При редактировании существующих ничего не меняем.
-const publishNewVariant: CollectionBeforeChangeHook = ({ data, operation }) => {
-  if (operation === 'create' && data) {
-    ;(data as Record<string, any>)._status = 'published'
+// Значение внутри типа. Код v-<id значения> стабильный; подписи обновляются на обоих языках
+async function ensureOption(payload: Payload, typeId: string, v: any): Promise<string> {
+  const code = `v-${v.id}`
+  const labelUK = (v.label_uk || '').trim()
+  const labelRU = (v.label_ru || '').trim()
+
+  const found = await payload.find({
+    collection: 'variantOptions',
+    where: { and: [{ variantType: { equals: typeId } }, { value: { equals: code } }] },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const existing: any = found.docs[0]
+  if (existing) {
+    await saveOptionLabels(payload, String(existing.id), labelUK, labelRU)
+    return String(existing.id)
   }
-  return data
+
+  const created: any = await payload.create({
+    collection: 'variantOptions',
+    locale: 'uk',
+    data: { variantType: typeId, label: labelUK, value: code },
+    overrideAccess: true,
+  } as any)
+  await saveOptionLabels(payload, String(created.id), labelUK, labelRU)
+  return String(created.id)
 }
 
-// Считает цены варианта при каждом сохранении
-const fillVariantPrices: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
-  if (!data) return data
+// Оставляем только существующие значения характеристик.
+// Призрачные ID (значения, которые уже удалили) отбрасываем.
+const cleanAttributes = (
+  stored: Stored,
+  chars: any[],
+): { cleaned: Stored; charById: Map<string, any> } => {
+  const charById = new Map<string, any>()
+  const cleaned: Stored = {}
 
-  const current = data as Record<string, any>
-  const original = (originalDoc || {}) as Record<string, any>
+  for (const ch of chars) {
+    const charId = String(ch.id)
+    charById.set(charId, ch)
 
-  // Полные данные варианта: новые значения поверх старых
-  const merged = { ...original, ...current }
+    const validIds = new Set((ch.values ?? []).map((v: any) => String(v.id ?? '')))
+    const picked = [
+      ...new Set((Array.isArray(stored[charId]) ? stored[charId] : []).map(String)),
+    ].filter((valueId) => validIds.has(valueId))
 
-  // Товар нужен только если у варианта нет своей цены (берём из памяти, если недавно читали)
-  let product: any = null
-  const productId = idOf(merged.product)
-  if (productId && !(Number(merged.basePrice) > 0)) {
-    product = await getProductCached(req.payload, productId, req)
+    if (picked.length > 0) cleaned[charId] = picked
   }
 
-  // Курс берём из памяти (его обновляет крон)
-  const rates = await getRatesCached(req.payload)
-  const prices = calcVariantPrices({ item: merged, product, rates })
-
-  // Цены нет ни у варианта, ни у товара: строка без цены
-  if (!prices) {
-    current.regularPriceUAH = 0
-    current.priceInUAH = 0
-    current.priceInUSD = 0
-    current.priceInEUR = 0
-    current.priceInUAHEnabled = false
-    current.priceInUSDEnabled = false
-    current.priceInEUREnabled = false
-    return data
-  }
-
-  const converted = calcCurrencyPrices(prices.priceInUAH, rates)
-  current.regularPriceUAH = prices.regularPriceUAH
-  current.priceInUAH = converted.priceInUAH
-  current.priceInUSD = converted.priceInUSD
-  current.priceInEUR = converted.priceInEUR
-  current.priceInUAHEnabled = true
-  current.priceInUSDEnabled = true
-  current.priceInEUREnabled = true
-
-  return data
+  return { cleaned, charById }
 }
 
-export const VariantsCollection: CollectionOverride = ({ defaultCollection }) => ({
-  ...defaultCollection,
-  fields: [
-    ...hidePluginPriceFields(defaultCollection.fields),
-    {
-      name: 'basePrice',
-      type: 'number',
-      label: adminLabel('Ціна варіанта', 'Цена варианта'),
-      admin: {
-        position: 'sidebar',
-        description: adminLabel(
-          'Необов’язково. 0 або порожньо — використовується ціна товару.',
-          'Необязательно. Если указать 0 или оставить пустым, используется цена товара.',
-        ),
-      },
+// Одинаковы ли два набора выбранных значений (порядок ключей не важен)
+const sameAttributes = (a: Stored, b: Stored): boolean => {
+  const keysA = Object.keys(a)
+  if (keysA.length !== Object.keys(b).length) return false
+  return keysA.every((key) => JSON.stringify(a[key]) === JSON.stringify(b[key]))
+}
+
+export async function syncVariants(payload: Payload, productId: string): Promise<SyncResult> {
+  const product: any = await payload.findByID({
+    collection: 'products',
+    id: productId,
+    depth: 0,
+    draft: true,
+    overrideAccess: true,
+  })
+
+  const baseSku = typeof product.sku === 'string' ? product.sku.trim() : ''
+  if (!baseSku) {
+    return { status: 'skipped', reason: 'Спочатку заповніть артикул товару (наприклад SH-001)' }
+  }
+
+  // Выбранные значения из товара: { id характеристики: [id значений] }
+  const stored: Stored =
+    product.attributes && typeof product.attributes === 'object' ? product.attributes : {}
+
+  // Все характеристики, которые записаны в товаре
+  const storedIds = Object.keys(stored)
+  const chars: any[] = storedIds.length
+    ? (
+        await payload.find({
+          collection: 'characteristics',
+          where: { id: { in: storedIds } },
+          limit: 100,
+          depth: 0,
+          pagination: false,
+          overrideAccess: true,
+        })
+      ).docs
+    : []
+
+  // Очищаем список: только существующие характеристики и значения
+  const { cleaned, charById } = cleanAttributes(stored, chars)
+
+  // Вариант — только там, где после очистки выбрано два и больше значений
+  const variantChars = Object.keys(cleaned)
+    .filter((id) => cleaned[id].length > 1)
+    .map((id) => charById.get(id))
+    .filter((ch): ch is any => Boolean(ch))
+  variantChars.sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+
+  const groups: { typeId: string; options: string[] }[] = []
+  for (const ch of variantChars) {
+    const typeId = await ensureType(payload, ch)
+    const options: string[] = []
+    for (const v of ch.values ?? []) {
+      const valueId = String(v.id ?? '')
+      if (!valueId || !cleaned[String(ch.id)].includes(valueId)) continue
+      options.push(await ensureOption(payload, typeId, v))
+    }
+    groups.push({ typeId, options })
+  }
+
+  const combos = groups.length ? cartesian(groups.map((g) => g.options)) : []
+  if (combos.length > MAX_ROWS) {
+    return { status: 'skipped', reason: `Комбінацій забагато (${combos.length}). Максимум ${MAX_ROWS}` }
+  }
+
+  // Товар: записываем очищенные значения, а также типы вариантов.
+  // Это делаем ДО создания строк, иначе плагин отклонит строку.
+  // context.skipVariantSync не даёт этому сохранению запустить синхронизацию повторно
+  const attributesChanged = !sameAttributes(cleaned, stored)
+  await payload.update({
+    collection: 'products',
+    id: productId,
+    data: {
+      ...(attributesChanged ? { attributes: cleaned } : {}),
+      ...(groups.length
+        ? { enableVariants: true, variantTypes: groups.map((g) => g.typeId) }
+        : { enableVariants: false, variantTypes: [] }),
     },
-    {
-      name: 'baseCurrency',
-      type: 'select',
-      defaultValue: 'UAH',
-      label: adminLabel('Валюта ціни варіанта', 'Валюта цены варианта'),
-      options: [
-        { label: adminLabel('Гривня (UAH)', 'Гривна (UAH)'), value: 'UAH' },
-        { label: adminLabel('Долар (USD)', 'Доллар (USD)'), value: 'USD' },
-        { label: adminLabel('Євро (EUR)', 'Евро (EUR)'), value: 'EUR' },
-      ],
-      admin: {
-        position: 'sidebar',
-      },
-    },
-    {
-      name: 'regularPriceUAH',
-      type: 'number',
-      label: adminLabel('Звичайна ціна (грн)', 'Обычная цена (грн)'),
-      admin: {
-        position: 'sidebar',
-        readOnly: true,
-        description: adminLabel(
-          'Розраховується автоматично.',
-          'Рассчитывается автоматически.',
-        ),
-      },
-    },
-    {
-      name: 'salePriceUAH',
-      type: 'number',
-      label: adminLabel('Ціна зі знижкою (грн)', 'Цена со скидкой (грн)'),
-      admin: {
-        position: 'sidebar',
-        description: adminLabel(
-          'Для варіанта зі своєю ціною. Якщо своєї ціни немає, діє знижка товару.',
-          'Для варианта со своей ценой. Если своей цены нет, действует скидка товара.',
-        ),
-      },
-    },
-    {
-      name: 'saleStartsAt',
-      type: 'date',
-      label: adminLabel('Знижка з', 'Скидка с'),
-      admin: {
-        position: 'sidebar',
-        date: {
-          pickerAppearance: 'dayAndTime',
-        },
-      },
-    },
-    {
-      name: 'saleEndsAt',
-      type: 'date',
-      label: adminLabel('Знижка по', 'Скидка по'),
-      admin: {
-        position: 'sidebar',
-        date: {
-          pickerAppearance: 'dayAndTime',
-        },
-      },
-    },
-    {
-      name: 'sku',
-      type: 'text',
-      label: adminLabel('Артикул варіанта', 'Артикул варианта'),
-      admin: {
-        position: 'sidebar',
-      },
-    },
-  ],
-  hooks: {
-    ...defaultCollection.hooks,
-    beforeChange: [
-      ...(defaultCollection.hooks?.beforeChange || []),
-      publishNewVariant,
-      fillVariantPrices,
-    ],
-  },
-})
+    draft: product._status !== 'published',
+    context: { skipVariantSync: true },
+    overrideAccess: true,
+  })
+
+  // Уже существующие строки товара
+  const existing: any[] = (
+    await payload.find({
+      collection: 'variants',
+      where: { product: { equals: productId } },
+      limit: 1000,
+      depth: 0,
+      pagination: false,
+      draft: true,
+      overrideAccess: true,
+    })
+  ).docs
+
+  const prefix = `${baseSku}-`
+  const wanted = new Set(combos.map((c) => keyOf(c)))
+  const takenKeys = new Set<string>()
+  let last = 0
+  let removed = 0
+  const kept = 0
+
+  for (const d of existing) {
+    const sku = typeof d.sku === 'string' ? d.sku : ''
+    if (sku.startsWith(prefix)) {
+      const n = Number(sku.slice(prefix.length))
+      if (Number.isInteger(n) && n > last) last = n
+    }
+
+    const key = keyOf(d.options ?? [])
+    if (wanted.has(key) && !takenKeys.has(key)) {
+      takenKeys.add(key)
+      continue
+    }
+
+    // Строка больше не нужна: её комбинации нет в текущем наборе. Удаляем, даже если есть остаток
+    await payload.delete({ collection: 'variants', id: d.id, overrideAccess: true })
+    removed += 1
+  }
+
+  // Создаём только недостающие комбинации, с остатком по умолчанию.
+  // draft: false — строка сразу публикуется, а не остаётся черновиком
+  let created = 0
+  for (const combo of combos) {
+    if (takenKeys.has(keyOf(combo))) continue
+    last += 1
+    await payload.create({
+      collection: 'variants',
+      data: {
+        product: productId,
+        options: combo,
+        sku: `${baseSku}-${String(last).padStart(2, '0')}`,
+        inventory: DEFAULT_STOCK,
+      } as any,
+      draft: false,
+      overrideAccess: true,
+    })
+    created += 1
+  }
+
+  return { status: 'ok', created, removed, kept, existing: takenKeys.size }
+}
+
+// Хук товара: запускается при каждом сохранении (включая черновик)
+export const syncVariantsAfterSave: CollectionAfterChangeHook = async ({ doc, req, context }) => {
+  // Наше собственное сохранение товара не запускает синхронизацию снова
+  if ((context as Record<string, unknown> | undefined)?.skipVariantSync) return doc
+
+  try {
+    await syncVariants(req.payload, String(doc.id))
+  } catch (err) {
+    // Ошибку не показываем в админке при сохранении, а пишем в логи
+    req.payload.logger.error({ err, msg: 'Авто-синхронизация вариантов не выполнена' })
+  }
+  return doc
+}
