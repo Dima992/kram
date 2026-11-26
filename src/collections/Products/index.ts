@@ -742,6 +742,19 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
   },
 },
     {
+      name: 'hideFromShop',
+      type: 'checkbox',
+      defaultValue: false,
+      label: adminLabel('Приховати від покупця', 'Скрыть от покупателя'),
+      admin: {
+        position: 'sidebar',
+        description: adminLabel(
+          'Товар залишається в адмінці, але не показується на сайті.',
+          'Товар остаётся в админке, но не показывается на сайте.',
+        ),
+      },
+    },
+    {
       name: 'brand',
       type: 'text',
       label: adminLabel('Бренд для фідів', 'Бренд для фидов'),
