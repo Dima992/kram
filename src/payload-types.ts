@@ -460,6 +460,10 @@ export interface Product {
    */
   excludeFromFeed?: boolean | null;
   /**
+   * Товар залишається в адмінці, але не показується на сайті.
+   */
+  hideFromShop?: boolean | null;
+  /**
    * Бренд товару. Якщо поле порожнє, використовується бренд за замовчуванням у фіді.
    */
   brand?: string | null;
@@ -794,7 +798,7 @@ export interface ArchiveBlock {
  */
 export interface Category {
   id: string;
-  title: string;
+  title?: string | null;
   /**
    * Заповнюється сам при збереженні. Не редагуйте вручну.
    */
@@ -2432,6 +2436,7 @@ export interface ProductsSelect<T extends boolean = true> {
   decrementOnOrder?: T;
   internalNote?: T;
   excludeFromFeed?: T;
+  hideFromShop?: T;
   brand?: T;
   gtin?: T;
   mpn?: T;
