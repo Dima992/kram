@@ -193,6 +193,12 @@ const hideCurrencyFields = (fields: Field[]): Field[] =>
 
 export const ProductsCollection: CollectionOverride = ({ defaultCollection }) => ({
   ...defaultCollection,
+  // Черновики включены, в истории храним 2 версии
+  versions: {
+    ...defaultCollection?.versions,
+    drafts: true,
+    maxPerDoc: 2,
+  },
   labels: {
     singular: adminLabel('Товар', 'Товар'),
     plural: adminLabel('Товари', 'Товары'),
@@ -723,6 +729,19 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
         ),
       },
     },
+    {
+  name: 'hideFromShop',
+  type: 'checkbox',
+  defaultValue: false,
+  label: adminLabel('Приховати від покупця', 'Скрыть от покупателя'),
+  admin: {
+    position: 'sidebar',
+    description: adminLabel(
+      'Товар залишається в адмінці, але не показується на сайті.',
+      'Товар остаётся в админке, но не показывается на сайте.',
+    ),
+  },
+},
     {
       name: 'brand',
       type: 'text',

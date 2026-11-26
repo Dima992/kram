@@ -1,7 +1,7 @@
-import type { MetadataRoute } from 'next'
-
-import configPromise from '@payload-config'
 import { getServerSideURL } from '@/utilities/getURL'
+import { visibleProductConditions } from '@/utilities/productVisibility'
+import configPromise from '@payload-config'
+import type { MetadataRoute } from 'next'
 import { getPayload } from 'payload'
 
 export const revalidate = 3600
@@ -16,7 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       overrideAccess: false,
       pagination: false,
       select: { slug: true, updatedAt: true },
-      where: { _status: { equals: 'published' } },
+      where: { and: visibleProductConditions },
     }),
     payload.find({
       collection: 'products',

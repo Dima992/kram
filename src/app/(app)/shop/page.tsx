@@ -1,10 +1,10 @@
 import { Grid } from '@/components/Grid'
 import { ProductGridItem } from '@/components/ProductGridItem'
+import { visibleProductConditions } from '@/utilities/productVisibility'
 import configPromise from '@payload-config'
-import { headers } from 'next/headers'
 import { unstable_cache } from 'next/cache'
+import { headers } from 'next/headers'
 import { getPayload } from 'payload'
-import React from 'react'
 
 export const revalidate = 3600
 
@@ -40,11 +40,7 @@ const getShopProducts = unstable_cache(
         ? {
             where: {
               and: [
-                {
-                  _status: {
-                    equals: 'published',
-                  },
-                },
+                ...visibleProductConditions,
                 ...(searchValue
                   ? [
                       {
