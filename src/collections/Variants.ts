@@ -4,6 +4,34 @@ import { calcCurrencyPrices, calcVariantPrices } from '@/utilities/prices'
 import type { CollectionOverride } from '@payloadcms/plugin-ecommerce/types'
 import type { CollectionBeforeChangeHook } from 'payload'
 
+// Кэш курсов на 10 минут: при создании 48 вариантов курс читается один раз
+let ratesCache: { at: number; rates: Awaited<ReturnType<typeof getStoredRates>> } | null = null
+const RATES_TTL_MS = 10 * 60 * 1000
+
+const getRatesCached = async (payload: any) => {
+  if (ratesCache && Date.now() - ratesCache.at < RATES_TTL_MS) return ratesCache.rates
+  const rates = await getStoredRates(payload)
+  ratesCache = { at: Date.now(), rates }
+  return rates
+}
+
+// Кэш товаров на 30 секунд: все варианты одного товара берут его из памяти
+const PRODUCT_TTL_MS = 30 * 1000
+const productCache = new Map<string, { at: number; product: any }>()
+
+const getProductCached = async (payload: any, id: string, req: any) => {
+  const hit = productCache.get(id)
+  if (hit && Date.now() - hit.at < PRODUCT_TTL_MS) return hit.product
+  const product = await payload.findByID({
+    collection: 'products',
+    id,
+    depth: 0,
+    req,
+  })
+  productCache.set(id, { at: Date.now(), product })
+  return product
+}
+
 function hidePluginPriceFields(fields: any[]): any[] {
   return fields.map((field) => {
     if (field.type === 'row' || field.type === 'group' || field.type === 'collapsible') {
@@ -36,20 +64,15 @@ const fillVariantPrices: CollectionBeforeChangeHook = async ({ data, originalDoc
   // Полные данные варианта: новые значения поверх старых
   const merged = { ...original, ...current }
 
-  // Товар нужен только если у варианта нет своей цены
+  // Товар нужен только если у варианта нет своей цены (берём из памяти, если недавно читали)
   let product: any = null
   const productId = idOf(merged.product)
   if (productId && !(Number(merged.basePrice) > 0)) {
-    product = await req.payload.findByID({
-      collection: 'products',
-      id: productId,
-      depth: 0,
-      req,
-    })
+    product = await getProductCached(req.payload, productId, req)
   }
 
-  // Курс берём из сохранённого хранилища (его обновляет крон)
-  const rates = await getStoredRates(req.payload)
+  // Курс берём из памяти (его обновляет крон)
+  const rates = await getRatesCached(req.payload)
   const prices = calcVariantPrices({ item: merged, product, rates })
 
   // Цены нет ни у варианта, ни у товара: строка без цены
