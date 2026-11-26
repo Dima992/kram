@@ -317,7 +317,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
             aria-label="Открыть фото крупно"
           >
             {currentImage ? (
-               <Media
+              <Media
                 priority={current === 0}
                 resource={currentImage}
                 imageSize="thumbnail"
@@ -353,7 +353,7 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
       </div>
 
       {/* Ряд миниатюр: выбранная всегда видна */}
-      <Carousel setApi={setApi} className="w-full" opts={{ align: 'start', loop: false }}>
+      <Carousel setApi={setApi} className="relative w-full" opts={{ align: 'start', loop: false }}>
         <CarouselContent>
           {gallery.map((item, i) => {
             const image =
@@ -380,6 +380,27 @@ export const Gallery: React.FC<Props> = ({ gallery }) => {
             )
           })}
         </CarouselContent>
+
+        {total > 5 && (
+          <>
+            <button
+              type="button"
+              onClick={() => api?.scrollPrev()}
+              aria-label="Прокрутить миниатюры влево"
+              className="absolute top-1/2 left-1 z-10 -translate-y-1/2 rounded-full bg-background/85 p-1.5 shadow hover:bg-background"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => api?.scrollNext()}
+              aria-label="Прокрутить миниатюры вправо"
+              className="absolute top-1/2 right-1 z-10 -translate-y-1/2 rounded-full bg-background/85 p-1.5 shadow hover:bg-background"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </>
+        )}
       </Carousel>
 
       {/* Большой просмотр: и фото, и видео. Стрелки и закрытие работают для обоих */}
