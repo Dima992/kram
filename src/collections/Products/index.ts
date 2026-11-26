@@ -30,6 +30,17 @@ import { autoGenerateAlt } from './hooks/autoGenerateAlt'
 
 const SITE_NAME = 'Крамниця'
 
+// Курсы держим в памяти 10 минут: не читаем базу при каждом сохранении
+let ratesCache: { at: number; rates: Awaited<ReturnType<typeof getStoredRates>> } | null = null
+const RATES_TTL_MS = 10 * 60 * 1000
+
+const getRatesCached = async (payload: any) => {
+  if (ratesCache && Date.now() - ratesCache.at < RATES_TTL_MS) return ratesCache.rates
+  const rates = await getStoredRates(payload)
+  ratesCache = { at: Date.now(), rates }
+  return rates
+}
+
 // Обрезает текст по последнему целому слову
 const cleanText = (text: string, max: number): string => {
   const clean = text.replace(/\s+/g, ' ').trim()
@@ -119,7 +130,7 @@ const applyPrices = async ({ data, req }: { data: any; req: any }) => {
 
   // Курс нужен только для USD и EUR, для гривен его не читаем
   const currency = data.baseCurrency || 'UAH'
-  const rates = currency === 'UAH' ? { USD: 0, EUR: 0 } : await getStoredRates(req.payload)
+  const rates = currency === 'UAH' ? { USD: 0, EUR: 0 } : await getRatesCached(req.payload)
 
   const prices = calcPrices(data, rates)
   data.regularPriceUAH = prices.regularPriceUAH
@@ -128,9 +139,31 @@ const applyPrices = async ({ data, req }: { data: any; req: any }) => {
   return data
 }
 
+// Поля, от которых зависят цены вариантов
+const PRICE_FIELDS = ['basePrice', 'baseCurrency', 'salePriceUAH', 'saleStartsAt', 'saleEndsAt']
+
+// Меняли ли что-то из цен
+const pricesChanged = (doc: any, previousDoc?: any) => {
+  if (!previousDoc) return true
+  return PRICE_FIELDS.some(
+    (field) => JSON.stringify(doc[field] ?? null) !== JSON.stringify(previousDoc[field] ?? null),
+  )
+}
+
 // После сохранения товара пересчитываем варианты без своей цены: они берут цену товара
-const syncVariantPrices = async ({ doc, req }: { doc: any; req: any }) => {
+const syncVariantPrices = async ({
+  doc,
+  previousDoc,
+  req,
+}: {
+  doc: any
+  previousDoc?: any
+  req: any
+}) => {
   if (!doc?.id) return doc
+
+  // Цены не менялись: варианты пересчитывать не нужно
+  if (!pricesChanged(doc, previousDoc)) return doc
 
   try {
     const { docs: variants } = await req.payload.find({
@@ -875,8 +908,8 @@ export const ProductsCollection: CollectionOverride = ({ defaultCollection }) =>
         return doc
       },
 
-      // Варианты без своей цены: пересчитываем после сохранения товара
-      ({ doc, req }) => syncVariantPrices({ doc, req }),
+      // Варианты без своей цены: пересчитываем, только если поменялась цена
+      ({ doc, previousDoc, req }) => syncVariantPrices({ doc, previousDoc, req }),
 
       // Альты фото: после сохранения, на двух языках
       autoGenerateAlt,
