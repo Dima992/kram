@@ -24,7 +24,7 @@ import { YouTube } from '@/blocks/YouTube/config'
 import { adminLabel } from '@/utilities/adminLabel'
 import { getStoredRates } from '@/utilities/exchangeRates'
 import { generatePreviewPath } from '@/utilities/generatePreviewPath'
-import { calcPrices } from '@/utilities/prices'
+import { calcCurrencyPrices, calcPrices, calcVariantPrices } from '@/utilities/prices'
 import { transliterate } from '@/utilities/transliterate'
 import { autoGenerateAlt } from './hooks/autoGenerateAlt'
 
@@ -170,7 +170,8 @@ const pricesChanged = (doc: any, previousDoc?: any) => {
   )
 }
 
-// После сохранения товара пересчитываем варианты без своей цены: они берут цену товара
+// После сохранения товара пересчитываем цены вариантов без своей цены.
+// Пишем только те варианты, у которых цена реально изменилась, и не пересчитываем их в хуке.
 const syncVariantPrices = async ({
   doc,
   previousDoc,
@@ -182,10 +183,12 @@ const syncVariantPrices = async ({
 }) => {
   if (!doc?.id) return doc
 
-  // Цены не менялись: варианты пересчитывать не нужно
+  // Цены не менялись: варианты не трогаем
   if (!pricesChanged(doc, previousDoc)) return doc
 
   try {
+    const rates = await getRatesCached(req.payload)
+
     const { docs: variants } = await req.payload.find({
       collection: 'variants',
       where: { product: { equals: doc.id } },
@@ -199,11 +202,33 @@ const syncVariantPrices = async ({
       // Варианты со своей ценой не трогаем
       if (Number(variant.basePrice) > 0) continue
 
+      const prices = calcVariantPrices({ item: variant, product: doc, rates })
+      if (!prices) continue
+
+      const converted = calcCurrencyPrices(prices.priceInUAH, rates)
+
+      // Если цены уже правильные, запись не нужна
+      const unchanged =
+        Number(variant.regularPriceUAH) === prices.regularPriceUAH &&
+        Number(variant.priceInUAH) === converted.priceInUAH &&
+        Number(variant.priceInUSD) === converted.priceInUSD &&
+        Number(variant.priceInEUR) === converted.priceInEUR
+      if (unchanged) continue
+
       await req.payload.update({
         collection: 'variants',
         id: variant.id,
-        data: { product: doc.id },
-        context: { disableRevalidate: true },
+        data: {
+          regularPriceUAH: prices.regularPriceUAH,
+          priceInUAH: converted.priceInUAH,
+          priceInUSD: converted.priceInUSD,
+          priceInEUR: converted.priceInEUR,
+          priceInUAHEnabled: true,
+          priceInUSDEnabled: true,
+          priceInEUREnabled: true,
+        },
+        // Цены уже посчитаны выше: хук варианта их не пересчитывает
+        context: { disableRevalidate: true, skipVariantPrice: true },
         req,
       })
     }

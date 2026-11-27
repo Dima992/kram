@@ -54,9 +54,25 @@ const idOf = (value: unknown): string | null => {
   return String(value)
 }
 
-// Считает цены варианта при каждом сохранении
-const fillVariantPrices: CollectionBeforeChangeHook = async ({ data, originalDoc, req }) => {
+// Новые варианты сразу публикуются, а не остаются черновиками.
+// При редактировании существующих ничего не меняем.
+const publishNewVariant: CollectionBeforeChangeHook = ({ data, operation }) => {
+  if (operation === 'create' && data) {
+    ;(data as Record<string, any>)._status = 'published'
+  }
+  return data
+}
+
+// Считает цены варианта при сохранении.
+// Если цены уже посчитаны синхронизацией товара (флаг skipVariantPrice), ничего не делаем.
+const fillVariantPrices: CollectionBeforeChangeHook = async ({
+  data,
+  originalDoc,
+  req,
+  context,
+}) => {
   if (!data) return data
+  if ((context as Record<string, unknown> | undefined)?.skipVariantPrice) return data
 
   const current = data as Record<string, any>
   const original = (originalDoc || {}) as Record<string, any>
@@ -187,6 +203,10 @@ export const VariantsCollection: CollectionOverride = ({ defaultCollection }) =>
   ],
   hooks: {
     ...defaultCollection.hooks,
-    beforeChange: [...(defaultCollection.hooks?.beforeChange || []), fillVariantPrices],
+    beforeChange: [
+      ...(defaultCollection.hooks?.beforeChange || []),
+      publishNewVariant,
+      fillVariantPrices,
+    ],
   },
 })
