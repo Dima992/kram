@@ -368,7 +368,53 @@ const findProductBySlug = async (slug: string, draft: boolean, locale: Locale) =
     },
   })
 
-  return result.docs?.[0] || null
+  const product: any = result.docs?.[0]
+  if (!product) return null
+
+  // Все значения характеристик товара одним запросом. Payload по умолчанию отдаёт
+  // только первые 10 значений каждого типа, поэтому часть цветов терялась
+  const typeIDs = (product.variantTypes ?? [])
+    .map((t: any) => (t && typeof t === 'object' ? String(t.id) : String(t ?? '')))
+    .filter(Boolean)
+
+  if (typeIDs.length === 0) return product
+
+  const optionsResult = await payload.find({
+    collection: 'variantOptions',
+    where: { variantType: { in: typeIDs } },
+    limit: 1000,
+    pagination: false,
+    depth: 0,
+    locale,
+  })
+
+  // Группируем значения по типу
+  const byType = new Map<string, any[]>()
+  for (const option of optionsResult.docs as any[]) {
+    const rawType = option.variantType
+    const typeID =
+      rawType && typeof rawType === 'object' ? String(rawType.id) : String(rawType ?? '')
+    byType.set(typeID, [...(byType.get(typeID) ?? []), option])
+  }
+
+  // Подставляем полный список значений в каждый тип товара
+  product.variantTypes = (product.variantTypes ?? []).map((t: any) => {
+    if (!t || typeof t !== 'object') return t
+    const docs = byType.get(String(t.id)) ?? []
+    return {
+      ...t,
+      options: {
+        docs,
+        hasNextPage: false,
+        totalDocs: docs.length,
+        limit: docs.length,
+        page: 1,
+        totalPages: 1,
+      },
+    }
+  })
+
+  return product
 }
 
 // Кэш отдельно для каждого языка: slug и locale попадают в ключ кэша
