@@ -11,5 +11,9 @@ export function FooterHeading({ kind }: { kind: keyof typeof titles }) {
   const pathname = usePathname()
   const locale = pathname === '/ru' || pathname.startsWith('/ru/') ? 'ru' : 'uk'
 
-  return <h3 className="font-semibold text-black dark:text-white">{titles[kind][locale]}</h3>
+  return (
+    <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-black dark:text-white">
+      {titles[kind][locale]}
+    </h2>
+  )
 }

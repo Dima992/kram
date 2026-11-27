@@ -173,15 +173,18 @@ export async function Footer() {
   return (
     <footer className="text-sm text-neutral-500 dark:text-neutral-400">
       <div className="container">
-        <div className="flex w-full flex-col gap-8 border-t border-neutral-200 py-12 text-sm md:flex-row md:gap-12 dark:border-neutral-700">
-          <div className="flex flex-col gap-4">
-            <Link className="flex items-center gap-2 text-black md:pt-1 dark:text-white" href="/">
-              <LogoIcon className="w-6" />
+        {/* Колонки: на телефоне одна под другой, на ПК рядом и выровнены по верху */}
+        <div className="grid grid-cols-1 gap-10 border-t border-neutral-200 py-12 md:grid-cols-3 md:gap-12 dark:border-neutral-700">
+          {/* Колонка 1: логотип и соцсети */}
+          <div className="flex flex-col gap-6">
+            <Link className="inline-flex text-black dark:text-white" href="/">
+              <LogoIcon className="w-8" />
               <span className="sr-only">{siteSettings.siteName || ''}</span>
             </Link>
-                        {socials.length > 0 && (
+
+            {socials.length > 0 && (
               <ul className="flex flex-col gap-3">
-    {socials.map((item) => {
+                {socials.map((item) => {
                   const label =
                     item.platform === 'other' && item.customName
                       ? item.customName
@@ -192,12 +195,12 @@ export async function Footer() {
                         href={item.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group flex items-center gap-3 text-black transition hover:underline dark:text-white"
+                        className="group flex items-center gap-3 text-black transition dark:text-white"
                       >
                         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 transition group-hover:bg-neutral-200 dark:bg-neutral-800 dark:group-hover:bg-neutral-700">
                           {socialIcons[item.platform] ?? socialIcons.other}
                         </span>
-                        <span>{label}</span>
+                        <span className="group-hover:underline">{label}</span>
                       </a>
                     </li>
                   )
@@ -206,14 +209,13 @@ export async function Footer() {
             )}
           </div>
 
+          {/* Колонка 2: меню магазина */}
           {menu.length > 0 && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
               <FooterHeading kind="info" />
               <Suspense
                 fallback={
-                  <div className="flex h-[188px] w-[200px] flex-col gap-2">
-                    <div className={skeleton} />
-                    <div className={skeleton} />
+                  <div className="flex flex-col gap-2">
                     <div className={skeleton} />
                     <div className={skeleton} />
                     <div className={skeleton} />
@@ -221,49 +223,59 @@ export async function Footer() {
                   </div>
                 }
               >
-              <FooterMenu menuUk={menu} menuRu={menuRu} />
+                <FooterMenu menuUk={menu} menuRu={menuRu} />
               </Suspense>
             </div>
           )}
 
+          {/* Колонка 3: контакты */}
           {hasContacts && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
               <FooterHeading kind="contacts" />
-              {phones.map((p) => (
-                <a
-                  key={p.id || p.number}
-                  href={`tel:${p.number.replace(/[^\d+]/g, '')}`}
-                  className="text-black transition hover:underline dark:text-white"
-                >
-                  {p.label ? `${p.label}: ` : ''}
-                  {p.number}
-                </a>
-              ))}
-              {emails.map((e) => (
-                <a
-                  key={e.id || e.email}
-                  href={`mailto:${e.email}`}
-                  className="break-all text-black transition hover:underline dark:text-white"
-                >
-                  {e.email}
-                </a>
-              ))}
-              {contacts.address && <p>{contacts.address}</p>}
-              {others.map((o) => (
-                <p key={o.id || o.label}>
-                  <span className="text-black dark:text-white">{o.label}:</span> {o.value}
-                </p>
-              ))}
+
+              <div className="flex flex-col gap-2">
+                {phones.map((p) => (
+                  <a
+                    key={p.id || p.number}
+                    href={`tel:${p.number.replace(/[^\d+]/g, '')}`}
+                    className="text-black transition hover:underline dark:text-white"
+                  >
+                    {p.label ? `${p.label}: ` : ''}
+                    {p.number}
+                  </a>
+                ))}
+                {emails.map((e) => (
+                  <a
+                    key={e.id || e.email}
+                    href={`mailto:${e.email}`}
+                    className="break-all text-black transition hover:underline dark:text-white"
+                  >
+                    {e.email}
+                  </a>
+                ))}
+                {contacts.address && <p className="leading-relaxed">{contacts.address}</p>}
+                {others.map((o) => (
+                  <p key={o.id || o.label} className="leading-relaxed">
+                    <span className="text-black dark:text-white">{o.label}:</span> {o.value}
+                  </p>
+                ))}
+              </div>
             </div>
           )}
+        </div>
 
-          <div className="md:ml-auto flex flex-col gap-4 items-end">
+        {/* Строка с переключателями языка и темы: на ПК справа, на телефоне слева */}
+        <div className="flex items-center justify-between gap-4 border-t border-neutral-200 py-6 dark:border-neutral-700">
+          <div className="flex items-center gap-3">
             <LanguageSwitcher />
+          </div>
+          <div className="flex items-center gap-3">
             <ThemeSelector />
           </div>
         </div>
       </div>
 
+      {/* Способы оплаты */}
       {payments.length > 0 && (
         <div className="border-t border-neutral-200 py-6 dark:border-neutral-700">
           <ul className="container flex flex-wrap items-center justify-center gap-3">
@@ -286,8 +298,9 @@ export async function Footer() {
         </div>
       )}
 
-      <div className="border-t border-neutral-200 py-6 text-sm dark:border-neutral-700">
-        <div className="container mx-auto flex w-full flex-col items-center gap-1 md:flex-row md:gap-0">
+      {/* Копирайт */}
+      <div className="border-t border-neutral-200 py-6 text-center text-xs dark:border-neutral-700">
+        <div className="container">
           <p>
             &copy; {copyrightDate} {copyrightName}
           </p>
