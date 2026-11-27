@@ -132,7 +132,9 @@ export function VariantSelector({ product }: { product: Product }) {
 
         return (
           <dl key={type.id}>
-            <dt className="mb-3 text-sm font-medium text-neutral-900">{type.label}</dt>
+            <dt className="mb-3 text-sm font-medium text-neutral-900 dark:text-neutral-100">
+              {type.label}
+            </dt>
             <dd className="flex flex-wrap gap-2">
               {options.map((option) => {
                 const optionID = String(option.id)
@@ -174,31 +176,31 @@ export function VariantSelector({ product }: { product: Product }) {
 
                 const photo = withPhotos ? photoForOption(product, optionID) : null
 
-                // Миниатюра: фото, если есть, иначе квадрат с подписью
-                return (
-                  <button
-                    type="button"
-                    key={optionID}
-                    aria-pressed={isActive}
-                    disabled={!isAvailableForSale}
-                    title={isAvailableForSale ? label : `${label} — немає в наявності`}
-                    onClick={onSelect}
-                    className={clsx('flex w-16 flex-col items-center gap-1 text-xs', {
-                      'cursor-not-allowed': !isAvailableForSale,
-                    })}
-                  >
-                    <span
-                      className={clsx(
-                        'relative block size-16 overflow-hidden rounded-md border-2 transition-colors',
-                        {
-                          'border-[#0b7a78]': isActive,
-                          'border-neutral-300 hover:border-[#0b7a78]':
-                            isAvailableForSale && !isActive,
-                          'border-neutral-200': !isAvailableForSale,
-                        },
-                      )}
+                // Значение с фото: миниатюра и подпись под ней
+                if (photo?.url) {
+                  return (
+                    <button
+                      type="button"
+                      key={optionID}
+                      aria-pressed={isActive}
+                      disabled={!isAvailableForSale}
+                      title={isAvailableForSale ? label : `${label} — немає в наявності`}
+                      onClick={onSelect}
+                      className={clsx('flex w-16 flex-col items-center gap-1 text-xs', {
+                        'cursor-not-allowed': !isAvailableForSale,
+                      })}
                     >
-                      {photo?.url ? (
+                      <span
+                        className={clsx(
+                          'relative block size-16 overflow-hidden rounded-md border-2 transition-colors',
+                          {
+                            'border-[#0b7a78]': isActive,
+                            'border-neutral-300 hover:border-[#0b7a78] dark:border-neutral-600':
+                              isAvailableForSale && !isActive,
+                            'border-neutral-200 dark:border-neutral-700': !isAvailableForSale,
+                          },
+                        )}
+                      >
                         <Image
                           src={photo.url}
                           alt={photo.alt || label}
@@ -208,26 +210,45 @@ export function VariantSelector({ product }: { product: Product }) {
                             'opacity-40 grayscale': !isAvailableForSale,
                           })}
                         />
-                      ) : (
-                        // Нет фото: пустой квадрат со светлым фоном
-                        <span
-                          className={clsx('block h-full w-full', {
-                            'bg-neutral-100': isAvailableForSale,
-                            'bg-neutral-200': !isAvailableForSale,
-                          })}
-                        />
-                      )}
-                      {!isAvailableForSale && <OutOfStockCross />}
-                    </span>
-                    <span
-                      className={clsx('text-center leading-tight', {
-                        'font-semibold text-[#0b7a78]': isActive,
-                        'text-neutral-900': isAvailableForSale && !isActive,
-                        'text-neutral-400 line-through': !isAvailableForSale,
-                      })}
-                    >
+                        {!isAvailableForSale && <OutOfStockCross />}
+                      </span>
+                      <span
+                        className={clsx('text-center leading-tight', {
+                          'font-semibold text-[#0b7a78] dark:text-[#5fd0cc]': isActive,
+                          'text-neutral-900 dark:text-neutral-100': isAvailableForSale && !isActive,
+                          'text-neutral-400 line-through dark:text-neutral-500': !isAvailableForSale,
+                        })}
+                      >
+                        {label}
+                      </span>
+                    </button>
+                  )
+                }
+
+                // Значение без фото: квадрат с текстом внутри (например, размер «46»)
+                return (
+                  <button
+                    type="button"
+                    key={optionID}
+                    aria-pressed={isActive}
+                    disabled={!isAvailableForSale}
+                    title={isAvailableForSale ? label : `${label} — немає в наявності`}
+                    onClick={onSelect}
+                    className={clsx(
+                      'relative block size-16 overflow-hidden rounded-md border-2 text-sm font-semibold transition-colors',
+                      {
+                        'border-[#0b7a78] bg-[#0b7a78] text-white shadow-sm': isActive,
+                        'border-neutral-300 bg-white text-neutral-900 hover:border-[#0b7a78] hover:text-[#0b7a78] dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100 dark:hover:text-[#5fd0cc]':
+                          isAvailableForSale && !isActive,
+                        'cursor-not-allowed border-neutral-200 bg-neutral-100 text-neutral-400 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-500':
+                          !isAvailableForSale,
+                      },
+                    )}
+                  >
+                    <span className="flex size-full items-center justify-center p-1 text-center leading-tight break-words">
                       {label}
                     </span>
+                    {!isAvailableForSale && <OutOfStockCross />}
                   </button>
                 )
               })}
