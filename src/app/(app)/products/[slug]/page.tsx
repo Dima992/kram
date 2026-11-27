@@ -6,7 +6,7 @@ import { ProductDescription } from '@/components/product/ProductDescription'
 import { SizeChart } from '@/components/product/SizeChart'
 import { StickyBuyBar } from '@/components/product/StickyBuyBar'
 import { Button } from '@/components/ui/button'
-import type { Media, Product } from '@/payload-types'
+import type { Media, Product, VariantOption } from '@/payload-types'
 import configPromise from '@payload-config'
 import { ChevronLeftIcon } from 'lucide-react'
 import { Metadata } from 'next'
@@ -368,13 +368,13 @@ const findProductBySlug = async (slug: string, draft: boolean, locale: Locale) =
     },
   })
 
-  const product: any = result.docs?.[0]
+  const product = result.docs?.[0] as Product | undefined
   if (!product) return null
 
   // Все значения характеристик товара одним запросом. Payload по умолчанию отдаёт
   // только первые 10 значений каждого типа, поэтому часть цветов терялась
   const typeIDs = (product.variantTypes ?? [])
-    .map((t: any) => (t && typeof t === 'object' ? String(t.id) : String(t ?? '')))
+    .map((t) => (t && typeof t === 'object' ? String(t.id) : String(t ?? '')))
     .filter(Boolean)
 
   if (typeIDs.length === 0) return product
@@ -389,8 +389,8 @@ const findProductBySlug = async (slug: string, draft: boolean, locale: Locale) =
   })
 
   // Группируем значения по типу
-  const byType = new Map<string, any[]>()
-  for (const option of optionsResult.docs as any[]) {
+  const byType = new Map<string, VariantOption[]>()
+  for (const option of optionsResult.docs) {
     const rawType = option.variantType
     const typeID =
       rawType && typeof rawType === 'object' ? String(rawType.id) : String(rawType ?? '')
@@ -398,7 +398,7 @@ const findProductBySlug = async (slug: string, draft: boolean, locale: Locale) =
   }
 
   // Подставляем полный список значений в каждый тип товара
-  product.variantTypes = (product.variantTypes ?? []).map((t: any) => {
+  const variantTypes = (product.variantTypes ?? []).map((t) => {
     if (!t || typeof t !== 'object') return t
     const docs = byType.get(String(t.id)) ?? []
     return {
@@ -414,7 +414,7 @@ const findProductBySlug = async (slug: string, draft: boolean, locale: Locale) =
     }
   })
 
-  return product
+  return { ...product, variantTypes } as unknown as Product
 }
 
 // Кэш отдельно для каждого языка: slug и locale попадают в ключ кэша

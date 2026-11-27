@@ -92,31 +92,51 @@ const fillEmptySeo = ({ data }: { data: any }) => {
   return data
 }
 
+// Id варианта из строки галереи (бывает либо сам id, либо объект с id)
+const variantOptionIdOf = (value: unknown): string | null => {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'object') {
+    const id = (value as { id?: unknown }).id
+    return id === undefined || id === null ? null : String(id)
+  }
+  return String(value)
+}
+
 // Сохраняет название выбранного варианта в каждую строку галереи.
-// Подпись строки в админке берёт это поле, поэтому не нужно загружать вариант отдельно.
+// Все значения читаем ОДНИМ запросом, а не по одному на каждую строку галереи.
 const fillVariantLabels = async ({ data, req }: { data: any; req: any }) => {
   if (!data || !Array.isArray(data.gallery)) return data
 
-  for (const row of data.gallery as any[]) {
-    const optionId =
-      row?.variantOption && typeof row.variantOption === 'object'
-        ? row.variantOption.id
-        : row?.variantOption
+  const ids = [
+    ...new Set(
+      (data.gallery as any[])
+        .map((row) => variantOptionIdOf(row?.variantOption))
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ]
 
-    row.variantLabel = ''
-    if (!optionId) continue
-
+  const labels = new Map<string, string>()
+  if (ids.length > 0) {
     try {
-      const option: any = await req.payload.findByID({
+      const { docs } = await req.payload.find({
         collection: 'variantOptions',
-        id: optionId,
+        where: { id: { in: ids } },
+        limit: ids.length,
+        pagination: false,
         depth: 0,
         req,
       })
-      row.variantLabel = option?.label ?? ''
+      for (const option of docs as any[]) {
+        labels.set(String(option.id), option.label ?? '')
+      }
     } catch {
-      // Вариант не нашли: подпись будет «Загальне»
+      // Значения не прочитались: подписи будут пустыми, сохранение не ломаем
     }
+  }
+
+  for (const row of data.gallery as any[]) {
+    const id = variantOptionIdOf(row?.variantOption)
+    row.variantLabel = id ? labels.get(id) ?? '' : ''
   }
 
   return data
