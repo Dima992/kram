@@ -36,28 +36,31 @@ function daysWord(count: number, locale: 'uk' | 'ru'): string {
   return 'дней'
 }
 
+// Достаём id из связи. Пустые записи (null) не читаем
+const idOf = (value: unknown): string | null => {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'object') {
+    const id = (value as { id?: unknown }).id
+    return id === undefined || id === null ? null : String(id)
+  }
+  return String(value)
+}
+
 export const StockIndicator: React.FC<Props> = ({ product }) => {
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const locale = pathname.startsWith('/ru') ? 'ru' : 'uk'
 
-  const variants = product.variants?.docs || []
+  // Убираем пустые записи (null), чтобы не читать их свойства
+  const variants = (product.variants?.docs ?? []).filter(
+    (variant): variant is Variant => typeof variant === 'object' && variant !== null,
+  )
 
   const selectedVariant = useMemo<Variant | undefined>(() => {
     if (product.enableVariants && variants.length) {
       const variantId = searchParams.get('variant')
-      const validVariant = variants.find((variant) => {
-        if (typeof variant === 'object') {
-          return String(variant.id) === variantId
-        }
-        return String(variant) === variantId
-      })
-
-      if (validVariant && typeof validVariant === 'object') {
-        return validVariant
-      }
+      return variants.find((variant) => idOf(variant) === variantId)
     }
-
     return undefined
   }, [product.enableVariants, searchParams, variants])
 

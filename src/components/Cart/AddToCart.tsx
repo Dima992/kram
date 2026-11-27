@@ -25,30 +25,32 @@ const text = {
   },
 }
 
+// Достаём id из связи. Пустые записи (null) возвращаем как null и не читаем их
+const idOf = (value: unknown): string | null => {
+  if (value === null || value === undefined || value === '') return null
+  if (typeof value === 'object') {
+    const id = (value as { id?: unknown }).id
+    return id === undefined || id === null ? null : String(id)
+  }
+  return String(value)
+}
+
 export function AddToCart({ product, quantity = 1 }: Props) {
   const { addItem, cart, isLoading } = useCart()
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const locale = pathname.startsWith('/ru') ? 'ru' : 'uk'
 
-  const variants = product.variants?.docs || []
+  // Убираем пустые записи (null), чтобы не читать их свойства
+  const variants = (product.variants?.docs ?? []).filter(
+    (variant): variant is Variant => typeof variant === 'object' && variant !== null,
+  )
 
   const selectedVariant = useMemo<Variant | undefined>(() => {
     if (product.enableVariants && variants.length) {
       const variantId = searchParams.get('variant')
-
-      const validVariant = variants.find((variant) => {
-        if (typeof variant === 'object') {
-          return String(variant.id) === variantId
-        }
-        return String(variant) === variantId
-      })
-
-      if (validVariant && typeof validVariant === 'object') {
-        return validVariant
-      }
+      return variants.find((variant) => idOf(variant) === variantId)
     }
-
     return undefined
   }, [product.enableVariants, searchParams, variants])
 
@@ -92,20 +94,17 @@ export function AddToCart({ product, quantity = 1 }: Props) {
   )
 
   const disabled = useMemo<boolean>(() => {
-    const existingItem = cart?.items?.find((item) => {
-      const productID = typeof item.product === 'object' ? item.product?.id : item.product
-      const variantID = item.variant
-        ? typeof item.variant === 'object'
-          ? item.variant?.id
-          : item.variant
-        : undefined
+    const existingItem = (cart?.items ?? []).find((item) => {
+      const productID = idOf(item.product)
+      const variantID = idOf(item.variant)
 
-      if (productID === product.id) {
+      if (productID === String(product.id)) {
         if (product.enableVariants) {
-          return variantID === selectedVariant?.id
+          return variantID === (selectedVariant ? String(selectedVariant.id) : null)
         }
         return true
       }
+      return false
     })
 
     if (existingItem) {
