@@ -19,15 +19,23 @@ export function FooterMenu({ menuUk, menuRu }: Props) {
 
   return (
     <nav>
-      <ul>
+      <ul className="flex flex-col gap-3">
         {menu.map((item) => {
           return (
-            <li key={item.id} className="py-1">
+            <li key={item.id}>
               <CMSLink
-                appearance="link"
-                className="flex min-h-11 items-center"
+                appearance="inline"
+                className="group flex min-h-9 items-center gap-3 text-black transition dark:text-white"
                 {...item.link}
-              />
+              >
+                <span
+                  aria-hidden="true"
+                  className="flex size-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 transition group-hover:bg-neutral-200 group-hover:text-black dark:bg-neutral-800 dark:text-neutral-400 dark:group-hover:bg-neutral-700 dark:group-hover:text-white"
+                >
+                  →
+                </span>
+                <span className="group-hover:underline">{item.link?.label}</span>
+              </CMSLink>
             </li>
           )
         })}
