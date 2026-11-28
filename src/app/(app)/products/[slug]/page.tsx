@@ -379,6 +379,36 @@ const findProductBySlug = async (slug: string, draft: boolean, locale: Locale) =
 
   if (typeIDs.length === 0) return product
 
+  // Порядок значений задаётся в самой характеристике (массив values, как введено в админке).
+  // Берём характеристики, чтобы выстроить варианты в том же порядке.
+  const charIDs = typeIDs
+    .map((typeID) => {
+      const type = (product.variantTypes ?? []).find(
+        (t) => t && typeof t === 'object' && String(t.id) === typeID,
+      )
+      const name = type && typeof type === 'object' ? String(type.name ?? '') : ''
+      return name.startsWith('char-') ? name.slice(5) : ''
+    })
+    .filter(Boolean)
+
+  const charOrder = new Map<string, Map<string, number>>()
+  if (charIDs.length > 0) {
+    const chars = await payload.find({
+      collection: 'characteristics',
+      where: { id: { in: charIDs } },
+      limit: 100,
+      depth: 0,
+      pagination: false,
+    })
+    for (const ch of chars.docs) {
+      const order = new Map<string, number>()
+      ;(ch.values ?? []).forEach((v, index) => {
+        if (v.id) order.set(`v-${v.id}`, index)
+      })
+      charOrder.set(String(ch.id), order)
+    }
+  }
+
   const optionsResult = await payload.find({
     collection: 'variantOptions',
     where: { variantType: { in: typeIDs } },
@@ -397,10 +427,21 @@ const findProductBySlug = async (slug: string, draft: boolean, locale: Locale) =
     byType.set(typeID, [...(byType.get(typeID) ?? []), option])
   }
 
-  // Подставляем полный список значений в каждый тип товара
+  // Подставляем список значений в каждый тип товара, в порядке из характеристики
   const variantTypes = (product.variantTypes ?? []).map((t) => {
     if (!t || typeof t !== 'object') return t
-    const docs = byType.get(String(t.id)) ?? []
+    const docs = [...(byType.get(String(t.id)) ?? [])]
+
+    const charID = typeof t.name === 'string' && t.name.startsWith('char-') ? t.name.slice(5) : ''
+    const order = charOrder.get(charID)
+    if (order) {
+      docs.sort((a, b) => {
+        const oa = order.get(String(a.value ?? '')) ?? Number.MAX_SAFE_INTEGER
+        const ob = order.get(String(b.value ?? '')) ?? Number.MAX_SAFE_INTEGER
+        return oa - ob
+      })
+    }
+
     return {
       ...t,
       options: {
